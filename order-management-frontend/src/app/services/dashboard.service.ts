@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Order } from './order.service';
-import { Product } from './product.service';
+import { Product } from '../types/index';
 
 export interface DashboardStats {
   totalCustomers: number;

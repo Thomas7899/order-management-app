@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { OrderService, Order } from '../services/order.service';
 import { CustomerService, Customer } from '../services/customer.service';
-import { ProductService, Product } from '../services/product.service';
+import { ProductService } from '../services/product.service';
+import { Product } from '../types/index';
 
 interface OrderForm {
   customerId: string | number;
@@ -735,11 +736,11 @@ export class OrdersComponent implements OnInit {
   }
 
   loadProducts() {
-    this.productService.getProducts().subscribe({
-      next: (products) => {
-        this.products = products.filter(p => p.active);
+    this.productService.getAll().subscribe({
+      next: (products: Product[]) => {
+        this.products = products.filter((p: Product) => p.active);
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Fehler beim Laden der Produkte:', error);
       }
     });

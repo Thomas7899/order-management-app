@@ -1,0 +1,37 @@
+# Netlify Build Configuration
+[build]
+  base = "order-management-frontend/"
+  command = "npm ci && npm run build"
+  publish = "order-management-frontend/dist/order-management-frontend/"
+
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_VERSION = "9"
+
+# Redirect rules for Angular SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cache static assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+# API proxy rules (optional - for local development)
+[[redirects]]
+  from = "/api/*"
+  to = "https://your-backend-app.herokuapp.com/api/:splat"
+  status = 200
+  force = true

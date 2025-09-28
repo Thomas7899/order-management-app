@@ -11,12 +11,13 @@ import {
   ProductCategory,
   CrudService
 } from '../types/index';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ProductService implements CrudService<Product, CreateProductRequest, UpdateProductRequest> {
-  private readonly apiUrl = 'http://localhost:8080/api/products';
+  private readonly apiUrl = `${environment.apiUrl}/products`;
 
   constructor(private readonly http: HttpClient) {}
 

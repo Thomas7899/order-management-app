@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Customer } from './customer.service';
-import { Product } from './product.service';
+import { Product } from '../types/index';
 
 export enum OrderStatus {
   PENDING = 'PENDING',
