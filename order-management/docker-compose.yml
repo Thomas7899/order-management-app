@@ -1,0 +1,85 @@
+# ===== ORDER MANAGEMENT - DOCKER COMPOSE =====
+# Professional Development Environment Setup
+# Usage: docker-compose up -d
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database für Development & Testing
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: order-management-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: order_management_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dev123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - order-management-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d order_management_dev"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL für Production-like Testing
+  postgres-prod:
+    image: postgres:15-alpine
+    container_name: order-management-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: order_management_prod
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-your_secure_password}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    networks:
+      - order-management-network
+    profiles:
+      - prod
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d order_management_prod"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # pgAdmin für Database Management (Optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: order-management-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@orderms.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8081:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - order-management-network
+    profiles:
+      - tools
+    depends_on:
+      - postgres-dev
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  postgres_prod_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  order-management-network:
+    driver: bridge
+    name: order-management-net

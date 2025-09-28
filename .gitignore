@@ -1,0 +1,76 @@
+# ================ IDE FILES ================
+.vscode/
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# ================ OS FILES ================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ================ JAVA/MAVEN ================
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ================ SPRING BOOT ================
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.properties
+
+# ================ LOGS ================
+*.log
+logs/
+spring.log
+
+# ================ TEMP FILES ================
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+
+# ================ NODE.JS (Angular Frontend) ================
+order-management-frontend/node_modules/
+order-management-frontend/dist/
+order-management-frontend/.angular/
+order-management-frontend/coverage/
+order-management-frontend/tmp/
+order-management-frontend/out-tsc/
+
+# ================ ANGULAR SPECIFIC ================
+order-management-frontend/.sass-cache/
+order-management-frontend/connect.lock
+order-management-frontend/typings/
+
+# ================ DATABASE ================
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# ================ DOCKER ================
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ================ SECURITY ================
+application-local.properties
+application-secrets.properties
+*.pem
+*.key
+*.crt
+
+# ================ PACKAGE MANAGERS ================
+order-management-frontend/npm-debug.log*
+order-management-frontend/yarn-debug.log*
+order-management-frontend/yarn-error.log*
+order-management-frontend/package-lock.json
+order-management-frontend/yarn.lock

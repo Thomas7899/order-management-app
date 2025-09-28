@@ -1,0 +1,60 @@
+<nav class="navbar">
+  <div class="navbar-container">
+    <div class="navbar-brand">
+      <a routerLink="/dashboard">
+        <span class="brand-icon">🏪</span>
+        Order Management
+      </a>
+    </div>
+
+    <button class="mobile-menu-toggle" (click)="toggleMenu()" [class.active]="isMenuOpen">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <div class="navbar-menu" [class.active]="isMenuOpen">
+      <div class="navbar-nav">
+        <a routerLink="/dashboard" 
+           routerLinkActive="active" 
+           class="nav-link"
+           (click)="closeMenu()">
+          <span class="nav-icon">📊</span>
+          Dashboard
+        </a>
+        
+        <a routerLink="/users" 
+           routerLinkActive="active" 
+           class="nav-link"
+           (click)="closeMenu()">
+          <span class="nav-icon">👥</span>
+          Benutzer
+        </a>
+        
+        <a routerLink="/customers" 
+           routerLinkActive="active" 
+           class="nav-link"
+           (click)="closeMenu()">
+          <span class="nav-icon">🤝</span>
+          Kunden
+        </a>
+        
+        <a routerLink="/products" 
+           routerLinkActive="active" 
+           class="nav-link"
+           (click)="closeMenu()">
+          <span class="nav-icon">📦</span>
+          Produkte
+        </a>
+        
+        <a routerLink="/orders" 
+           routerLinkActive="active" 
+           class="nav-link"
+           (click)="closeMenu()">
+          <span class="nav-icon">🛒</span>
+          Bestellungen
+        </a>
+      </div>
+    </div>
+  </div>
+</nav>
