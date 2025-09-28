@@ -122,4 +122,57 @@ public class ProductController {
     public long getActiveProductCount() {
         return productRepository.countActiveProducts();
     }
+
+    // Produkte filtern
+    @GetMapping("/filter")
+    public List<Product> getFilteredProducts(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Boolean active,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) Boolean inStock) {
+        
+        List<Product> products = productRepository.findAll();
+        
+        // Anwenden der Filter
+        if (search != null && !search.trim().isEmpty()) {
+            products = products.stream()
+                .filter(p -> p.getName().toLowerCase().contains(search.toLowerCase()) || 
+                           p.getDescription().toLowerCase().contains(search.toLowerCase()))
+                .toList();
+        }
+        
+        if (category != null && !category.trim().isEmpty()) {
+            products = products.stream()
+                .filter(p -> category.equals(p.getCategory()))
+                .toList();
+        }
+        
+        if (active != null) {
+            products = products.stream()
+                .filter(p -> active.equals(p.getActive()))
+                .toList();
+        }
+        
+        if (minPrice != null) {
+            products = products.stream()
+                .filter(p -> p.getPrice().compareTo(minPrice) >= 0)
+                .toList();
+        }
+        
+        if (maxPrice != null) {
+            products = products.stream()
+                .filter(p -> p.getPrice().compareTo(maxPrice) <= 0)
+                .toList();
+        }
+        
+        if (inStock != null && inStock) {
+            products = products.stream()
+                .filter(p -> p.getStockQuantity() > 0)
+                .toList();
+        }
+        
+        return products;
+    }
 }
