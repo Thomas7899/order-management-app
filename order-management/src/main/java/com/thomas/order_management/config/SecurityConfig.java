@@ -31,9 +31,10 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         // Allow both local development and production frontend
         configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:4200",           // Local Angular dev server
-            "https://*.netlify.app",           // Netlify deployment
-            "https://*.vercel.app"             // Alternative: Vercel deployment
+            "http://localhost:4200",                           // Local Angular dev server
+            "https://thomas-order-frontend.netlify.app",       // Specific Netlify deployment
+            "https://*.netlify.app",                           // General Netlify deployment
+            "https://*.vercel.app"                             // Alternative: Vercel deployment
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
