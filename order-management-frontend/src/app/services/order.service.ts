@@ -2,7 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Customer } from './customer.service';
-import { Product } from '../types/index';
+import { Product } from '../types';
+import { environment } from '../../environments/environment';
 
 export enum OrderStatus {
   PENDING = 'PENDING',
@@ -39,7 +40,7 @@ export interface Order {
   providedIn: 'root'
 })
 export class OrderService {
-  private apiUrl = 'http://localhost:8080/api/orders';
+  private apiUrl = `${environment.apiUrl}/orders`;
 
   constructor(private http: HttpClient) {}
 

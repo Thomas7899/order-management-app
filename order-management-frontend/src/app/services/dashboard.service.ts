@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Order } from './order.service';
 import { Product } from '../types/index';
+import { environment } from '../../environments/environment';
 
 export interface DashboardStats {
   totalCustomers: number;
@@ -25,7 +26,7 @@ export interface RecentActivity {
   providedIn: 'root'
 })
 export class DashboardService {
-  private apiUrl = 'http://localhost:8080/api/dashboard';
+  private apiUrl = `${environment.apiUrl}/dashboard`;
 
   constructor(private http: HttpClient) {}
 

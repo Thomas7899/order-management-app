@@ -2,7 +2,7 @@
 [build]
   base = "order-management-frontend/"
   command = "npm ci && npm run build"
-  publish = "order-management-frontend/dist/order-management-frontend/"
+  publish = "order-management-frontend/dist/order-management-frontend/browser/"
 
 [build.environment]
   NODE_VERSION = "18"

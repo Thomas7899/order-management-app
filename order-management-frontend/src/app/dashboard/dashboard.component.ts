@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DashboardService, DashboardStats, RecentActivity } from '../services/dashboard.service';
 import { OrderStatus } from '../services/order.service';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-dashboard',
@@ -106,10 +107,10 @@ export class DashboardComponent implements OnInit {
 
   getImageUrl(imageUrl: string | undefined): string {
     if (!imageUrl) {
-      return 'http://localhost:8080/images/placeholder.jpg?t=' + Date.now();
+      return `${environment.apiUrl.replace('/api', '')}/images/placeholder.jpg?t=` + Date.now();
     }
     
     // Verwende echte Bilder vom Backend mit Cache-Buster
-    return 'http://localhost:8080' + imageUrl + '?t=' + Date.now();
+    return `${environment.apiUrl.replace('/api', '')}${imageUrl}?t=` + Date.now();
   }
 }
