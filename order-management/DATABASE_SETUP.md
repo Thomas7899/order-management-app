@@ -85,11 +85,7 @@ export SSL_KEYSTORE_PASSWORD=your_ssl_password
 -- Query Performance Statistics
 SELECT * FROM get_query_stats();
 ```
-
 ---
-
-## 🎯 **Für Bewerbung relevant:**
-
 ### **Enterprise Standards demonstrated:**
 ✅ **Multi-Environment Configuration**  
 ✅ **Database Migration Ready**  
@@ -97,12 +93,6 @@ SELECT * FROM get_query_stats();
 ✅ **Production Security Settings**  
 ✅ **Performance Monitoring**  
 ✅ **PostgreSQL Advanced Features**
-
-### **Passend zu Stellenanforderungen:**
-- ✅ "PostgreSQL, SQL" - Production PostgreSQL Setup
-- ✅ "Spring" - Professional Spring Profiles
-- ✅ "Anpassung an Kundenanforderungen" - Environment-spezifische Konfiguration
-- ✅ "Cloud-Technologien" - Docker Container Architecture
 
 ---
 
