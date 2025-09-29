@@ -7,7 +7,7 @@
 
 Dieses Projekt demonstriert **moderne Enterprise-Entwicklung** mit:
 - **Backend**: Spring Boot 3.5.6 mit Advanced SQL Features
-- **Frontend**: Angular 18 mit Standalone Components
+- **Frontend**: Angular 18 mit Standalone Components  
 - **Database**: PostgreSQL mit Complex Queries, Window Functions, CTEs
 - **DevOps**: Docker, Multi-Environment Configuration
 - **Architecture**: Clean Code, SOLID Principles, RESTful APIs
@@ -132,5 +132,17 @@ SELECT * FROM category_stats ORDER BY avg_price DESC;
 - ✅ **Reactive Programming** - RxJS Observables
 - ✅ **Type Safety** - Comprehensive TypeScript Usage
 - ✅ **Responsive Design** - CSS Grid, Mobile-First
+
+---
+
+## 📚 **Detaillierte Dokumentation**
+
+- 📋 [**Deployment Guide**](docs/DEPLOYMENT.md) - Backend Deployment auf Heroku
+- 🌐 [**Frontend Deployment**](docs/FRONTEND-DEPLOYMENT.md) - Angular auf Netlify  
+- 🏗️ [**Microservices Architektur**](docs/MICROSERVICES-ARCHITECTURE.md) - System Design
+
+## 🛠️ **Scripts**
+
+- 🚀 [`scripts/deploy-heroku.sh`](scripts/deploy-heroku.sh) - Automatisches Backend Deployment
 
 ---

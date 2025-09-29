@@ -1,8 +1,8 @@
 # Netlify Build Configuration
 [build]
-  base = "order-management-frontend/"
+  base = "."
   command = "npm ci && npm run build"
-  publish = "order-management-frontend/dist/order-management-frontend/browser/"
+  publish = "dist/order-management-frontend/browser/"
 
 [build.environment]
   NODE_VERSION = "18"
