@@ -68,104 +68,6 @@ Dieses Projekt demonstriert **moderne Enterprise-Entwicklung** mit:
 
 ---
 
-## 🛠️ **Installation & Setup**
-
-### **Prerequisites**
-```bash
-- Java 21+
-- Node.js 18+
-- Docker & Docker Compose
-- PostgreSQL (via Docker)
-```
-
-### **1. Clone Repository**
-```bash
-git clone <your-repo-url>
-cd order-management-app
-```
-
-### **2. Backend Setup**
-```bash
-cd order-management
-
-# Start PostgreSQL with Docker
-docker-compose up -d
-
-# Run Spring Boot Application  
-./mvnw spring-boot:run
-
-# Application runs on: http://localhost:8080
-```
-
-### **3. Frontend Setup**
-```bash
-cd order-management-frontend
-
-# Install Dependencies
-npm install
-
-# Start Angular Development Server
-ng serve
-
-# Application runs on: http://localhost:4200
-```
-
----
-
-## 🔧 **Configuration**
-
-### **Environment Profiles**
-- **Development**: `application-dev.properties` (H2 Database)
-- **Production**: `application-prod.properties` (PostgreSQL)
-- **Testing**: `application-test.properties` (H2 In-Memory)
-
-### **Docker Configuration**
-```yaml
-# docker-compose.yml
-services:
-  postgres:
-    image: postgres:15
-    ports: ["5432:5432"]
-    environment:
-      POSTGRES_DB: order_management
-      POSTGRES_USER: order_user
-      POSTGRES_PASSWORD: order_password
-```
-
----
-
-## 📡 **API Endpoints**
-
-### **Product Management**
-```
-GET    /api/products              # List all products
-POST   /api/products              # Create product  
-GET    /api/products/{id}         # Get product by ID
-PUT    /api/products/{id}         # Update product
-DELETE /api/products/{id}         # Delete product
-```
-
-### **Advanced Analytics**
-```
-GET /api/analytics/product-rankings          # Window Functions Demo
-GET /api/analytics/category-statistics       # CTE Analytics
-GET /api/analytics/products/above-average    # Subquery Demo
-GET /api/analytics/inventory                 # Business Intelligence
-GET /api/analytics/performance               # Database Metrics
-GET /api/analytics/dashboard                 # Comprehensive Analytics
-```
-
-### **User Management**
-```
-GET    /api/users                 # List users
-POST   /api/users                 # Create user
-GET    /api/users/{id}            # Get user by ID
-PUT    /api/users/{id}            # Update user
-DELETE /api/users/{id}            # Delete user
-```
-
----
-
 ## 📊 **Database Schema**
 
 ### **Products Table**
@@ -198,41 +100,6 @@ WITH category_stats AS (
 )
 SELECT * FROM category_stats ORDER BY avg_price DESC;
 ```
-
----
-
-## 🧪 **Testing**
-
-### **Backend Tests**
-```bash
-cd order-management
-./mvnw test
-```
-
-### **Frontend Tests**  
-```bash
-cd order-management-frontend
-npm test
-```
-
----
-
-## 🚀 **Deployment**
-
-### **Production Build**
-```bash
-# Backend
-./mvnw clean package -Pprod
-
-# Frontend  
-ng build --configuration production
-```
-
-### **Docker Deployment**
-```bash
-docker-compose -f docker-compose.prod.yml up -d
-```
-
 ---
 
 ## 📈 **Performance Features**
@@ -244,8 +111,6 @@ docker-compose -f docker-compose.prod.yml up -d
 - 🗜️ **Query Optimization** mit EXPLAIN ANALYZE
 
 ---
-
-## 🎯 **Stellenrelevante Highlights**
 
 ### **Java & Spring Expertise**
 - ✅ **Spring Boot 3.5.6** - Latest Enterprise Features
@@ -269,16 +134,3 @@ docker-compose -f docker-compose.prod.yml up -d
 - ✅ **Responsive Design** - CSS Grid, Mobile-First
 
 ---
-
-## 📞 **Kontakt & Weitere Informationen**
-
-Dieses Projekt demonstriert **Enterprise-Level Entwicklungskenntnisse** in:
-- Modern Java Development mit Spring Boot
-- Advanced PostgreSQL & SQL Optimization  
-- TypeScript & Angular Frontend Development
-- DevOps & Docker Containerization
-- Clean Code & Software Architecture
-
-**Bereit für anspruchsvolle Enterprise-Projekte!** 🚀
-
-*Erstellt mit ❤️ für moderne Enterprise-Entwicklung*
