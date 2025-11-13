@@ -1,7 +1,7 @@
 # 🏗️ Microservices Deployment Architecture
 
 ## 📋 Overview
-This project uses a **modern microservices architecture** with separate deployments for frontend and backend, demonstrating enterprise-level DevOps practices.
+This project uses a **modern, decoupled architecture** with separate deployments for the frontend and backend. This approach, often a step towards a full microservices architecture, demonstrates enterprise-level DevOps practices by enabling independent scaling and development cycles.
 
 ## 🎯 Deployed Services
 

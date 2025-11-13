@@ -17,7 +17,7 @@ Dieses Projekt demonstriert **moderne Enterprise-Entwicklung** mit:
 ## 🚀 **Technologie-Stack**
 
 ### **Backend Technologies**
-- ☕ **Java 21** - Modern LTS Version
+- ☕ **Java 17** 
 - 🍃 **Spring Boot 3.5.6** - Enterprise Framework
 - 🗄️ **PostgreSQL** - Production Database
 - 🔍 **H2** - Development Database
