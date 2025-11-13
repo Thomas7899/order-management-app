@@ -1,0 +1,61 @@
+<div class="reviews-container">
+  <div class="reviews-header">
+    <h1>Bewertungsanalyse</h1>
+    <div class="search-bar">
+      <input
+        type="text"
+        [(ngModel)]="query"
+        placeholder="Suchbegriff eingeben (z. B. „great sound quality“)"
+      />
+      <button (click)="search()" [disabled]="loading">
+        {{ loading ? 'Analysiere...' : 'Analysieren' }}
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="error" class="error-message">{{ error }}</div>
+  <div *ngIf="loading" class="loading">🔍 Bewertungen werden analysiert...</div>
+
+  <div *ngIf="!loading && reviews.length > 0" class="insights-section">
+    <h2>💡 Insights</h2>
+    <div class="insights-grid">
+      <div class="insight-card">
+        <div class="label">Durchschnittsbewertung</div>
+        <div class="value highlight">{{ avgRating }}/5</div>
+      </div>
+      <div class="insight-card">
+        <div class="label">Gesamtbewertungen</div>
+        <div class="value">{{ reviews.length }}</div>
+      </div>
+      <div class="insight-card">
+        <div class="label">Stimmung</div>
+        <div class="value sentiment" [class.positive]="sentiment==='positiv'" [class.neutral]="sentiment==='neutral'" [class.negative]="sentiment==='negativ'">
+          {{ sentiment | titlecase }}
+        </div>
+      </div>
+      <div class="insight-card">
+        <div class="label">Häufigste Wörter</div>
+        <div class="value keywords">
+          <span *ngFor="let w of topWords">#{{ w }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && reviews.length > 0" class="reviews-grid">
+    <div *ngFor="let review of reviews" class="review-card">
+      <div class="review-header">
+        <div class="rating">⭐ {{ review.rating }}/5</div>
+        <div class="date">{{ formatDate(review.createdAt) }}</div>
+      </div>
+      <p class="comment">“{{ review.comment }}”</p>
+      <div class="review-footer">
+        <span class="review-id">#{{ review.id }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && reviews.length === 0 && !error" class="no-results">
+    Noch keine Bewertungen gefunden.
+  </div>
+</div>

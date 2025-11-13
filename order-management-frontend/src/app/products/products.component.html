@@ -1,0 +1,35 @@
+<!-- src/app/products/products.component.html -->
+<div class="container">
+  <h2>Produktverwaltung</h2>
+  <app-product-filters
+    [(searchTerm)]="searchTerm"
+    [(selectedCategory)]="selectedCategory"
+    [(showOnlyActive)]="showOnlyActive"
+    (filtersChanged)="applyFilters()">
+  </app-product-filters>
+
+  <button (click)="showForm = !showForm" class="btn btn-primary mb-3">
+    {{ showForm ? 'Abbrechen' : 'Neues Produkt hinzufügen' }}
+  </button>
+
+  <app-product-form
+    *ngIf="showForm"
+    [editingProduct]="editingProduct"
+    [product]="newProduct"
+    (cancel)="resetForm()"
+    (save)="addProduct()">
+  </app-product-form>
+
+  <div class="products-grid">
+    <app-product-card
+      *ngFor="let product of filteredProducts"
+      [product]="product"
+      (edit)="editProduct(product)"
+      (delete)="deleteProduct(product.id)">
+    </app-product-card>
+  </div>
+
+  <div *ngIf="filteredProducts.length === 0" class="no-products">
+    <p>Keine Produkte gefunden.</p>
+  </div>
+</div>

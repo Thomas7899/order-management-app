@@ -1,0 +1,80 @@
+/* order-management-frontend/src/app/orders/order-list/order-list.component.css */
+/* === ORDER LIST DARK THEME === */
+.orders-list {
+  background: #122b39;
+  border-radius: 10px;
+  padding: 20px;
+  border: 1px solid #1f3a4a;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  color: #e0f0ff;
+}
+
+.table-header,
+.order-row {
+  display: grid;
+  grid-template-columns: 80px 2fr 150px 120px 120px 200px;
+  gap: 15px;
+  padding: 12px 0;
+  align-items: center;
+  border-bottom: 1px solid #1f3a4a;
+}
+
+.table-header {
+  color: #00c8ff;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+
+.order-row:hover {
+  background: #0f2431;
+  transition: background 0.3s;
+}
+
+.status-badge {
+  padding: 5px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+/* Statusfarben */
+.status-badge.pending {
+  background: rgba(255, 165, 0, 0.15);
+  color: #ffb347;
+  border: 1px solid #ffb347;
+}
+.status-badge.confirmed {
+  background: rgba(0, 200, 255, 0.1);
+  color: #00c8ff;
+  border: 1px solid #00c8ff;
+}
+.status-badge.processing {
+  background: rgba(186, 85, 211, 0.15);
+  color: #ba55d3;
+  border: 1px solid #ba55d3;
+}
+.status-badge.shipped {
+  background: rgba(0, 206, 209, 0.1);
+  color: #00ced1;
+  border: 1px solid #00ced1;
+}
+.status-badge.delivered {
+  background: rgba(0, 208, 132, 0.1);
+  color: #00d084;
+  border: 1px solid #00d084;
+}
+.status-badge.cancelled {
+  background: rgba(255, 91, 91, 0.1);
+  color: #ff5c5c;
+  border: 1px solid #ff5c5c;
+}
+
+.no-orders {
+  text-align: center;
+  padding: 25px;
+  color: #89a6b8;
+  font-style: italic;
+}

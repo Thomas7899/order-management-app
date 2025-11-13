@@ -1,0 +1,77 @@
+/* src/app/products/components/product-form/product-form.component.css */
+/* === PRODUCT FORM DARK MODE === */
+.form-card {
+  margin: 20px 0;
+  background: #122b39;
+  border: 1px solid #1f3a4a;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  color: #e0f0ff;
+  padding: 20px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.form-group label {
+  color: #89a6b8;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #1f3a4a;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #0e1a22;
+  color: #e0f0ff;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: #00c8ff;
+  box-shadow: 0 0 6px rgba(0, 200, 255, 0.3);
+  outline: none;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+  font-weight: 500;
+}
+
+/* Buttons */
+.btn-success {
+  background: #00d084;
+  color: #0e1a22;
+}
+
+.btn-success:hover {
+  background: #00b874;
+  box-shadow: 0 0 10px rgba(0, 208, 132, 0.4);
+}
+
+.btn-secondary {
+  background: #1f3a4a;
+  color: #e0f0ff;
+}
+
+.btn-secondary:hover {
+  background: #2b4f63;
+  box-shadow: 0 0 8px rgba(0, 200, 255, 0.2);
+}

@@ -1,8 +1,9 @@
+// order-management-frontend/src/app/dashboard/dashboard.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DashboardService, DashboardStats, RecentActivity } from '../services/dashboard.service';
-import { OrderStatus } from '../services/order.service';
 import { environment } from '../../environments/environment';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-dashboard',
@@ -27,7 +28,6 @@ export class DashboardComponent implements OnInit {
     this.loading = true;
     this.error = null;
 
-    // Stats laden
     this.dashboardService.getDashboardStats().subscribe({
       next: (stats) => {
         this.stats = stats;
@@ -41,7 +41,19 @@ export class DashboardComponent implements OnInit {
     });
 
     // Recent Activity laden
-    this.dashboardService.getRecentActivity().subscribe({
+    this.dashboardService.getRecentActivity().pipe(
+      map(activity => {
+        if (activity && activity.lowStockProducts) {
+          const backendUrl = environment.apiUrl.replace('/api', '');
+          activity.lowStockProducts.forEach(product => {
+            if (product.imageUrl) {
+              product.imageUrl = `${backendUrl}/api${product.imageUrl}`;
+            }
+          });
+        }
+        return activity;
+      })
+    ).subscribe({
       next: (activity) => {
         this.recentActivity = activity;
         this.checkLoadingComplete();
@@ -105,12 +117,4 @@ export class DashboardComponent implements OnInit {
     this.loadDashboardData();
   }
 
-  getImageUrl(imageUrl: string | undefined): string {
-    if (!imageUrl) {
-      return `${environment.apiUrl.replace('/api', '')}/images/placeholder.jpg?t=` + Date.now();
-    }
-    
-    // Verwende echte Bilder vom Backend mit Cache-Buster
-    return `${environment.apiUrl.replace('/api', '')}${imageUrl}?t=` + Date.now();
-  }
 }

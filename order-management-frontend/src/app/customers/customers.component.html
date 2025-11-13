@@ -1,0 +1,150 @@
+<!-- order-management-frontend/src/app/customers/customers.component.html -->
+<div class="customers-container">
+  <div class="header">
+    <h2>Kundenverwaltung</h2>
+    <button class="btn btn-primary" (click)="toggleAddForm()">
+      {{ showAddForm ? 'Abbrechen' : 'Neuer Kunde' }}
+    </button>
+  </div>
+
+  <div class="alert alert-danger" *ngIf="errorMessage">
+    {{ errorMessage }}
+    <button (click)="errorMessage = null" class="close-alert">&times;</button>
+  </div>
+
+  <div class="search-bar">
+    <input 
+      type="text" 
+      [formControl]="searchControl"
+      placeholder="Kunden suchen..."
+      class="form-control">
+  </div>
+
+  <div class="add-form" *ngIf="showAddForm">
+    <h3>{{ editingCustomer ? 'Kunde bearbeiten' : 'Neuer Kunde' }}</h3>
+    <form [formGroup]="customerForm" (ngSubmit)="saveCustomer()">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="firstName">Vorname *</label>
+          <input 
+            type="text" 
+            id="firstName"
+            formControlName="firstName"
+            class="form-control"
+            [class.is-invalid]="customerForm.get('firstName')?.invalid && customerForm.get('firstName')?.touched">
+        </div>
+        <div class="form-group">
+          <label for="lastName">Nachname *</label>
+          <input 
+            type="text" 
+            id="lastName"
+            formControlName="lastName"
+            class="form-control"
+            [class.is-invalid]="customerForm.get('lastName')?.invalid && customerForm.get('lastName')?.touched">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="email">E-Mail *</label>
+          <input 
+            type="email" 
+            id="email"
+            formControlName="email"
+            class="form-control"
+            [class.is-invalid]="customerForm.get('email')?.invalid && customerForm.get('email')?.touched">
+        </div>
+        <div class="form-group">
+          <label for="phone">Telefon</label>
+          <input 
+            type="tel" 
+            id="phone"
+            formControlName="phone"
+            class="form-control">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="address">Adresse</label>
+        <input 
+          type="text" 
+          id="address"
+          formControlName="address"
+          class="form-control">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="city">Stadt</label>
+          <input 
+            type="text" 
+            id="city"
+            formControlName="city"
+            class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="zipCode">PLZ</label>
+          <input 
+            type="text" 
+            id="zipCode"
+            formControlName="zipCode"
+            class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="country">Land</label>
+          <input 
+            type="text" 
+            id="country"
+            formControlName="country"
+            class="form-control">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" [disabled]="!customerForm.valid || isSaving" class="btn btn-success">
+          {{ isSaving ? 'Speichert...' : (editingCustomer ? 'Aktualisieren' : 'Speichern') }}
+        </button>
+        <button type="button" (click)="closeForm()" class="btn btn-secondary">
+          Abbrechen
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="customers-list">
+    <div class="list-header">
+      <h3>Kunden ({{ customers.length }})</h3>
+    </div>
+    
+    <div *ngIf="isLoading" class="loading-indicator">
+      Lade Kunden...
+    </div>
+
+    <div *ngIf="!isLoading">
+      <div class="customers-grid" *ngIf="customers.length > 0">
+        <div class="customer-card" *ngFor="let customer of customers">
+          <div class="customer-info">
+            <h4>{{ customer.firstName }} {{ customer.lastName }}</h4>
+            <p class="email">{{ customer.email }}</p>
+            <p class="phone" *ngIf="customer.phone">{{ customer.phone }}</p>
+            <div class="address" *ngIf="customer.address">
+              <p>{{ customer.address }}</p>
+              <p *ngIf="customer.city || customer.zipCode">
+                {{ customer.zipCode }} {{ customer.city }}
+              </p>
+              <p *ngIf="customer.country">{{ customer.country }}</p>
+            </div>
+          </div>
+          <div class="customer-actions">
+            <button (click)="editCustomer(customer)" class="btn btn-sm btn-outline-primary">
+              Bearbeiten
+            </button>
+            <button (click)="deleteCustomer(customer.id!)" class="btn btn-sm btn-outline-danger">
+              Löschen
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="no-customers" *ngIf="customers.length === 0">
+        <p>Keine Kunden gefunden.</p>
+      </div>
+    </div>
+  </div>
+</div>

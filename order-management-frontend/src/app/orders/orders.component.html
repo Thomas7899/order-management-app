@@ -1,0 +1,52 @@
+<!-- order-management-frontend/src/app/orders/orders.component.html -->
+<div class="orders-container">
+  <div class="header">
+    <h2>Bestellungsverwaltung</h2>
+    <button class="btn btn-primary" (click)="toggleForm()">
+      {{ showAddForm ? 'Abbrechen' : 'Neue Bestellung' }}
+    </button>
+  </div>
+
+  <div class="filters-bar">
+    <div class="search-group">
+      <input
+        type="text"
+        [(ngModel)]="searchTerm"
+        (input)="searchOrders()"
+        placeholder="Bestellungen suchen..."
+        class="form-control" />
+    </div>
+    <div class="filter-group">
+      <select [(ngModel)]="statusFilter" (change)="filterOrders()" class="form-control">
+        <option value="">Alle Status</option>
+        <option value="PENDING">Ausstehend</option>
+        <option value="PROCESSING">In Bearbeitung</option>
+        <option value="SHIPPED">Versandt</option>
+        <option value="DELIVERED">Geliefert</option>
+        <option value="CANCELLED">Storniert</option>
+      </select>
+    </div>
+  </div>
+
+  <app-order-form
+    *ngIf="showAddForm"
+    [order]="editingOrder"
+    [customers]="customers"
+    [products]="products"
+    (save)="handleSave($event)"
+    (cancel)="toggleForm()">
+  </app-order-form>
+
+  <app-order-list
+    [orders]="displayedOrders"
+    (edit)="handleEdit($event)"
+    (delete)="handleDelete($event)"
+    (view)="handleView($event)">
+  </app-order-list>
+
+  <app-order-details-modal
+    *ngIf="selectedOrder"
+    [order]="selectedOrder"
+    (close)="handleCloseDetails()">
+  </app-order-details-modal>
+</div>

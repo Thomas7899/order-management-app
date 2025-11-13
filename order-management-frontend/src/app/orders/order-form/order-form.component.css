@@ -1,0 +1,88 @@
+/* order-management-frontend/src/app/orders/order-form/order-form.component.css */
+/* === ORDER FORM DARK THEME === */
+.add-form {
+  background: #122b39;
+  padding: 25px;
+  border-radius: 10px;
+  border: 1px solid #1f3a4a;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  color: #e0f0ff;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 14px;
+  color: #89a6b8;
+  margin-bottom: 5px;
+}
+
+.form-control {
+  background: #0e1a22;
+  border: 1px solid #1f3a4a;
+  color: #e0f0ff;
+  padding: 10px 12px;
+  border-radius: 6px;
+  transition: all 0.3s;
+}
+
+.form-control:focus {
+  border-color: #00c8ff;
+  box-shadow: 0 0 5px rgba(0, 200, 255, 0.3);
+  outline: none;
+}
+
+.item-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 10px;
+}
+
+.item-total {
+  font-weight: bold;
+  color: #00d084;
+}
+
+.order-total {
+  text-align: right;
+  margin: 25px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #00d084;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: none;
+}
+
+.btn-primary {
+  background: #00c8ff;
+  color: #0e1a22;
+}
+
+.btn-primary:hover {
+  background: #00a3cc;
+  box-shadow: 0 0 10px rgba(0, 200, 255, 0.4);
+}

@@ -1,0 +1,64 @@
+/* order-management-frontend/src/app/orders/orders.component.css */
+/* === DARK MODE ORDERS PAGE === */
+.orders-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  color: #e0f0ff;
+  background-color: #0e1a22;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.header h1 {
+  color: #00c8ff;
+  text-shadow: 0 0 8px rgba(0, 200, 255, 0.3);
+}
+
+.filters-bar {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.search-group .form-control,
+.filter-group .form-control {
+  background: #122b39;
+  border: 1px solid #1f3a4a;
+  color: #e0f0ff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.3s;
+}
+
+.form-control:focus {
+  border-color: #00c8ff;
+  outline: none;
+  box-shadow: 0 0 5px rgba(0, 200, 255, 0.4);
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.btn-primary {
+  background: #00c8ff;
+  color: #0e1a22;
+}
+
+.btn-primary:hover {
+  background: #00a3cc;
+  box-shadow: 0 0 10px rgba(0, 200, 255, 0.4);
+}

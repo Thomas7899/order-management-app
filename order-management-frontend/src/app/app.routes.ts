@@ -11,5 +11,17 @@ export const routes: Routes = [
   { path: 'users', component: UsersComponent },
   { path: 'customers', component: CustomersComponent },
   { path: 'products', component: ProductsComponent },
-  { path: 'orders', component: OrdersComponent }
+  { path: 'orders', component: OrdersComponent },
+  {
+    path: 'reviews',
+    loadComponent: () =>
+      import('./reviews/reviews.component').then((m) => m.ReviewsComponent),
+  },
+  {
+  path: 'review-trends',
+  loadComponent: () =>
+    import('./review-trend/review-trends.component').then(
+      (m) => m.ReviewTrendsComponent
+    ),
+},
 ];

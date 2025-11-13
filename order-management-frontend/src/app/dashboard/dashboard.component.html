@@ -1,3 +1,4 @@
+<!--order-management-frontend/src/app/dashboard/dashboard.component.html -->
 <div class="dashboard-container">
   <div class="dashboard-header">
     <h1>Dashboard</h1>
@@ -118,7 +119,7 @@
         <h3>Produkte mit niedrigem Lagerbestand</h3>
         <div *ngFor="let product of recentActivity.lowStockProducts" class="product-item">
           <div class="product-image" *ngIf="product.imageUrl">
-            <img [src]="getImageUrl(product.imageUrl)" [alt]="product.name" class="product-thumbnail">
+            <img [src]="product.imageUrl" [alt]="product.name" class="product-thumbnail">
           </div>
           <div class="product-info">
             <div class="product-name">{{ product.name }}</div>

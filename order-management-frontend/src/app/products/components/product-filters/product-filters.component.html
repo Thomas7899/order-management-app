@@ -1,0 +1,33 @@
+<!-- src/app/products/components/product-filters/product-filters.component.html -->
+<div class="filters-section">
+  <div class="filter-row">
+    <input
+      type="text"
+      [ngModel]="searchTerm"
+      (ngModelChange)="onSearchTermChange($event)"
+      placeholder="Produkte suchen..."
+      class="form-control search-input"
+    >
+
+    <select
+      [ngModel]="selectedCategory"
+      (ngModelChange)="onSelectedCategoryChange($event)"
+      class="form-control"
+    >
+      <option value="">Alle Kategorien</option>
+      <option value="Elektronik">Elektronik</option>
+      <option value="Möbel">Möbel</option>
+      <option value="Beleuchtung">Beleuchtung</option>
+      <option value="Bürobedarf">Bürobedarf</option>
+    </select>
+
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        [ngModel]="showOnlyActive"
+        (ngModelChange)="onShowOnlyActiveChange($event)"
+      >
+      Nur aktive Produkte
+    </label>
+  </div>
+</div>

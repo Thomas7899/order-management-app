@@ -1,0 +1,27 @@
+<!-- order-management-frontend/src/app/orders/order-list/order-list.component.html -->
+<div class="orders-list">
+  <h3>Bestellungen ({{ orders.length }})</h3>
+  <div *ngIf="orders.length; else empty">
+    <div class="table-header">
+      <div>ID</div>
+      <div>Kunde</div>
+      <div>Datum</div>
+      <div>Status</div>
+      <div>Summe</div>
+      <div>Aktionen</div>
+    </div>
+    <div *ngFor="let o of orders" class="order-row">
+      <div>#{{ o.id }}</div>
+      <div>{{ o.customer.firstName }} {{ o.customer.lastName }}</div>
+      <div>{{ o.orderDate | date:'dd.MM.yyyy HH:mm' }}</div>
+      <div><span class="status-badge" [attr.data-status]="o.status">{{ getStatusLabel(o.status) }}</span></div>
+      <div>{{ o.totalAmount | currency:'EUR' }}</div>
+      <div class="col-actions">
+        <button class="btn btn-sm btn-outline-info" (click)="view.emit(o)">Details</button>
+        <button class="btn btn-sm btn-outline-primary" (click)="edit.emit(o)">Bearbeiten</button>
+        <button class="btn btn-sm btn-outline-danger" (click)="delete.emit(o.id!)">Löschen</button>
+      </div>
+    </div>
+  </div>
+  <ng-template #empty><p class="no-orders">Keine Bestellungen gefunden.</p></ng-template>
+</div>

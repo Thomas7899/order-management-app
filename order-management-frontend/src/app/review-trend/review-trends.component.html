@@ -1,0 +1,68 @@
+<div class="trends-container">
+  <div class="reviews-header">
+    <h1>KI-Trend-Analyse</h1>
+    <div class="search-bar">
+      <input
+        type="date"
+        [(ngModel)]="from"
+        placeholder="Von"
+      />
+      <input
+        type="date"
+        [(ngModel)]="to"
+        placeholder="Bis"
+      />
+      <button (click)="analyze()" [disabled]="loading">
+        {{ loading ? 'Analysiere...' : 'Analysieren' }}
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="error" class="error-message">{{ error }}</div>
+  <div *ngIf="loading" class="loading">🤖 KI analysiert Trends...</div>
+
+  <div *ngIf="!loading && reports.length > 0" class="insights-section">
+    <h2>💡 Letzte Analyse</h2>
+    <div class="insights-grid">
+      <div class="insight-card">
+        <div class="label">Zeitraum</div>
+        <div class="value highlight">{{ reports[0].windowStart }} → {{ reports[0].windowEnd }}</div>
+      </div>
+      <div class="insight-card">
+        <div class="label">Generiert am</div>
+        <div class="value">{{ formatDate(reports[0].generatedAt) }}</div>
+      </div>
+      <div class="insight-card">
+        <div class="label">Zusammenfassung</div>
+        <div class="value keywords">{{ reports[0].summary }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && reports.length > 0" class="reviews-grid">
+    <div class="review-card">
+      <h3 class="font-semibold text-green-400 mb-2">✅ Positive Trends</h3>
+      <div class="value keywords">
+        <span *ngFor="let t of reports[0].positiveTrends">#{{ t }}</span>
+      </div>
+    </div>
+
+    <div class="review-card">
+      <h3 class="font-semibold text-red-400 mb-2">⚠️ Negative Trends</h3>
+      <div class="value keywords">
+        <span *ngFor="let t of reports[0].negativeTrends">#{{ t }}</span>
+      </div>
+    </div>
+
+    <div class="review-card">
+      <h3 class="font-semibold text-yellow-400 mb-2">⚪ Neutrale Beobachtungen</h3>
+      <div class="value keywords">
+        <span *ngFor="let t of reports[0].neutralObservations">#{{ t }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && reports.length === 0 && !error" class="no-results">
+    Noch keine Trendberichte vorhanden.
+  </div>
+</div>

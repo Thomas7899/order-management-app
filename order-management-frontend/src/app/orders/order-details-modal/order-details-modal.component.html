@@ -1,0 +1,31 @@
+<!-- order-management-frontend/src/app/orders/order-details-modal/order-details-modal.component.html -->
+<div class="modal" (click)="close.emit()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Bestellung #{{ order.id }}</h3>
+      <button class="close-btn" (click)="close.emit()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-section">
+        <h4>Kunde</h4>
+        <p><strong>{{ order.customer.firstName }} {{ order.customer.lastName }}</strong></p>
+        <p>{{ order.customer.email }}</p>
+      </div>
+      <div class="info-section">
+        <h4>Details</h4>
+        <p>Status: {{ order.status }}</p>
+        <p>Gesamtsumme: {{ order.totalAmount | currency:'EUR' }}</p>
+        <p>Datum: {{ order.orderDate | date:'dd.MM.yyyy HH:mm' }}</p>
+      </div>
+      <div class="info-section">
+        <h4>Positionen</h4>
+        <div *ngFor="let i of order.orderItems" class="item">
+          <span>{{ i.product.name }}</span>
+          <span>{{ i.quantity }}x</span>
+          <span>{{ i.unitPrice | currency:'EUR' }}</span>
+          <strong>{{ i.quantity * i.unitPrice | currency:'EUR' }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
