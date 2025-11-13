@@ -1,3 +1,4 @@
+//src/main/java/com/thomas/order_management/model/User.java
 package com.thomas.order_management.model;
 
 import jakarta.persistence.*;

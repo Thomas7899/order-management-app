@@ -1,9 +1,12 @@
 package com.thomas.order_management.service;
 
+import com.thomas.order_management.dto.AnalyticsDto;
 import com.thomas.order_management.dto.CategoryStatistics;
+import com.thomas.order_management.dto.ProductDto;
 import com.thomas.order_management.dto.ProductRanking;
 import com.thomas.order_management.model.Product;
 import com.thomas.order_management.repository.ProductRepository;
+import com.thomas.order_management.mapper.ProductMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,9 +32,11 @@ public class ProductAnalyticsService {
     private static final Logger logger = LoggerFactory.getLogger(ProductAnalyticsService.class);
 
     private final ProductRepository productRepository;
+    private final ProductMapper productMapper;
 
-    public ProductAnalyticsService(ProductRepository productRepository) {
+    public ProductAnalyticsService(ProductRepository productRepository, ProductMapper productMapper) {
         this.productRepository = productRepository;
+        this.productMapper = productMapper;
     }
 
     // ================ WINDOW FUNCTIONS ================
@@ -90,9 +95,10 @@ public class ProductAnalyticsService {
      * Findet Produkte über dem Kategorie-Durchschnitt
      * Demonstriert korrelierte Subqueries
      */
-    public List<Product> getProductsAboveCategoryAverage() {
+    public List<ProductDto> getProductsAboveCategoryAverage() {
         logger.info("Finding products above category average using correlated subquery");
-        return productRepository.findProductsAboveCategoryAverage();
+        List<Product> products = productRepository.findProductsAboveCategoryAverage();
+        return productMapper.toDtoList(products);
     }
 
     /**
@@ -119,9 +125,10 @@ public class ProductAnalyticsService {
      * Zeitbasierte Produktanalyse
      * Demonstriert Datum-Bereiche und temporale Queries
      */
-    public List<Product> getProductsByTimeRange(LocalDateTime startDate, LocalDateTime endDate) {
+    public List<ProductDto> getProductsByTimeRange(LocalDateTime startDate, LocalDateTime endDate) {
         logger.info("Analyzing products created between {} and {}", startDate, endDate);
-        return productRepository.findProductsCreatedBetween(startDate, endDate);
+        List<Product> products = productRepository.findProductsCreatedBetween(startDate, endDate);
+        return productMapper.toDtoList(products);
     }
 
     /**
@@ -149,19 +156,21 @@ public class ProductAnalyticsService {
      * Erweiterte Produktsuche mit Relevanz-Ranking
      * Demonstriert Full-Text-Search Patterns
      */
-    public Page<Product> searchProductsAdvanced(String searchTerm, Pageable pageable) {
+    public Page<ProductDto> searchProductsAdvanced(String searchTerm, Pageable pageable) {
         logger.info("Performing advanced product search for term: '{}'", searchTerm);
-        return productRepository.searchProducts(searchTerm, pageable);
+        Page<Product> products = productRepository.searchProducts(searchTerm, pageable);
+        return productMapper.toDtoPage(products);
     }
 
     /**
      * Performance-optimierte Kategoriesuche
      * Zeigt Index-bewusste Abfragen
      */
-    public List<Product> findProductsOptimized(String category, BigDecimal minPrice, BigDecimal maxPrice) {
+    public List<ProductDto> findProductsOptimized(String category, BigDecimal minPrice, BigDecimal maxPrice) {
         logger.info("Executing optimized product search: category={}, priceRange=[{}, {}]", 
                    category, minPrice, maxPrice);
-        return productRepository.findByCategoryAndPriceRange(category, minPrice, maxPrice);
+        List<Product> products = productRepository.findByCategoryAndPriceRange(category, minPrice, maxPrice);
+        return productMapper.toDtoList(products);
     }
 
     // ================ BUSINESS ANALYTICS ================
@@ -170,18 +179,18 @@ public class ProductAnalyticsService {
      * Inventory Value Analysis
      * Berechnet Lagerwerte pro Kategorie
      */
-    public List<Map<String, Object>> getInventoryAnalysis() {
+    public List<AnalyticsDto.InventoryAnalysisDto> getInventoryAnalysis() {
         logger.info("Performing inventory value analysis");
         
         List<Object[]> results = productRepository.getInventoryAnalysis();
         
         return results.stream()
-                .map(row -> Map.of(
-                    "category", row[0],
-                    "productCount", row[1],
-                    "totalStock", row[2],
-                    "inventoryValue", row[3],
-                    "avgProductValue", row[4]
+                .map(row -> new AnalyticsDto.InventoryAnalysisDto(
+                    (String) row[0],
+                    ((Number) row[1]).longValue(),
+                    ((Number) row[2]).longValue(),
+                    (BigDecimal) row[3],
+                    (BigDecimal) row[4]
                 ))
                 .collect(Collectors.toList());
     }
@@ -190,16 +199,16 @@ public class ProductAnalyticsService {
      * Price Distribution Analysis
      * Analysiert Preisverteilung in Kategorien
      */
-    public List<Map<String, Object>> getPriceDistributionAnalysis() {
+    public List<AnalyticsDto.PriceDistributionDto> getPriceDistributionAnalysis() {
         logger.info("Analyzing price distribution across product ranges");
         
         List<Object[]> results = productRepository.getPriceDistributionAnalysis();
         
         return results.stream()
-                .map(row -> Map.of(
-                    "priceCategory", row[0],
-                    "productCount", row[1],
-                    "averagePrice", row[2]
+                .map(row -> new AnalyticsDto.PriceDistributionDto(
+                    (String) row[0],
+                    ((Number) row[1]).longValue(),
+                    (BigDecimal) row[2]
                 ))
                 .collect(Collectors.toList());
     }
@@ -210,21 +219,20 @@ public class ProductAnalyticsService {
      * Database Performance Monitoring
      * Sammelt Query-Performance Metriken
      */
-    public Map<String, Object> getPerformanceMetrics() {
+    public AnalyticsDto.PerformanceMetricsDto getPerformanceMetrics() {
         logger.info("Collecting database performance metrics");
         
         long startTime = System.currentTimeMillis();
         long totalProducts = productRepository.count();
         long activeProducts = productRepository.countActiveProducts();
         List<String> categories = productRepository.findAllCategories();
-        long queryTime = System.currentTimeMillis() - startTime;
+        long executionTime = System.currentTimeMillis() - startTime;
         
-        return Map.of(
-            "totalProducts", totalProducts,
-            "activeProducts", activeProducts,
-            "categoryCount", categories.size(),
-            "queryExecutionTimeMs", queryTime,
-            "timestamp", LocalDateTime.now()
+        return new AnalyticsDto.PerformanceMetricsDto(
+            totalProducts,
+            activeProducts,
+            categories.size(),
+            executionTime
         );
     }
 
@@ -241,7 +249,7 @@ public class ProductAnalyticsService {
             "categoryStatistics", getCategoryStatistics(1L),
             "inventoryAnalysis", getInventoryAnalysis(),
             "priceDistribution", getPriceDistributionAnalysis(),
-            "monthlyTrends", getMonthlyCreationTrends(),
+            "monthlyTrends", getMonthlyCreationTrends(), // Consider moving this logic to the database
             "performanceMetrics", getPerformanceMetrics(),
             "generatedAt", LocalDateTime.now()
         );

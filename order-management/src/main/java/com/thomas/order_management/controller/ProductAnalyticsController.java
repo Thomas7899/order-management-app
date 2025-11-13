@@ -1,8 +1,10 @@
+// src/main/java/com/thomas/order_management/controller/ProductAnalyticsController.java
 package com.thomas.order_management.controller;
 
+import com.thomas.order_management.dto.AnalyticsDto;
 import com.thomas.order_management.dto.CategoryStatistics;
+import com.thomas.order_management.dto.ProductDto;
 import com.thomas.order_management.dto.ProductRanking;
-import com.thomas.order_management.model.Product;
 import com.thomas.order_management.service.ProductAnalyticsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +26,6 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/analytics")
-@CrossOrigin(origins = "http://localhost:4200")
 public class ProductAnalyticsController {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductAnalyticsController.class);
@@ -74,10 +75,10 @@ public class ProductAnalyticsController {
      * Demonstriert korrelierte Subqueries
      */
     @GetMapping("/products/above-average")
-    public ResponseEntity<List<Product>> getProductsAboveCategoryAverage() {
+    public ResponseEntity<List<ProductDto>> getProductsAboveCategoryAverage() {
         logger.info("GET /api/analytics/products/above-average - Correlated Subquery Demo");
         
-        List<Product> products = analyticsService.getProductsAboveCategoryAverage();
+        List<ProductDto> products = analyticsService.getProductsAboveCategoryAverage();
         
         logger.info("Found {} products above their category average using correlated subquery", products.size());
         return ResponseEntity.ok(products);
@@ -107,14 +108,14 @@ public class ProductAnalyticsController {
      * Zeitbasierte Produktanalyse
      */
     @GetMapping("/products/time-range")
-    public ResponseEntity<List<Product>> getProductsByTimeRange(
+    public ResponseEntity<List<ProductDto>> getProductsByTimeRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
         
         logger.info("GET /api/analytics/products/time-range?startDate={}&endDate={} - Temporal Query Demo", 
                    startDate, endDate);
         
-        List<Product> products = analyticsService.getProductsByTimeRange(startDate, endDate);
+        List<ProductDto> products = analyticsService.getProductsByTimeRange(startDate, endDate);
         
         logger.info("Found {} products created between {} and {}", products.size(), startDate, endDate);
         return ResponseEntity.ok(products);
@@ -141,7 +142,7 @@ public class ProductAnalyticsController {
      * Erweiterte Produktsuche mit Relevanz-Ranking
      */
     @GetMapping("/search/advanced")
-    public ResponseEntity<Page<Product>> searchProductsAdvanced(
+    public ResponseEntity<Page<ProductDto>> searchProductsAdvanced(
             @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -150,7 +151,7 @@ public class ProductAnalyticsController {
                    query, page, size);
         
         Pageable pageable = PageRequest.of(page, size);
-        Page<Product> results = analyticsService.searchProductsAdvanced(query, pageable);
+        Page<ProductDto> results = analyticsService.searchProductsAdvanced(query, pageable);
         
         logger.info("Advanced search for '{}' returned {} results", query, results.getTotalElements());
         return ResponseEntity.ok(results);
@@ -161,7 +162,7 @@ public class ProductAnalyticsController {
      * Performance-optimierte Kategoriesuche
      */
     @GetMapping("/products/optimized")
-    public ResponseEntity<List<Product>> findProductsOptimized(
+    public ResponseEntity<List<ProductDto>> findProductsOptimized(
             @RequestParam String category,
             @RequestParam BigDecimal minPrice,
             @RequestParam BigDecimal maxPrice) {
@@ -169,7 +170,7 @@ public class ProductAnalyticsController {
         logger.info("GET /api/analytics/products/optimized?category={}&minPrice={}&maxPrice={} - Index Optimization Demo", 
                    category, minPrice, maxPrice);
         
-        List<Product> products = analyticsService.findProductsOptimized(category, minPrice, maxPrice);
+        List<ProductDto> products = analyticsService.findProductsOptimized(category, minPrice, maxPrice);
         
         logger.info("Optimized search found {} products in category '{}' within price range [{}, {}]", 
                    products.size(), category, minPrice, maxPrice);
@@ -183,10 +184,10 @@ public class ProductAnalyticsController {
      * Inventory Value Analysis
      */
     @GetMapping("/inventory")
-    public ResponseEntity<List<Map<String, Object>>> getInventoryAnalysis() {
+    public ResponseEntity<List<AnalyticsDto.InventoryAnalysisDto>> getInventoryAnalysis() {
         logger.info("GET /api/analytics/inventory - Business Intelligence Demo");
         
-        List<Map<String, Object>> analysis = analyticsService.getInventoryAnalysis();
+        List<AnalyticsDto.InventoryAnalysisDto> analysis = analyticsService.getInventoryAnalysis();
         
         logger.info("Generated inventory analysis for {} categories", analysis.size());
         return ResponseEntity.ok(analysis);
@@ -197,10 +198,10 @@ public class ProductAnalyticsController {
      * Price Distribution Analysis
      */
     @GetMapping("/price-distribution")
-    public ResponseEntity<List<Map<String, Object>>> getPriceDistributionAnalysis() {
+    public ResponseEntity<List<AnalyticsDto.PriceDistributionDto>> getPriceDistributionAnalysis() {
         logger.info("GET /api/analytics/price-distribution - Statistical Analysis Demo");
         
-        List<Map<String, Object>> analysis = analyticsService.getPriceDistributionAnalysis();
+        List<AnalyticsDto.PriceDistributionDto> analysis = analyticsService.getPriceDistributionAnalysis();
         
         logger.info("Generated price distribution analysis with {} price categories", analysis.size());
         return ResponseEntity.ok(analysis);
@@ -213,13 +214,13 @@ public class ProductAnalyticsController {
      * Database Performance Metrics
      */
     @GetMapping("/performance")
-    public ResponseEntity<Map<String, Object>> getPerformanceMetrics() {
+    public ResponseEntity<AnalyticsDto.PerformanceMetricsDto> getPerformanceMetrics() {
         logger.info("GET /api/analytics/performance - Database Performance Monitoring");
         
-        Map<String, Object> metrics = analyticsService.getPerformanceMetrics();
+        AnalyticsDto.PerformanceMetricsDto metrics = analyticsService.getPerformanceMetrics();
         
         logger.info("Generated performance metrics: queryTime={}ms, totalProducts={}", 
-                   metrics.get("queryExecutionTimeMs"), metrics.get("totalProducts"));
+                   metrics.queryExecutionTimeMs(), metrics.totalProducts());
         return ResponseEntity.ok(metrics);
     }
 

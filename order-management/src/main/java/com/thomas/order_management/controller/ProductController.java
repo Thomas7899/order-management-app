@@ -1,3 +1,4 @@
+// src/main/java/com/thomas/order_management/controller/ProductController.java
 package com.thomas.order_management.controller;
 
 import com.thomas.order_management.model.Product;
