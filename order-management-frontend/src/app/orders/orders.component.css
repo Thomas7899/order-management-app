@@ -62,3 +62,23 @@
   background: #00a3cc;
   box-shadow: 0 0 10px rgba(0, 200, 255, 0.4);
 }
+
+.orders-analytics {
+  background: #122b39;
+  border: 1px solid #1f3a4a;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+.orders-analytics h3 {
+  color: #00c8ff;
+  margin-bottom: 15px;
+  text-shadow: 0 0 8px rgba(0, 200, 255, 0.3);
+}
+
+.chart-wrapper {
+  width: 100%;
+  max-width: 100%;
+}

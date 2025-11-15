@@ -6,6 +6,7 @@ import com.thomas.order_management.repository.ProductReviewRepository;
 import com.thomas.order_management.repository.ReviewEmbeddingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.openai.OpenAiEmbeddingModel;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,30 +22,37 @@ public class ReviewEmbeddingService {
     private final ProductReviewRepository reviewRepository;
     private final OpenAiEmbeddingModel embeddingModel;
 
+    @Value("${app.similarity.top-k:50}")
+    private int defaultTopK;
+
     @Transactional
     public ProductReview createEmbedding(ProductReview review) {
         ProductReview saved = reviewRepository.save(review);
-
         float[] embedding = embeddingModel.embed(review.getComment());
         List<Double> vector = IntStream.range(0, embedding.length)
                 .mapToObj(i -> (double) embedding[i])
                 .collect(Collectors.toList());
-
         embeddingRepository.saveEmbedding(saved.getId(), vector);
         return saved;
     }
 
     @Transactional(readOnly = true)
-    public List<ProductReview> findSimilar(String query) {
-        float[] queryEmbedding = embeddingModel.embed(query);
-        List<Double> vector = IntStream.range(0, queryEmbedding.length)
-                .mapToObj(i -> (double) queryEmbedding[i])
-                .collect(Collectors.toList());
+public List<ProductReview> findSimilar(String query, int limit) {
+    float[] queryEmbedding = embeddingModel.embed(query);
+    List<Double> vector = IntStream.range(0, queryEmbedding.length)
+            .mapToObj(i -> (double) queryEmbedding[i])
+            .collect(Collectors.toList());
 
-        List<Long> ids = embeddingRepository.findSimilarReviewIds(vector);
-        if (ids.isEmpty()) return List.of();
+    int topK = limit > 0 ? limit : defaultTopK;
+    List<Long> ids = embeddingRepository.findSimilarReviewIds(vector, topK);
 
-        return reviewRepository.findAllByIdWithProduct(ids);
-    }
+    if (ids.isEmpty()) return List.of();
+
+    return reviewRepository.findAllByIdWithProductAndCustomer(ids);
 }
 
+
+    public List<ProductReview> findSimilar(String query) {
+        return findSimilar(query, defaultTopK);
+    }
+}

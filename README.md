@@ -119,7 +119,7 @@ SELECT * FROM category_stats ORDER BY avg_price DESC;
 - ✅ **Configuration Management** - Multi-Environment Setup
 - ✅ **RESTful APIs** - Modern Web Service Design
 
-### **PostgreSQL & SQL Skills**
+### **PostgreSQL & SQL **
 - ✅ **Window Functions** - ROW_NUMBER(), RANK(), Analytics
 - ✅ **CTEs** - Common Table Expressions für Complex Logic
 - ✅ **Subqueries** - Correlated & Nested Query Patterns
@@ -135,14 +135,17 @@ SELECT * FROM category_stats ORDER BY avg_price DESC;
 
 ---
 
-## 📚 **Detaillierte Dokumentation**
+erDiagram
 
-- 📋 [**Deployment Guide**](docs/DEPLOYMENT.md) - Backend Deployment auf Heroku
-- 🌐 [**Frontend Deployment**](docs/FRONTEND-DEPLOYMENT.md) - Angular auf Netlify  
-- 🏗️ [**Microservices Architektur**](docs/MICROSERVICES-ARCHITECTURE.md) - System Design
+    CUSTOMER ||--o{ ORDER : places
+    ORDER ||--o{ ORDERITEM : contains
+    PRODUCT ||--o{ ORDERITEM : "is ordered in"
 
-## 🛠️ **Scripts**
+    CUSTOMER ||--o{ PRODUCTREVIEW : writes
+    PRODUCT ||--o{ PRODUCTREVIEW : "is reviewed in"
+    ORDERITEM ||--o{ PRODUCTREVIEW : "belongs to purchased item"
 
-- 🚀 [`scripts/deploy-heroku.sh`](scripts/deploy-heroku.sh) - Automatisches Backend Deployment
+    PRODUCTREVIEW ||--|| REVIEWEMBEDDING : "has embedding"
 
----
+order-management/src/main/java/com/thomas/order_management/model/**
+order-management-frontend/src/app/orders/**

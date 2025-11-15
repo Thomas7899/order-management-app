@@ -1,32 +1,52 @@
 // order-management-frontend/src/app/orders/orders.component.ts
+
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+
 import { OrderService, Order } from '../services/order.service';
 import { CustomerService, Customer } from '../services/customer.service';
 import { ProductService } from '../services/product.service';
 import { Product } from '../types/index';
+
 import { OrderFormComponent } from './order-form/order-form.component';
 import { OrderListComponent } from './order-list/order-list.component';
 import { OrderDetailsModalComponent } from './order-details-modal/order-details-modal.component';
+import { NgxEchartsModule } from 'ngx-echarts';
+
 
 @Component({
   selector: 'app-orders',
   standalone: true,
-  imports: [CommonModule, FormsModule, OrderFormComponent, OrderListComponent, OrderDetailsModalComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    OrderFormComponent,
+    OrderListComponent,
+    OrderDetailsModalComponent,
+  NgxEchartsModule.forRoot({
+    echarts: () => import('echarts')
+  })
+  ],
   templateUrl: './orders.component.html',
   styleUrls: ['./orders.component.css']
 })
 export class OrdersComponent implements OnInit {
   orders: Order[] = [];
   displayedOrders: Order[] = [];
+
   customers: Customer[] = [];
   products: Product[] = [];
+
   showAddForm = false;
   editingOrder: Order | null = null;
   selectedOrder: Order | null = null;
+
   searchTerm = '';
   statusFilter = '';
+
+  // NEW: Chart data
+  chartData: any[] = [];
 
   constructor(
     private orderService: OrderService,
@@ -40,11 +60,12 @@ export class OrdersComponent implements OnInit {
     this.loadProducts();
   }
 
+  // ===== LOAD DATA =====
   loadOrders() {
     this.orderService.getOrders().subscribe({
       next: (orders) => {
         this.orders = orders;
-        this.filterOrders();
+        this.filterOrders(); // Includes chart building
       },
       error: (e) => console.error(e)
     });
@@ -64,6 +85,7 @@ export class OrdersComponent implements OnInit {
     });
   }
 
+  // ===== FILTERS =====
   filterOrders() {
     this.displayedOrders = this.orders.filter((order) => {
       const matchesSearch =
@@ -72,15 +94,22 @@ export class OrdersComponent implements OnInit {
         `${order.customer?.firstName} ${order.customer?.lastName}`
           .toLowerCase()
           .includes(this.searchTerm.toLowerCase());
-      const matchesStatus = !this.statusFilter || order.status === this.statusFilter;
+
+      const matchesStatus =
+        !this.statusFilter || order.status === this.statusFilter;
+
       return matchesSearch && matchesStatus;
     });
+
+    // update chart after filtering
+    this.buildChartData();
   }
 
   searchOrders() {
     this.filterOrders();
   }
 
+  // ===== FORM HANDLING =====
   toggleForm() {
     this.showAddForm = !this.showAddForm;
     this.editingOrder = null;
@@ -93,6 +122,7 @@ export class OrdersComponent implements OnInit {
     } else {
       this.orders.push(order);
     }
+
     this.filterOrders();
     this.showAddForm = false;
     this.editingOrder = null;
@@ -119,5 +149,34 @@ export class OrdersComponent implements OnInit {
 
   handleCloseDetails() {
     this.selectedOrder = null;
+  }
+
+  // ===== ANALYTICS: BUILD CHART DATA =====
+  buildChartData() {
+    const map: any = {};
+
+    this.displayedOrders.forEach((o) => {
+      const d = new Date(o.orderDate).toLocaleDateString('de-DE', {
+        day: '2-digit',
+        month: '2-digit'
+      });
+
+      if (!map[d]) {
+        map[d] = {
+          date: d,
+          count: 0,
+          revenue: 0
+        };
+      }
+
+      map[d].count += 1;
+      map[d].revenue += o.totalAmount;
+    });
+
+    this.chartData = Object.values(map).sort((a: any, b: any) => {
+      const da = a.date.split('.').reverse().join('-');
+      const db = b.date.split('.').reverse().join('-');
+      return new Date(da).getTime() - new Date(db).getTime();
+    });
   }
 }

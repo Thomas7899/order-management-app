@@ -1,3 +1,4 @@
+// order-management-frontend/src/app/reviews/reviews.component.ts
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -12,6 +13,7 @@ import { ReviewsService, Review } from '../services/reviews.service';
 })
 export class ReviewsComponent {
   query = '';
+  limit = 50;
   reviews: Review[] = [];
   loading = false;
   error: string | null = null;
@@ -29,13 +31,14 @@ export class ReviewsComponent {
     this.error = null;
     this.reviews = [];
 
-    this.reviewsService.getSimilarReviews(this.query).subscribe({
+    this.reviewsService.getSimilarReviews(this.query, this.limit).subscribe({
       next: (data) => {
         this.reviews = data;
         this.calculateInsights();
         this.loading = false;
       },
-      error: () => {
+      error: (err) => {
+        console.error(err);
         this.error = 'Fehler beim Laden der Bewertungen';
         this.loading = false;
       }
@@ -48,7 +51,10 @@ export class ReviewsComponent {
     const ratings = this.reviews.map(r => r.rating);
     this.avgRating = Number((ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1));
 
-    this.sentiment = this.avgRating >= 4 ? 'positiv' : this.avgRating >= 2.5 ? 'neutral' : 'negativ';
+    this.sentiment =
+      this.avgRating >= 4 ? 'positiv' :
+      this.avgRating >= 2.5 ? 'neutral' :
+      'negativ';
 
     const wordCount: Record<string, number> = {};
     this.reviews.forEach(r => {

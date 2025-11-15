@@ -1,0 +1,193 @@
+<div class="trends-container">
+  <div class="trends-header">
+    <h1>Bewertungs-Trendanalyse</h1>
+    <p>Analysiere Produkt- und Kategorien-Trends sowie Auffälligkeiten in Kundenbewertungen.</p>
+  </div>
+
+  <div class="trends-controls">
+    <div class="mode-toggle">
+      <button
+        type="button"
+        [class.active]="mode === 'product'"
+        (click)="setMode('product')"
+      >
+        Produkt
+      </button>
+
+      <button
+        type="button"
+        [class.active]="mode === 'category'"
+        (click)="setMode('category')"
+      >
+        Kategorie
+      </button>
+
+      <button
+        type="button"
+        [class.active]="mode === 'anomalies'"
+        (click)="setMode('anomalies')"
+      >
+        Auffällige Produkte
+      </button>
+    </div>
+
+    <div class="filters">
+
+      <div class="filter-group">
+        <label>Zeitraum</label>
+        <div class="date-row">
+          <input type="date" [(ngModel)]="startDate" />
+          <span>bis</span>
+          <input type="date" [(ngModel)]="endDate" />
+        </div>
+      </div>
+
+      <div class="filter-group" *ngIf="mode === 'product'">
+        <label>Produkt-ID</label>
+        <input
+          type="number"
+          [(ngModel)]="productId"
+          placeholder="z.B. 1"
+        />
+      </div>
+
+      <!-- 🔽 Dropdown eingebaut -->
+      <div class="filter-group" *ngIf="mode === 'category'">
+        <label>Kategorie</label>
+        <select [(ngModel)]="category">
+          <option value="">Bitte Kategorie wählen</option>
+          <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button type="button" (click)="analyze()" [disabled]="loading">
+          {{ loading ? 'Analysiere...' : 'Analyse starten' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="error" class="error-message">
+    {{ error }}
+  </div>
+
+  <div *ngIf="loading" class="loading">
+    🔍 Analysiere Trends...
+  </div>
+
+  <div *ngIf="!loading && mode === 'product' && productTrend" class="results">
+    <div class="summary-card">
+      <h2>Produkt-Trend: {{ productTrend.productName }} (ID {{ productTrend.productId }})</h2>
+      <div class="meta">
+        <span>Zeitraum: {{ formatDate(productTrend.windowStart) }} – {{ formatDate(productTrend.windowEnd) }}</span>
+        <span>Bewertungen: {{ productTrend.reviewCount }}</span>
+        <span>Ø Bewertung: {{ productTrend.avgRating | number:'1.1-1' }}/5</span>
+      </div>
+      <p class="summary-text">
+        {{ productTrend.summary }}
+      </p>
+    </div>
+
+    <div class="trend-grid">
+      <div class="trend-card positive">
+        <h3>Positive Trends</h3>
+        <ul>
+          <li *ngFor="let t of productTrend.positiveTrends">{{ t }}</li>
+          <li *ngIf="productTrend.positiveTrends.length === 0" class="empty">
+            Keine positiven Trends erkannt.
+          </li>
+        </ul>
+      </div>
+
+      <div class="trend-card negative">
+        <h3>Negative Trends</h3>
+        <ul>
+          <li *ngFor="let t of productTrend.negativeTrends">{{ t }}</li>
+          <li *ngIf="productTrend.negativeTrends.length === 0" class="empty">
+            Keine negativen Trends erkannt.
+          </li>
+        </ul>
+      </div>
+
+      <div class="trend-card neutral">
+        <h3>Neutrale Beobachtungen</h3>
+        <ul>
+          <li *ngFor="let t of productTrend.neutralObservations">{{ t }}</li>
+          <li *ngIf="productTrend.neutralObservations.length === 0" class="empty">
+            Keine neutralen Beobachtungen erkannt.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && mode === 'category' && categoryTrend" class="results">
+    <div class="summary-card">
+      <h2>Kategorie-Trend: {{ categoryTrend.category }}</h2>
+      <div class="meta">
+        <span>Zeitraum: {{ formatDate(categoryTrend.windowStart) }} – {{ formatDate(categoryTrend.windowEnd) }}</span>
+        <span>Bewertungen: {{ categoryTrend.reviewCount }}</span>
+        <span>Ø Bewertung: {{ categoryTrend.avgRating | number:'1.1-1' }}/5</span>
+      </div>
+      <p class="summary-text">
+        {{ categoryTrend.summary }}
+      </p>
+    </div>
+
+    <div class="trend-grid">
+      <div class="trend-card positive">
+        <h3>Positive Trends</h3>
+        <ul>
+          <li *ngFor="let t of categoryTrend.positiveTrends">{{ t }}</li>
+          <li *ngIf="categoryTrend.positiveTrends.length === 0" class="empty">
+            Keine positiven Trends erkannt.
+          </li>
+        </ul>
+      </div>
+
+      <div class="trend-card negative">
+        <h3>Negative Trends</h3>
+        <ul>
+          <li *ngFor="let t of categoryTrend.negativeTrends">{{ t }}</li>
+          <li *ngIf="categoryTrend.negativeTrends.length === 0" class="empty">
+            Keine negativen Trends erkannt.
+          </li>
+        </ul>
+      </div>
+
+      <div class="trend-card neutral">
+        <h3>Neutrale Beobachtungen</h3>
+        <ul>
+          <li *ngFor="let t of categoryTrend.neutralObservations">{{ t }}</li>
+          <li *ngIf="categoryTrend.neutralObservations.length === 0" class="empty">
+            Keine neutralen Beobachtungen erkannt.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && mode === 'anomalies' && anomalyReport" class="results">
+    <div class="summary-card">
+      <h2>Auffällige Produkte</h2>
+      <div class="meta">
+        <span>Zeitraum: {{ formatDate(anomalyReport.windowStart) }} – {{ formatDate(anomalyReport.windowEnd) }}</span>
+      </div>
+
+      <ul class="anomaly-list">
+        <li *ngFor="let a of anomalyReport.anomalies">
+          {{ a }}
+        </li>
+
+        <li *ngIf="anomalyReport.anomalies.length === 0" class="empty">
+          Keine Auffälligkeiten erkannt.
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && !error && !productTrend && !categoryTrend && !anomalyReport" class="no-results">
+    Noch keine Analyse durchgeführt. Bitte Filter setzen und auf „Analyse starten“ klicken.
+  </div>
+</div>

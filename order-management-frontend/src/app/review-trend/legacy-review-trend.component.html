@@ -1,17 +1,10 @@
+<!--order-management-frontend/src/app/review-trend/review-trends.component.html -->
 <div class="trends-container">
   <div class="reviews-header">
     <h1>KI-Trend-Analyse</h1>
     <div class="search-bar">
-      <input
-        type="date"
-        [(ngModel)]="from"
-        placeholder="Von"
-      />
-      <input
-        type="date"
-        [(ngModel)]="to"
-        placeholder="Bis"
-      />
+      <input type="date" [(ngModel)]="from" placeholder="Von" />
+      <input type="date" [(ngModel)]="to" placeholder="Bis" />
       <button (click)="analyze()" [disabled]="loading">
         {{ loading ? 'Analysiere...' : 'Analysieren' }}
       </button>
@@ -23,18 +16,27 @@
 
   <div *ngIf="!loading && reports.length > 0" class="insights-section">
     <h2>💡 Letzte Analyse</h2>
-    <div class="insights-grid">
-      <div class="insight-card">
-        <div class="label">Zeitraum</div>
-        <div class="value highlight">{{ reports[0].windowStart }} → {{ reports[0].windowEnd }}</div>
-      </div>
-      <div class="insight-card">
-        <div class="label">Generiert am</div>
-        <div class="value">{{ formatDate(reports[0].generatedAt) }}</div>
-      </div>
-      <div class="insight-card">
+
+    <div class="insights-grid insights-custom">
+      <div class="insight-card summary-card">
         <div class="label">Zusammenfassung</div>
-        <div class="value keywords">{{ reports[0].summary }}</div>
+        <div class="value keywords">
+          {{ reports[0].summary }}
+        </div>
+      </div>
+
+      <div class="insight-card info-card">
+        <div class="small-info">
+          <div>
+            <div class="label">Zeitraum</div>
+            <div class="value highlight">{{ reports[0].windowStart }} → {{ reports[0].windowEnd }}</div>
+          </div>
+
+          <div style="margin-top: 15px;">
+            <div class="label">Generiert am</div>
+            <div class="value">{{ formatDate(reports[0].generatedAt) }}</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

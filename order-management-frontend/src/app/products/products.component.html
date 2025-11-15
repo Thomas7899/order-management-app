@@ -1,6 +1,12 @@
 <!-- src/app/products/products.component.html -->
 <div class="container">
+
   <h2>Produktverwaltung</h2>
+
+  <div *ngIf="snackbarMessage" class="snackbar">
+    {{ snackbarMessage }}
+  </div>
+
   <app-product-filters
     [(searchTerm)]="searchTerm"
     [(selectedCategory)]="selectedCategory"

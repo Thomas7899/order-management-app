@@ -18,10 +18,21 @@ export const routes: Routes = [
       import('./reviews/reviews.component').then((m) => m.ReviewsComponent),
   },
   {
+  path: 'review-trend',
+  loadComponent: () =>
+    import('./review-trend/legacy-review-trend.component')
+      .then((m) => m.LegacyReviewTrendComponent),
+},
+{
   path: 'review-trends',
   loadComponent: () =>
-    import('./review-trend/review-trends.component').then(
-      (m) => m.ReviewTrendsComponent
-    ),
+    import('./review-trends/review-trends.component')
+      .then((m) => m.ReviewTrendsComponent),
 },
+ {
+    path: 'customers/:id',
+    loadComponent: () =>
+      import('./customers/customer-detail/customer-detail.component')
+        .then(m => m.CustomerDetailComponent),
+  },
 ];

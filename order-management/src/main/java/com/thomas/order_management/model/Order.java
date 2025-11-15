@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -41,9 +42,14 @@ public class Order {
     @Column(name = "billing_address")
     private String billingAddress;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(
+            mappedBy = "order",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
     @JsonManagedReference
-    private List<OrderItem> orderItems;
+    private List<OrderItem> orderItems = new ArrayList<>();
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -51,7 +57,11 @@ public class Order {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Konstruktoren
+
+    // -------------------------------------------------------------------------
+    // Constructors
+    // -------------------------------------------------------------------------
+
     public Order() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
@@ -65,7 +75,11 @@ public class Order {
         this.orderNumber = orderNumber;
     }
 
+
+    // -------------------------------------------------------------------------
     // Getter & Setter
+    // -------------------------------------------------------------------------
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -102,15 +116,26 @@ public class Order {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    // Hilfsmethoden
+
+    // -------------------------------------------------------------------------
+    // Convenience Methods
+    // -------------------------------------------------------------------------
+
+    public void addItem(Product product, int quantity) {
+        OrderItem item = new OrderItem(this, product, quantity, product.getPrice());
+        this.orderItems.add(item);
+    }
+
     public BigDecimal calculateTotalAmount() {
         if (orderItems == null || orderItems.isEmpty()) {
             return BigDecimal.ZERO;
         }
+
         return orderItems.stream()
                 .map(OrderItem::getTotalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
+
 
     @PreUpdate
     public void preUpdate() {

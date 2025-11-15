@@ -36,23 +36,26 @@ public class ReviewTrendAnalysisService {
                 .collect(Collectors.joining("\n"));
 
         String prompt = """
-                You are an analyst for customer feedback. Analyze the product reviews below.
-                1) Extract recurring POSITIVE trends (short, noun phrases).
-                2) Extract recurring NEGATIVE trends (short, noun phrases).
-                3) Extract recurring NEUTRAL observations (short, noun phrases).
-                4) Provide a concise one-paragraph summary for management.
-                
-                Return STRICT JSON with keys:
-                {
-                  "summary": "...",
-                  "positive_trends": ["..."],
-                  "negative_trends": ["..."],
-                  "neutral_observations": ["..."]
-                }
-                
-                Reviews:
-                %s
-                """.formatted(joined.isBlank() ? "(no reviews available)" : joined);
+    Du bist ein Analyst für Kundenfeedback. Analysiere die folgenden Produktbewertungen.
+    
+    1) Extrahiere wiederkehrende POSITIVe Trends (kurze, präzise Stichworte).
+    2) Extrahiere wiederkehrende NEGATIVe Trends (kurze, präzise Stichworte).
+    3) Extrahiere wiederkehrende NEUTRALE Beobachtungen (kurze, präzise Stichworte).
+    4) Erstelle eine kurze, prägnante Zusammenfassung in einem Absatz für das Management.
+    
+    Gib die Antwort als STRICT JSON zurück mit den Schlüsseln:
+    {
+      "summary": "...",
+      "positive_trends": ["..."],
+      "negative_trends": ["..."],
+      "neutral_observations": ["..."]
+    }
+    
+    Wichtig: Antworte ausschließlich auf DEUTSCH.
+    
+    Bewertungen:
+    %s
+    """.formatted(joined.isBlank() ? "(keine Bewertungen verfügbar)" : joined);
 
         String aiJson = chatClient
                 .prompt()

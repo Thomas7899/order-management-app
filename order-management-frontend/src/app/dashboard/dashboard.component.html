@@ -1,134 +1,242 @@
 <!--order-management-frontend/src/app/dashboard/dashboard.component.html -->
-<div class="dashboard-container">
-  <div class="dashboard-header">
-    <h1>Dashboard</h1>
-    <button class="refresh-btn" (click)="refresh()" [disabled]="loading">
-      {{ loading ? 'Laden...' : 'Aktualisieren' }}
-    </button>
-  </div>
-
-  <div *ngIf="error" class="error-message">
-    {{ error }}
-  </div>
-
-  <div *ngIf="loading" class="loading">
-    Laden...
-  </div>
-
-  <div *ngIf="!loading && stats" class="dashboard-content">
-    <!-- Statistik Cards -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon">👥</div>
-        <div class="stat-content">
-          <div class="stat-number">{{ stats.totalCustomers }}</div>
-          <div class="stat-label">Kunden</div>
-        </div>
+<div class="dashboard-root">
+  <div class="dashboard-container">
+    <!-- HEADER --------------------------------------------------- -->
+    <div class="dashboard-header">
+      <div class="dashboard-title-group">
+        <h1>Dashboard</h1>
+        <p class="dashboard-subtitle">
+          Überblick über Kunden, Bestellungen & Umsatz in Echtzeit.
+        </p>
       </div>
 
-      <div class="stat-card">
-        <div class="stat-icon">📦</div>
-        <div class="stat-content">
-          <div class="stat-number">{{ stats.totalProducts }}</div>
-          <div class="stat-label">Aktive Produkte</div>
-        </div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-icon">🛒</div>
-        <div class="stat-content">
-          <div class="stat-number">{{ stats.totalOrders }}</div>
-          <div class="stat-label">Bestellungen</div>
-        </div>
-      </div>
-
-      <div class="stat-card revenue">
-        <div class="stat-icon">💰</div>
-        <div class="stat-content">
-          <div class="stat-number">{{ formatCurrency(stats.totalRevenue) }}</div>
-          <div class="stat-label">Gesamtumsatz</div>
-        </div>
-      </div>
+      <button class="refresh-btn" (click)="refresh()" [disabled]="loading">
+        {{ loading ? 'Laden...' : 'Aktualisieren' }}
+      </button>
     </div>
 
-    <!-- Umsatzübersicht -->
-    <div class="revenue-section">
-      <h2>Umsatzübersicht</h2>
-      <div class="revenue-grid">
-        <div class="revenue-card">
-          <div class="revenue-label">Heute</div>
-          <div class="revenue-amount">{{ formatCurrency(stats.todayRevenue) }}</div>
-        </div>
-        <div class="revenue-card">
-          <div class="revenue-label">Dieser Monat</div>
-          <div class="revenue-amount">{{ formatCurrency(stats.monthRevenue) }}</div>
-        </div>
-        <div class="revenue-card">
-          <div class="revenue-label">Ausstehend</div>
-          <div class="revenue-amount">{{ formatCurrency(stats.pendingRevenue) }}</div>
-        </div>
-      </div>
+    <!-- ERROR / LOADING ------------------------------------------- -->
+    <div *ngIf="error" class="error-message">
+      {{ error }}
     </div>
 
-    <!-- Bestellstatus Übersicht -->
-    <div class="order-status-section">
-      <h2>Bestellungen nach Status</h2>
-      <div class="status-grid">
-        <div *ngFor="let status of stats.ordersByStatus | keyvalue" 
-             class="status-card" 
-             [style.border-left-color]="getStatusColor(status.key)">
-          <div class="status-name">{{ getOrderStatusDisplayName(status.key) }}</div>
-          <div class="status-count">{{ status.value }}</div>
-        </div>
-      </div>
+    <div *ngIf="loading" class="loading">
+      Daten werden geladen...
     </div>
 
-    <!-- Warnungen -->
-    <div *ngIf="stats.lowStockProductsCount > 0" class="warnings-section">
-      <h2>⚠️ Warnungen</h2>
-      <div class="warning-card">
-        <strong>{{ stats.lowStockProductsCount }}</strong> Produkte haben niedrigen Lagerbestand
-      </div>
-    </div>
+    <!-- MAIN CONTENT ---------------------------------------------- -->
+    <div *ngIf="!loading && stats" class="dashboard-content">
 
-    <!-- Aktuelle Aktivitäten -->
-    <div *ngIf="recentActivity" class="activity-section">
-      <h2>Aktuelle Aktivitäten</h2>
-      
-      <div class="recent-orders">
-        <h3>Letzte Bestellungen</h3>
-        <div *ngIf="recentActivity.recentOrders.length === 0" class="no-data">
-          Keine aktuellen Bestellungen
-        </div>
-        <div *ngFor="let order of recentActivity.recentOrders" class="order-item">
-          <div class="order-info">
-            <div class="order-number">{{ order.orderNumber }}</div>
-            <div class="order-customer">{{ order.customer.firstName }} {{ order.customer.lastName }}</div>
+      <!-- KPI STRIP ------------------------------------------------ -->
+      <section class="kpi-row" aria-label="Kernkennzahlen">
+        <!-- Kunden -->
+        <article class="kpi-card kpi-animate">
+          <div class="kpi-header">
+            <span class="kpi-label">Kunden</span>
           </div>
-          <div class="order-details">
-            <div class="order-amount">{{ formatCurrency(order.totalAmount || 0) }}</div>
-            <div class="order-status" [style.color]="getStatusColor(order.status)">
-              {{ getOrderStatusDisplayName(order.status) }}
+          <div class="kpi-body">
+            <div class="kpi-value">
+              {{ stats.totalCustomers }}
             </div>
-            <div class="order-date">{{ formatDate(order.orderDate || '') }}</div>
-          </div>
-        </div>
-      </div>
-
-      <div *ngIf="recentActivity.lowStockProducts.length > 0" class="low-stock-products">
-        <h3>Produkte mit niedrigem Lagerbestand</h3>
-        <div *ngFor="let product of recentActivity.lowStockProducts" class="product-item">
-          <div class="product-image" *ngIf="product.imageUrl">
-            <img [src]="product.imageUrl" [alt]="product.name" class="product-thumbnail">
-          </div>
-          <div class="product-info">
-            <div class="product-name">{{ product.name }}</div>
-            <div class="product-stock" [class.critical]="product.stockQuantity <= 2">
-              {{ product.stockQuantity }} auf Lager
+            <div class="kpi-caption">
+              Gesamt registrierte Kunden
             </div>
           </div>
+          <div class="kpi-icon">👥</div>
+        </article>
+
+        <!-- Produkte -->
+        <article class="kpi-card kpi-animate">
+          <div class="kpi-header">
+            <span class="kpi-label">Aktive Produkte</span>
+          </div>
+          <div class="kpi-body">
+            <div class="kpi-value">
+              {{ stats.totalProducts }}
+            </div>
+            <div class="kpi-caption">
+              Im Verkauf befindliche Produkte
+            </div>
+          </div>
+          <div class="kpi-icon">📦</div>
+        </article>
+
+        <!-- Bestellungen -->
+        <article class="kpi-card kpi-animate">
+          <div class="kpi-header">
+            <span class="kpi-label">Bestellungen</span>
+          </div>
+          <div class="kpi-body">
+            <div class="kpi-value">
+              {{ stats.totalOrders }}
+            </div>
+            <div class="kpi-caption">
+              Gesamtanzahl aller Bestellungen
+            </div>
+          </div>
+          <div class="kpi-icon">🛒</div>
+        </article>
+
+        <!-- Gesamtumsatz (Highlight) -->
+        <article class="kpi-card kpi-highlight kpi-animate">
+          <div class="kpi-header">
+            <span class="kpi-label">Gesamtumsatz</span>
+          </div>
+          <div class="kpi-body">
+            <div class="kpi-value kpi-revenue">
+              {{ formatCurrency(stats.totalRevenue) }}
+            </div>
+            <div class="kpi-caption">
+              Alle abgeschlossenen Umsätze
+            </div>
+          </div>
+          <div class="kpi-icon">💰</div>
+        </article>
+      </section>
+
+      <!-- UMSATZÜBERSICHT ----------------------------------------- -->
+      <section class="card-section revenue-section">
+        <header class="section-header">
+          <h2>Umsatzübersicht</h2>
+        </header>
+
+        <div class="revenue-grid">
+          <article class="revenue-card">
+            <div class="revenue-label">Heute</div>
+            <div class="revenue-amount">{{ formatCurrency(stats.todayRevenue) }}</div>
+          </article>
+
+          <article class="revenue-card">
+            <div class="revenue-label">Dieser Monat</div>
+            <div class="revenue-amount">{{ formatCurrency(stats.monthRevenue) }}</div>
+          </article>
+
+          <article class="revenue-card">
+            <div class="revenue-label">Ausstehend</div>
+            <div class="revenue-amount">{{ formatCurrency(stats.pendingRevenue) }}</div>
+          </article>
         </div>
-      </div>
+      </section>
+
+      <!-- BESTELLSTATUS ------------------------------------------- -->
+      <section class="card-section order-status-section">
+        <header class="section-header">
+          <h2>Bestellungen nach Status</h2>
+        </header>
+
+        <div class="status-grid">
+          <article
+            *ngFor="let status of stats.ordersByStatus | keyvalue"
+            class="status-card"
+            [style.border-left-color]="getStatusColor(status.key)"
+          >
+            <div class="status-text">
+              <div class="status-name">
+                {{ getOrderStatusDisplayName(status.key) }}
+              </div>
+              <div class="status-subtitle">
+                {{ status.key }}
+              </div>
+            </div>
+            <div class="status-count">
+              {{ status.value }}
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- WARNUNGEN ----------------------------------------------- -->
+      <section *ngIf="stats.lowStockProductsCount > 0" class="card-section warnings-section">
+        <header class="section-header">
+          <h2>⚠️ Warnungen</h2>
+        </header>
+
+        <div class="warning-card">
+          <strong>{{ stats.lowStockProductsCount }}</strong>
+          <span>Produkte haben einen niedrigen Lagerbestand.</span>
+        </div>
+      </section>
+
+      <!-- AKTUELLE AKTIVITÄTEN ------------------------------------ -->
+      <section *ngIf="recentActivity" class="card-section activity-section">
+        <header class="section-header">
+          <h2>Aktuelle Aktivitäten</h2>
+        </header>
+
+        <div class="activity-grid">
+          <!-- Letzte Bestellungen -->
+          <div class="activity-column">
+            <h3>Letzte Bestellungen</h3>
+
+            <div *ngIf="recentActivity.recentOrders.length === 0" class="no-data">
+              Keine aktuellen Bestellungen
+            </div>
+
+            <div
+              *ngFor="let order of recentActivity.recentOrders"
+              class="order-item"
+            >
+              <div class="order-info">
+                <div class="order-number">
+                  {{ order.orderNumber }}
+                </div>
+                <div class="order-customer">
+                  {{ order.customer.firstName }} {{ order.customer.lastName }}
+                </div>
+              </div>
+
+              <div class="order-details">
+                <div class="order-amount">
+                  {{ formatCurrency(order.totalAmount || 0) }}
+                </div>
+                <div
+                  class="order-status"
+                  [style.color]="getStatusColor(order.status)"
+                >
+                  {{ getOrderStatusDisplayName(order.status) }}
+                </div>
+                <div class="order-date">
+                  {{ formatDate(order.orderDate || '') }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Produkte mit niedrigem Lagerbestand -->
+          <div class="activity-column">
+            <h3>Produkte mit niedrigem Lagerbestand</h3>
+
+            <div *ngIf="recentActivity.lowStockProducts.length === 0" class="no-data">
+              Keine kritischen Lagerbestände
+            </div>
+
+            <div
+              *ngFor="let product of recentActivity.lowStockProducts"
+              class="product-item"
+            >
+              <div class="product-image" *ngIf="product.imageUrl">
+                <img
+                  [src]="product.imageUrl"
+                  [alt]="product.name"
+                  class="product-thumbnail"
+                />
+              </div>
+              <div class="product-info">
+                <div class="product-name">
+                  {{ product.name }}
+                </div>
+                <div
+                  class="product-stock"
+                  [class.critical]="product.stockQuantity <= 2"
+                >
+                  {{ product.stockQuantity }} auf Lager
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   </div>
 </div>

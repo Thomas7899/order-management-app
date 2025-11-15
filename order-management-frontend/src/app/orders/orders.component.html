@@ -28,6 +28,42 @@
     </div>
   </div>
 
+  <!-- ANALYTICS CHART SECTION -->
+<div class="orders-analytics" *ngIf="chartData.length > 0">
+  <h3>📊 Bestellungsanalyse</h3>
+
+  <recharts-line-chart
+    [width]="1100"
+    [height]="280"
+    [data]="chartData"
+    class="chart-wrapper">
+
+    <recharts-cartesian-grid stroke="rgba(0,255,255,0.1)" />
+    <recharts-x-axis dataKey="date" stroke="#7cc7ff"></recharts-x-axis>
+    <recharts-y-axis stroke="#7cc7ff"></recharts-y-axis>
+    <recharts-tooltip></recharts-tooltip>
+
+    <!-- Anzahl -->
+    <recharts-line
+      type="monotone"
+      dataKey="count"
+      stroke="#00c8ff"
+      strokeWidth="3"
+      dot="false">
+    </recharts-line>
+
+    <!-- Umsatz -->
+    <recharts-line
+      type="monotone"
+      dataKey="revenue"
+      stroke="#00d084"
+      strokeWidth="3"
+      dot="false">
+    </recharts-line>
+
+  </recharts-line-chart>
+</div>
+
   <app-order-form
     *ngIf="showAddForm"
     [order]="editingOrder"

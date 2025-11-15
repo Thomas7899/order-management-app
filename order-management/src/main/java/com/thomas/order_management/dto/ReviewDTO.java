@@ -9,7 +9,14 @@ public record ReviewDTO(
         String comment,
         int rating,
         LocalDateTime createdAt,
+
         Long productId,
         String productName,
-        BigDecimal productPrice
+        BigDecimal productPrice,
+
+        Long customerId,
+        String customerName,
+
+        Long orderId,
+        Long orderItemId
 ) {}

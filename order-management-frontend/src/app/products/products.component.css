@@ -1,5 +1,4 @@
 /* src/app/products/products.component.css */
-/* === DARK MODE PRODUCTS PAGE === */
 .container {
   padding: 20px;
   max-width: 1200px;
@@ -50,4 +49,27 @@
   .products-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.snackbar {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  background: #00d084;
+  color: #0e1a22;
+  padding: 14px 22px;
+  border-radius: 8px;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(0, 200, 100, 0.35);
+
+  opacity: 0;
+  animation: fadeInOut 3s ease forwards;
+  z-index: 9999;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(10px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(10px); }
 }

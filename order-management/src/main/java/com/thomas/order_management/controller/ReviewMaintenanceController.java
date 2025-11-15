@@ -1,4 +1,4 @@
-// src/main/java/com/thomas/order_management/controller/ReviewMaintenanceController.java
+// order-management/src/main/java/com/thomas/order_management/controller/ReviewMaintenanceController.java
 package com.thomas.order_management.controller;
 
 import com.thomas.order_management.service.ReviewReembedService;
@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/reviews")
+@RequestMapping("/api/reviews/maintenance")
 @RequiredArgsConstructor
 public class ReviewMaintenanceController {
 

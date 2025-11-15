@@ -1,3 +1,4 @@
+// order-management-frontend/src/app/review-trend/review-trends.component.ts
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -7,10 +8,10 @@ import { ReviewTrendService, ReviewTrendReport } from '../services/review-trend.
   selector: 'app-review-trends',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './review-trends.component.html',
-  styleUrls: ['./review-trends.component.css']
+  templateUrl: './legacy-review-trend.component.html',
+  styleUrls: ['./legacy-review-trend.component.css']
 })
-export class ReviewTrendsComponent {
+export class LegacyReviewTrendComponent {
   from = '';
   to = '';
   reports: ReviewTrendReport[] = [];

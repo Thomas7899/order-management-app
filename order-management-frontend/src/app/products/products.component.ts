@@ -17,6 +17,7 @@ import { ProductFiltersComponent } from './components/product-filters/product-fi
   styleUrls: ['./products.component.css']
 })
 export class ProductsComponent implements OnInit {
+
   products: Product[] = [];
   filteredProducts: Product[] = [];
   showForm = false;
@@ -24,6 +25,7 @@ export class ProductsComponent implements OnInit {
   searchTerm = '';
   selectedCategory = '';
   showOnlyActive = false;
+  snackbarMessage: string | null = null;
 
   newProduct: CreateProductRequest = {
     name: '',
@@ -118,6 +120,7 @@ export class ProductsComponent implements OnInit {
         this.products.push(product);
         this.applyFilters();
         this.resetForm();
+        this.showSnackbar('Produkt gespeichert ✔️');
       },
       error: error => console.error('Fehler beim Erstellen des Produkts:', error)
     });
@@ -134,6 +137,7 @@ export class ProductsComponent implements OnInit {
         if (index > -1) this.products[index] = updatedProduct;
         this.applyFilters();
         this.resetForm();
+        this.showSnackbar('Produkt aktualisiert ✔️');
       },
       error: error => console.error('Fehler beim Aktualisieren:', error)
     });
@@ -152,6 +156,7 @@ export class ProductsComponent implements OnInit {
       next: () => {
         this.products = this.products.filter(p => p.id !== productId);
         this.applyFilters();
+        this.showSnackbar('Produkt gelöscht 🗑️');
       },
       error: error => console.error('Fehler beim Löschen:', error)
     });
@@ -169,5 +174,10 @@ export class ProductsComponent implements OnInit {
     };
     this.editingProduct = null;
     this.showForm = false;
+  }
+
+  showSnackbar(message: string) {
+    this.snackbarMessage = message;
+    setTimeout(() => this.snackbarMessage = null, 3000);
   }
 }

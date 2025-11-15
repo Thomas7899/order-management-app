@@ -43,6 +43,7 @@
             [class.is-invalid]="customerForm.get('lastName')?.invalid && customerForm.get('lastName')?.touched">
         </div>
       </div>
+
       <div class="form-row">
         <div class="form-group">
           <label for="email">E-Mail *</label>
@@ -62,6 +63,7 @@
             class="form-control">
         </div>
       </div>
+
       <div class="form-group">
         <label for="address">Adresse</label>
         <input 
@@ -70,6 +72,7 @@
           formControlName="address"
           class="form-control">
       </div>
+
       <div class="form-row">
         <div class="form-group">
           <label for="city">Stadt</label>
@@ -96,6 +99,7 @@
             class="form-control">
         </div>
       </div>
+
       <div class="form-actions">
         <button type="submit" [disabled]="!customerForm.valid || isSaving" class="btn btn-success">
           {{ isSaving ? 'Speichert...' : (editingCustomer ? 'Aktualisieren' : 'Speichern') }}
@@ -118,11 +122,15 @@
 
     <div *ngIf="!isLoading">
       <div class="customers-grid" *ngIf="customers.length > 0">
+        
         <div class="customer-card" *ngFor="let customer of customers">
+          
           <div class="customer-info">
             <h4>{{ customer.firstName }} {{ customer.lastName }}</h4>
             <p class="email">{{ customer.email }}</p>
+
             <p class="phone" *ngIf="customer.phone">{{ customer.phone }}</p>
+
             <div class="address" *ngIf="customer.address">
               <p>{{ customer.address }}</p>
               <p *ngIf="customer.city || customer.zipCode">
@@ -131,14 +139,29 @@
               <p *ngIf="customer.country">{{ customer.country }}</p>
             </div>
           </div>
+
           <div class="customer-actions">
-            <button (click)="editCustomer(customer)" class="btn btn-sm btn-outline-primary">
+
+            <!-- ✅ Details Button (NEU) -->
+            <button 
+              [routerLink]="['/customers', customer.id]" 
+              class="btn btn-sm btn-primary">
+              Details
+            </button>
+
+            <button 
+              (click)="editCustomer(customer)" 
+              class="btn btn-sm btn-outline-primary">
               Bearbeiten
             </button>
-            <button (click)="deleteCustomer(customer.id!)" class="btn btn-sm btn-outline-danger">
+
+            <button 
+              (click)="deleteCustomer(customer.id!)" 
+              class="btn btn-sm btn-outline-danger">
               Löschen
             </button>
           </div>
+
         </div>
       </div>
 

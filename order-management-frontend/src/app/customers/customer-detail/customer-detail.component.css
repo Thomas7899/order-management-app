@@ -1,0 +1,57 @@
+.customer-detail-container {
+  padding: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+  background: #0e1a22;
+  color: #e0f0ff;
+}
+
+.header h2 {
+  color: #00c8ff;
+}
+
+.email {
+  color: #89a6b8;
+}
+
+.section h3 {
+  color: #00c8ff;
+  margin-top: 30px;
+  margin-bottom: 15px;
+}
+
+.orders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.order-card {
+  border: 1px solid #1f3a4a;
+  padding: 15px;
+  border-radius: 10px;
+  background: #122b39;
+}
+
+.order-card h4 {
+  margin-bottom: 10px;
+  color: #00c8ff;
+}
+
+details {
+  margin-top: 10px;
+}
+
+.no-orders {
+  color: #89a6b8;
+}
+
+.contact-info p {
+  margin: 2px 0;
+  color: #cfe6f5;
+}
+
+.contact-info strong {
+  color: #00c8ff;
+}
+

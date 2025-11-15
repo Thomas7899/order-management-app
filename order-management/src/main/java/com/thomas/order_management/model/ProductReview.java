@@ -6,7 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -20,15 +19,23 @@ public class ProductReview {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id")
+    // Produkt, das bewertet wird
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "product_id", nullable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Product product;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    // CUSTOMER schreibt die Bewertung (nicht User!)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "customer_id", nullable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private User user;
+    private Customer customer;
+
+    // Optional: Welche konkrete bestellte Position bewertet wurde
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_item_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private OrderItem orderItem;
 
     @Column(columnDefinition = "TEXT")
     private String comment;
@@ -36,19 +43,35 @@ public class ProductReview {
     @Column(nullable = false)
     private int rating;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    public ProductReview(Product product, User user, String comment, int rating) {
+    // Vollständiger Konstruktor für Bewertungen zu einem gekauften Produkt
+    public ProductReview(Product product,
+                         Customer customer,
+                         OrderItem orderItem,
+                         String comment,
+                         int rating) {
         this.product = product;
-        this.user = user;
+        this.customer = customer;
+        this.orderItem = orderItem;
         this.comment = comment;
         this.rating = rating;
         this.createdAt = LocalDateTime.now();
     }
 
+    // Vereinfachter Konstruktor (falls ohne OrderItem)
+    public ProductReview(Product product,
+                         Customer customer,
+                         String comment,
+                         int rating) {
+        this(product, customer, null, comment, rating);
+    }
+
     @PrePersist
     public void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
     }
 }

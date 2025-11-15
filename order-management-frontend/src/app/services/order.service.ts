@@ -1,3 +1,4 @@
+// order-management-frontend/src/app/services/order.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -21,19 +22,23 @@ export interface OrderItem {
   unitPrice: number;
 }
 
+export interface OrderItemDto {
+  product: Product;
+  quantity: number;
+  unitPrice: number;
+}
+
 export interface Order {
-  id?: number;
-  orderNumber?: string;
-  customer: Customer;
-  orderDate?: string;
+  id: number;
+  orderNumber: string;
+  customer: Customer; 
+  orderDate: string;
   status: OrderStatus;
-  totalAmount?: number;
+  totalAmount: number;
   notes?: string;
   shippingAddress?: string;
   billingAddress?: string;
-  orderItems?: OrderItem[];
-  createdAt?: string;
-  updatedAt?: string;
+  orderItems: OrderItemDto[];
 }
 
 @Injectable({

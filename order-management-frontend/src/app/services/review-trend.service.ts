@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface ReviewTrendReport {
   id: number;
@@ -14,11 +15,9 @@ export interface ReviewTrendReport {
   neutralObservations: string[];
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class ReviewTrendService {
-  private readonly baseUrl = 'http://localhost:8080/review-trends';
+  private readonly baseUrl = `${environment.apiUrl}/reviews/trends`;
 
   constructor(private http: HttpClient) {}
 
@@ -29,8 +28,10 @@ export class ReviewTrendService {
   analyze(windowStart?: string, windowEnd?: string): Observable<ReviewTrendReport> {
     let url = `${this.baseUrl}/analyze`;
     const params = [];
+
     if (windowStart) params.push(`windowStart=${windowStart}`);
     if (windowEnd) params.push(`windowEnd=${windowEnd}`);
+
     if (params.length) url += `?${params.join('&')}`;
 
     return this.http.post<ReviewTrendReport>(url, {});

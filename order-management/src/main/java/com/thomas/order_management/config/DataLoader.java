@@ -1,16 +1,16 @@
-// src/main/java/com/thomas/order_management/config/DataLoader.java
+// order-management/src/main/java/com/thomas/order_management/config/DataLoader.java
 package com.thomas.order_management.config;
 
 import com.thomas.order_management.model.*;
 import com.thomas.order_management.repository.*;
 import com.thomas.order_management.service.ReviewEmbeddingService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Component
 public class DataLoader implements CommandLineRunner {
@@ -18,22 +18,34 @@ public class DataLoader implements CommandLineRunner {
     private final CustomerRepository customerRepository;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
-    private final OrderItemRepository orderItemRepository;
     private final UserRepository userRepository;
     private final ProductReviewRepository reviewRepository;
     private final ReviewEmbeddingService embeddingService;
 
-    public DataLoader(CustomerRepository customerRepository,
-                      ProductRepository productRepository,
-                      OrderRepository orderRepository,
-                      OrderItemRepository orderItemRepository,
-                      UserRepository userRepository,
-                      ProductReviewRepository reviewRepository,
-                      ReviewEmbeddingService embeddingService) {
+    /**
+     * Embeddings sollen in der DEV-Umgebung standardmäßig erzeugt werden.
+     */
+    @Value("${app.dev.generate-embeddings:true}")
+    private boolean generateEmbeddings;
+
+    /**
+     * Wenn true: bei jedem Start DEV-Daten zurücksetzen und neu seeden.
+     * Für Produktion unbedingt auf false setzen bzw. eigenes Profil verwenden.
+     */
+    @Value("${app.dev.reset-on-start:true}")
+    private boolean resetOnStart;
+
+    public DataLoader(
+            CustomerRepository customerRepository,
+            ProductRepository productRepository,
+            OrderRepository orderRepository,
+            UserRepository userRepository,
+            ProductReviewRepository reviewRepository,
+            ReviewEmbeddingService embeddingService
+    ) {
         this.customerRepository = customerRepository;
         this.productRepository = productRepository;
         this.orderRepository = orderRepository;
-        this.orderItemRepository = orderItemRepository;
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.embeddingService = embeddingService;
@@ -41,193 +53,245 @@ public class DataLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        try {
-            if (customerRepository.count() == 0) {
-                loadSampleData();
-            } else {
-                System.out.println("✅ Database already contains sample data. Skipping seeding.");
-            }
-        } catch (Exception e) {
-            System.err.println("❌ Fehler beim Laden der Beispieldaten: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
 
-    private void loadSampleData() {
-        System.out.println("🌱 Lade Beispieldaten...");
+        System.out.println("🔍 Dev seed startup...");
 
-        List<Customer> customers = createSampleCustomers();
-        customerRepository.saveAll(customers);
-
-        List<Product> products = createSampleProducts();
-        productRepository.saveAll(products);
-
-        createSampleOrders(customers, products);
-
-        if (userRepository.count() == 0) {
-            createSampleUsers();
-        }
-
-        createSampleReviews(products);
-
-        System.out.println("✅ Beispieldaten erfolgreich geladen!");
-        System.out.println("- " + customers.size() + " Kunden");
-        System.out.println("- " + products.size() + " Produkte");
-        System.out.println("- " + orderRepository.count() + " Bestellungen");
-        System.out.println("- " + reviewRepository.count() + " Produktbewertungen");
-    }
-
-    private List<Customer> createSampleCustomers() {
-        return Arrays.asList(
-                createCustomer("Max", "Mustermann", "max.mustermann@email.com", "+49 123 456789", "Musterstraße 1", "München", "80331", "Deutschland"),
-                createCustomer("Anna", "Schmidt", "anna.schmidt@email.com", "+49 987 654321", "Hauptstraße 15", "Berlin", "10115", "Deutschland"),
-                createCustomer("Thomas", "Weber", "thomas.weber@email.com", "+49 555 123456", "Gartenweg 8", "Hamburg", "20095", "Deutschland"),
-                createCustomer("Lisa", "Meyer", "lisa.meyer@email.com", "+49 777 987654", "Kirchplatz 3", "Köln", "50667", "Deutschland"),
-                createCustomer("Michael", "Fischer", "michael.fischer@email.com", "+49 333 555777", "Bahnhofstraße 12", "Frankfurt", "60311", "Deutschland"),
-                createCustomer("Sabine", "Keller", "sabine.keller@email.com", "+49 160 112233", "Schulallee 42", "Stuttgart", "70173", "Deutschland"),
-                createCustomer("Jürgen", "Bauer", "juergen.bauer@email.com", "+49 171 445566", "Am Markt 1", "Leipzig", "04109", "Deutschland"),
-                createCustomer("Katrin", "Wolf", "katrin.wolf@email.com", "+49 151 778899", "Uferweg 23", "Düsseldorf", "40213", "Deutschland"),
-                createCustomer("Stefan", "Neumann", "stefan.neumann@email.com", "+49 176 123123", "Parkring 5", "Dresden", "01067", "Deutschland"),
-                createCustomer("Julia", "Richter", "julia.richter@email.com", "+49 163 456456", "Bergstraße 11", "Nürnberg", "90402", "Deutschland")
-        );
-    }
-
-    private List<Product> createSampleProducts() {
-        return Arrays.asList(
-                createProduct("Laptop Pro 15\"", "Hochleistungs-Laptop für Profis", new BigDecimal("1299.99"), 15, "Elektronik", "/images/laptop.jpg"),
-                createProduct("Wireless Maus", "Ergonomische kabellose Maus", new BigDecimal("29.99"), 50, "Elektronik", "/images/mouse.jpg"),
-                createProduct("Tastatur Mechanisch", "Gaming-Tastatur mit mechanischen Switches", new BigDecimal("89.99"), 25, "Elektronik", "/images/keyboard.jpg"),
-                createProduct("Monitor 27\"", "4K UHD Monitor mit HDR", new BigDecimal("399.99"), 8, "Elektronik", "/images/monitor.jpg"),
-                createProduct("Webcam HD", "Full HD Webcam für Videokonferenzen", new BigDecimal("79.99"), 30, "Elektronik", "/images/webcam.jpg"),
-                createProduct("Schreibtischstuhl", "Ergonomischer Bürostuhl", new BigDecimal("249.99"), 12, "Möbel", "/images/chair.jpg"),
-                createProduct("Schreibtisch", "Höhenverstellbarer Schreibtisch", new BigDecimal("599.99"), 5, "Möbel", "/images/desk.jpg"),
-                createProduct("Tischlampe LED", "Dimmbare LED-Schreibtischlampe", new BigDecimal("39.99"), 20, "Beleuchtung", "/images/lamp.jpg"),
-                createProduct("Notizbuch A4", "Hochwertiges Notizbuch kariert", new BigDecimal("12.99"), 3, "Bürobedarf", "/images/notebook.jpg"),
-                createProduct("Kugelschreiber Set", "Set aus 5 hochwertigen Kugelschreibern", new BigDecimal("19.99"), 40, "Bürobedarf", "/images/pens.jpg"),
-                createProduct("Kaffeebecher 'Code'", "Keramikbecher mit lustigem Spruch", new BigDecimal("14.99"), 100, "Bürobedarf", "/images/mug.jpg"),
-                createProduct("Noise-Cancelling Kopfhörer", "Premium Kopfhörer für ungestörtes Arbeiten", new BigDecimal("349.00"), 22, "Elektronik", "/images/headphones.jpg"),
-                createProduct("Ergonomische Fußstütze", "Verbessert die Haltung am Schreibtisch", new BigDecimal("45.50"), 35, "Möbel", "/images/footrest.jpg"),
-                createProduct("Whiteboard 120x90cm", "Magnetisches Whiteboard für Notizen", new BigDecimal("75.00"), 18, "Bürobedarf", "/images/whiteboard.jpg"),
-                createProduct("Pflanze 'Monstera'", "Pflegeleichte Zimmerpflanze fürs Büro", new BigDecimal("25.00"), 30, "Dekoration", "/images/plant.jpg"),
-                createProduct("USB-C Hub", "Adapter mit HDMI, USB 3.0 und SD-Kartenleser", new BigDecimal("59.90"), 60, "Elektronik", "/images/hub.jpg"),
-                createProduct("Laptop-Ständer", "Erhöht den Laptop für bessere Ergonomie", new BigDecimal("35.00"), 45, "Zubehör", "/images/laptopstand.jpg"),
-                createProduct("Aktenvernichter", "Sicherheitsstufe P-4", new BigDecimal("129.99"), 10, "Bürobedarf", "/images/shredder.jpg"),
-                createProduct("Kaffeemaschine 'Espresso'", "Vollautomat für perfekten Kaffee", new BigDecimal("799.00"), 7, "Küche", "/images/coffeemachine.jpg"),
-                createProduct("Wandkalender 2025", "Jahresplaner für die Wand", new BigDecimal("9.99"), 150, "Bürobedarf", "/images/calendar.jpg")
-        );
-    }
-
-    private Customer createCustomer(String firstName, String lastName, String email, String phone,
-                                    String address, String city, String zipCode, String country) {
-        Customer customer = new Customer(firstName, lastName, email);
-        customer.setPhone(phone);
-        customer.setAddress(address);
-        customer.setCity(city);
-        customer.setZipCode(zipCode);
-        customer.setCountry(country);
-        return customer;
-    }
-
-    private Product createProduct(String name, String description, BigDecimal price, int stock, String category, String imageUrl) {
-        Product product = new Product(name, description, price, stock);
-        product.setCategory(category);
-        product.setImageUrl(imageUrl);
-        return product;
-    }
-
-    private void createSampleOrders(List<Customer> customers, List<Product> products) {
-        Random random = new Random();
-        OrderStatus[] statuses = OrderStatus.values();
-
-        for (int i = 1; i <= 50; i++) {
-            Customer randomCustomer = customers.get(random.nextInt(customers.size()));
-            long randomDaysAgo = ThreadLocalRandom.current().nextLong(1, 365);
-            LocalDateTime randomOrderDate = LocalDateTime.now().minusDays(randomDaysAgo).minusHours(random.nextInt(24));
-            OrderStatus randomStatus = statuses[random.nextInt(statuses.length)];
-
-            Collections.shuffle(products);
-            int numberOfItems = random.nextInt(4) + 1;
-            List<Product> itemsForOrder = products.subList(0, numberOfItems);
-            createOrderWithItems(randomCustomer, itemsForOrder, randomStatus, randomOrderDate, i);
-        }
-    }
-
-    private void createOrderWithItems(Customer customer, List<Product> products, OrderStatus status, LocalDateTime orderDate, int orderIndex) {
-        Order order = new Order(customer, "ORD-" + (2024000 + orderIndex));
-        order.setStatus(status);
-        order.setOrderDate(orderDate);
-        order.setShippingAddress(customer.getAddress() + ", " + customer.getZipCode() + " " + customer.getCity());
-        order.setBillingAddress(customer.getAddress() + ", " + customer.getZipCode() + " " + customer.getCity());
-        order.setTotalAmount(BigDecimal.ZERO);
-
-        Order savedOrder = orderRepository.save(order);
-
-        List<OrderItem> orderItems = new ArrayList<>();
-        for (Product product : products) {
-            int quantity = new Random().nextInt(3) + 1;
-            orderItems.add(new OrderItem(savedOrder, product, quantity, product.getPrice()));
-        }
-        orderItemRepository.saveAll(orderItems);
-
-        BigDecimal totalAmount = calculateOrderTotal(orderItems);
-        savedOrder.setTotalAmount(totalAmount);
-        orderRepository.save(savedOrder);
-    }
-
-    private BigDecimal calculateOrderTotal(List<OrderItem> items) {
-        return items.stream()
-                .map(OrderItem::getTotalPrice)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    private void createSampleUsers() {
-        User admin = new User();
-        admin.setName("Administrator");
-        admin.setEmail("admin@company.com");
-        admin.setRole("Admin");
-
-        User manager = new User();
-        manager.setName("Max Manager");
-        manager.setEmail("manager@company.com");
-        manager.setRole("Manager");
-
-        userRepository.saveAll(Arrays.asList(admin, manager));
-    }
-
-    private void createSampleReviews(List<Product> products) {
-        if (reviewRepository.count() > 0) {
-            System.out.println("✅ Reviews already exist, skipping...");
+        if (resetOnStart) {
+            System.out.println("⚠️ app.dev.reset-on-start=true → clearing and reseeding dev data...");
+            clearAll();
+            loadSampleData();
+            System.out.println("🎉 Dev seed done (reset mode).");
             return;
         }
 
-        System.out.println("🌱 Generating sample product reviews with embeddings...");
+        boolean hasAnyData =
+                customerRepository.count() > 0 ||
+                productRepository.count() > 0 ||
+                userRepository.count() > 0 ||
+                orderRepository.count() > 0 ||
+                reviewRepository.count() > 0;
 
-        List<ProductReview> reviews = new ArrayList<>();
-
-        ProductReview r1 = new ProductReview();
-        r1.setProduct(products.get(0));
-        r1.setComment("Excellent build quality, but a bit heavy.");
-        r1.setRating(4);
-        reviews.add(r1);
-
-        ProductReview r2 = new ProductReview();
-        r2.setProduct(products.get(1));
-        r2.setComment("Smooth tracking and comfortable grip. Great value!");
-        r2.setRating(5);
-        reviews.add(r2);
-
-        ProductReview r3 = new ProductReview();
-        r3.setProduct(products.get(3));
-        r3.setComment("Crisp display and vibrant colors. Worth the price.");
-        r3.setRating(5);
-        reviews.add(r3);
-
-        reviewRepository.saveAll(reviews);
-
-        for (ProductReview r : reviews) {
-            embeddingService.createEmbedding(r);
+        if (hasAnyData) {
+            System.out.println("✅ Existing data detected and reset-on-start=false → skipping seeding.");
+            return;
         }
 
-        System.out.println("✅ Reviews and embeddings successfully created!");
+        System.out.println("🌱 No data found → seeding initial dataset...");
+        loadSampleData();
+        System.out.println("🎉 Dev seed done.");
+    }
+
+    private void clearAll() {
+        // Reihenfolge beachten wegen FK-Constraints
+        reviewRepository.deleteAll();
+        orderRepository.deleteAll();
+        productRepository.deleteAll();
+        customerRepository.deleteAll();
+        userRepository.deleteAll();
+    }
+
+    private void loadSampleData() {
+        List<Customer> customers = seedCustomers();
+        List<User> users = seedUsers();
+        List<Product> products = seedProducts();
+        seedOrders(customers, products);
+        seedReviews(products, customers);
+    }
+
+    // -------------------------------- CUSTOMERS --------------------------------
+    private List<Customer> seedCustomers() {
+
+        List<String> firstNames = Arrays.asList(
+                "Max","Julia","Anna","Tim","Laura","Jan","Lisa","Tom","Sophie","Leon"
+        );
+
+        List<String> lastNames = Arrays.asList(
+                "Müller","Schulz","Becker","Fischer","Weber"
+        );
+
+        List<Customer> customers = new ArrayList<>();
+        Random r = new Random();
+
+        for (int i = 0; i < 100; i++) {
+            String fn = firstNames.get(r.nextInt(firstNames.size()));
+            String ln = lastNames.get(r.nextInt(lastNames.size()));
+            String email = (fn + "." + ln + i + "@example.com").toLowerCase();
+
+            Customer c = new Customer(fn, ln, email);
+            customers.add(c);
+        }
+
+        return customerRepository.saveAll(customers);
+    }
+
+    // -------------------------------- USERS --------------------------------
+    private List<User> seedUsers() {
+
+        List<User> list = Arrays.asList(
+                new User("Marie Reuter", "marie@example.com", "User"),
+                new User("Jonas Meier", "jonas@example.com", "User"),
+                new User("Paul Richter", "paul@example.com", "User"),
+                new User("Admin", "admin@example.com", "Admin")
+        );
+
+        return userRepository.saveAll(list);
+    }
+
+    // -------------------------------- PRODUCTS --------------------------------
+    private List<Product> seedProducts() {
+
+        List<Product> list = new ArrayList<>();
+
+        Product p1 = new Product(
+                "Laptop Pro 15\"",
+                "Leistungsstarker Laptop für Entwickler & Designer",
+                BigDecimal.valueOf(1299.99),
+                20
+        );
+        // Kategorie passend zur Trend-Analyse
+        p1.setCategory("Elektronik");
+
+        Product p2 = new Product(
+                "Ultrabook Air 13\"",
+                "Leichtes Ultrabook mit langer Akkulaufzeit",
+                BigDecimal.valueOf(999.00),
+                20
+        );
+        p2.setCategory("Elektronik");
+
+        Product p3 = new Product(
+                "Gaming Maus RGB",
+                "Gaming-Maus mit 10.000 DPI und RGB-Beleuchtung",
+                BigDecimal.valueOf(59.99),
+                50
+        );
+        p3.setCategory("Zubehör");
+
+        list.add(p1);
+        list.add(p2);
+        list.add(p3);
+
+        return productRepository.saveAll(list);
+    }
+
+    // -------------------------------- ORDERS --------------------------------
+    private void seedOrders(List<Customer> customers, List<Product> products) {
+
+        List<Order> orders = new ArrayList<>();
+        Random r = new Random();
+
+        for (int i = 0; i < 200; i++) {
+
+            Customer c = customers.get(r.nextInt(customers.size()));
+
+            Order o = new Order(c, "ORD-" + (10000 + i));
+
+            // Mischung unterschiedlicher Status für Dashboard-Statistik
+            OrderStatus status;
+            int s = r.nextInt(5);
+            switch (s) {
+                case 0 -> status = OrderStatus.DELIVERED;
+                case 1 -> status = OrderStatus.SHIPPED;
+                case 2 -> status = OrderStatus.CONFIRMED;
+                case 3 -> status = OrderStatus.PENDING;
+                default -> status = OrderStatus.CANCELLED;
+            }
+            o.setStatus(status);
+
+            // Einige Bestellungen heute / kürzlich, Rest über letztes Jahr verteilt
+            if (i < 5) {
+                // ein paar „heutige“ Bestellungen
+                o.setOrderDate(LocalDateTime.now().minusHours(r.nextInt(23)));
+            } else {
+                o.setOrderDate(LocalDateTime.now().minusDays(r.nextInt(365)));
+            }
+
+            int itemCount = 1 + r.nextInt(3);
+
+            for (int j = 0; j < itemCount; j++) {
+                Product p = products.get(r.nextInt(products.size()));
+                int qty = 1 + r.nextInt(3);
+                o.addItem(p, qty);
+            }
+
+            o.setTotalAmount(o.calculateTotalAmount());
+            orders.add(o);
+        }
+
+        orderRepository.saveAll(orders);
+    }
+
+    // -------------------------------- REVIEWS --------------------------------
+    private void seedReviews(List<Product> products, List<Customer> customers) {
+
+        List<ProductReview> reviews = new ArrayList<>();
+        Random r = new Random();
+
+        String[] positive = {
+                "Great product, very fast shipping.",
+                "Really love this laptop, works great for development.",
+                "Excellent quality, would definitely buy again.",
+                "Super zufrieden, alles wie beschrieben!",
+                "Top Preis-Leistungs-Verhältnis, klare Empfehlung."
+        };
+
+        String[] negative = {
+                "Very bad quality, broke after a week.",
+                "Not worth the price, I am disappointed.",
+                "Slow delivery and poor support.",
+                "Qualität leider sehr schlecht, nicht zu empfehlen.",
+                "Erwartungen nicht erfüllt, würde ich nicht wieder kaufen."
+        };
+
+        String[] neutral = {
+            "Product is okay, does the job.",
+            "Average quality, nothing special.",
+            "Packaging was fine, product as described.",
+            "Insgesamt in Ordnung, aber nichts Besonderes.",
+            "Standardqualität, für den Preis akzeptabel."
+        };
+
+        for (int i = 0; i < 200; i++) {
+
+            Product product = products.get(r.nextInt(products.size()));
+            Customer customer = customers.get(r.nextInt(customers.size()));
+
+            ProductReview review = new ProductReview();
+            review.setProduct(product);
+            review.setCustomer(customer);
+
+            // Stimmung bestimmen und passende Bewertung setzen
+            int mood = r.nextInt(3);
+            String comment;
+            int rating;
+
+            if (mood == 0) { // positiv
+                comment = positive[r.nextInt(positive.length)];
+                rating = 4 + r.nextInt(2); // 4–5
+            } else if (mood == 1) { // negativ
+                comment = negative[r.nextInt(negative.length)];
+                rating = 1 + r.nextInt(2); // 1–2
+            } else { // neutral
+                comment = neutral[r.nextInt(neutral.length)];
+                rating = 2 + r.nextInt(3); // 2–4
+            }
+
+            review.setComment(comment);
+            review.setRating(rating);
+
+            // Für Trend-Analysen: Fokus auf letzte 90 Tage
+            review.setCreatedAt(LocalDateTime.now().minusDays(r.nextInt(90)));
+
+            reviews.add(review);
+        }
+
+        List<ProductReview> savedReviews = reviewRepository.saveAll(reviews);
+
+        if (generateEmbeddings) {
+            System.out.println("🧠 Creating embeddings for " + savedReviews.size() + " reviews...");
+            savedReviews.forEach(embeddingService::createEmbedding);
+        } else {
+            System.out.println("⚠️ Embeddings disabled in DEV mode (app.dev.generate-embeddings=false).");
+        }
     }
 }

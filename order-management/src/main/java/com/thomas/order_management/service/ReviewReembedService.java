@@ -1,4 +1,4 @@
-// src/main/java/com/thomas/order_management/service/ReviewReembedService.java
+// order-management/src/main/java/com/thomas/order_management/service/ReviewReembedService.java
 package com.thomas.order_management.service;
 
 import com.thomas.order_management.model.ProductReview;

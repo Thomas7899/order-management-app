@@ -2,14 +2,16 @@
 import { Component, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup, FormControl } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { CustomerService, Customer } from '../services/customer.service';
 import { debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ToastService } from '../shared/toast.service';
 
 @Component({
   selector: 'app-customers',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './customers.component.html',
   styleUrls: ['./customers.component.css']
 })
@@ -17,9 +19,7 @@ export class CustomersComponent implements OnInit {
   customers: Customer[] = [];
   editingCustomer: Customer | null = null;
   customerForm: FormGroup;
-  
   searchControl = new FormControl('');
-
   showAddForm = false;
   isLoading = false;
   isSaving = false;
@@ -28,12 +28,13 @@ export class CustomersComponent implements OnInit {
   constructor(
     private customerService: CustomerService,
     private fb: FormBuilder,
-    private destroyRef: DestroyRef
+    private destroyRef: DestroyRef,
+    private toastService: ToastService
   ) {
     this.customerForm = this.fb.group({
       firstName: ['', Validators.required],
       lastName: ['', Validators.required],
-      email: ['', [Validators.required, Validators.email]],
+      email: ['', [Validators.required, Validators.pattern(/^.+@.+\..+$/)]],
       phone: [''],
       address: [''],
       city: [''],
@@ -64,13 +65,13 @@ export class CustomersComponent implements OnInit {
         }
       }),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
+    )
+    .subscribe({
       next: (customers) => {
         this.customers = customers;
         this.isLoading = false;
       },
-      error: (error) => {
-        console.error('Fehler bei der Suche:', error);
+      error: () => {
         this.errorMessage = 'Fehler bei der Suche. Bitte erneut versuchen.';
         this.isLoading = false;
       }
@@ -80,19 +81,19 @@ export class CustomersComponent implements OnInit {
   loadCustomers() {
     this.isLoading = true;
     this.errorMessage = null;
-    this.customerService.getCustomers().pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (customers) => {
-        this.customers = customers;
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Fehler beim Laden der Kunden:', error);
-        this.errorMessage = 'Kunden konnten nicht geladen werden.';
-        this.isLoading = false;
-      }
-    });
+
+    this.customerService.getCustomers()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (customers) => {
+          this.customers = customers;
+          this.isLoading = false;
+        },
+        error: () => {
+          this.errorMessage = 'Kunden konnten nicht geladen werden.';
+          this.isLoading = false;
+        }
+      });
   }
 
   toggleAddForm() {
@@ -110,39 +111,38 @@ export class CustomersComponent implements OnInit {
 
     this.isSaving = true;
     this.errorMessage = null;
+
     const customerData = this.customerForm.value;
 
     if (this.editingCustomer) {
-      this.customerService.updateCustomer(this.editingCustomer.id!, customerData).pipe(
-        takeUntilDestroyed(this.destroyRef)
-      ).subscribe({
-        next: (updatedCustomer) => {
-          const index = this.customers.findIndex(c => c.id === updatedCustomer.id);
-          if (index > -1) {
-            this.customers[index] = updatedCustomer;
+      this.customerService.updateCustomer(this.editingCustomer.id!, customerData)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (updatedCustomer) => {
+            const index = this.customers.findIndex(c => c.id === updatedCustomer.id);
+            if (index > -1) this.customers[index] = updatedCustomer;
+            this.toastService.show("Kunde erfolgreich aktualisiert ✓");
+            this.resetForm();
+          },
+          error: () => {
+            this.errorMessage = 'Kunde konnte nicht aktualisiert werden.';
+            this.isSaving = false;
           }
-          this.resetForm();
-        },
-        error: (error) => {
-          console.error('Fehler beim Aktualisieren:', error);
-          this.errorMessage = 'Kunde konnte nicht aktualisiert werden.';
-          this.isSaving = false;
-        }
-      });
+        });
     } else {
-      this.customerService.createCustomer(customerData).pipe(
-        takeUntilDestroyed(this.destroyRef)
-      ).subscribe({
-        next: (newCustomer) => {
-          this.customers.push(newCustomer);
-          this.resetForm();
-        },
-        error: (error) => {
-          console.error('Fehler beim Erstellen:', error);
-          this.errorMessage = 'Kunde konnte nicht erstellt werden.';
-          this.isSaving = false;
-        }
-      });
+      this.customerService.createCustomer(customerData)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (newCustomer) => {
+            this.customers.push(newCustomer);
+            this.toastService.show("Neuer Kunde erfolgreich erstellt ✓");
+            this.resetForm();
+          },
+          error: () => {
+            this.errorMessage = 'Kunde konnte nicht erstellt werden.';
+            this.isSaving = false;
+          }
+        });
     }
   }
 
@@ -154,20 +154,20 @@ export class CustomersComponent implements OnInit {
   }
 
   deleteCustomer(id: number) {
-    if (confirm('Sind Sie sicher, dass Sie diesen Kunden löschen möchten?')) {
-      this.errorMessage = null;
-      this.customerService.deleteCustomer(id).pipe(
-        takeUntilDestroyed(this.destroyRef)
-      ).subscribe({
+    if (!confirm('Sind Sie sicher, dass Sie diesen Kunden löschen möchten?')) return;
+
+    this.errorMessage = null;
+
+    this.customerService.deleteCustomer(id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
         next: () => {
           this.customers = this.customers.filter(c => c.id !== id);
         },
-        error: (error) => {
-          console.error('Fehler beim Löschen:', error);
+        error: () => {
           this.errorMessage = 'Kunde konnte nicht gelöscht werden.';
         }
       });
-    }
   }
 
   closeForm() {

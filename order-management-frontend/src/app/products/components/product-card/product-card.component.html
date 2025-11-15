@@ -6,18 +6,25 @@
   <div class="product-info">
     <h5 class="product-title">{{ product.name }}</h5>
     <p class="product-description">{{ product.description }}</p>
+
     <div class="product-details">
       <span class="product-price">{{ product.price | currency:'EUR':'symbol':'1.2-2' }}</span>
       <span class="product-category">{{ product.category }}</span>
     </div>
+
     <div class="product-stock">
       <span [class]="getStockStatusClass(product.stockQuantity)">
         Lager: {{ product.stockQuantity }}
       </span>
     </div>
+
     <div class="product-actions">
-      <button (click)="edit.emit(product)" class="btn btn-sm btn-outline-primary">Bearbeiten</button>
-      <button (click)="delete.emit(product.id)" class="btn btn-sm btn-outline-danger">Löschen</button>
+      <button (click)="edit.emit(product)" class="btn-action btn-edit">
+        ✏️ Bearbeiten
+      </button>
+      <button (click)="delete.emit(product.id)" class="btn-action btn-delete">
+        🗑️ Löschen
+      </button>
     </div>
   </div>
 </div>

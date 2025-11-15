@@ -1,4 +1,4 @@
-//src/main/java/com/thomas/order_management/model/User.java
+// order-management/src/main/java/com/thomas/order_management/model/User.java
 package com.thomas.order_management.model;
 
 import jakarta.persistence.*;
@@ -20,16 +20,40 @@ public class User {
     @Column(nullable = false)
     private String role;
 
-    // Getter & Setter
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public User() {
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public User(String name, String email, String role) {
+        this.name = name;
+        this.email = email;
+        this.role = role;
+    }
 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
 }

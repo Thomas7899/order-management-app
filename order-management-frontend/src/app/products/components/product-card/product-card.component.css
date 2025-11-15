@@ -1,5 +1,4 @@
 /* src/app/products/components/product-card/product-card.component.css */
-/* === PRODUCT CARD DARK MODE === */
 .product-card {
   background: #122b39;
   border-radius: 10px;
@@ -88,4 +87,39 @@
 .product-actions {
   display: flex;
   gap: 8px;
+  margin-top: 12px;
+}
+
+.btn-action {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.25s ease;
+  font-weight: 500;
+}
+
+.btn-edit {
+  background: #0f2431;
+  border: 1px solid #1f3a4a;
+  color: #00c8ff;
+}
+
+.btn-edit:hover {
+  background: #173343;
+  border-color: #00c8ff;
+  box-shadow: 0 0 10px rgba(0, 200, 255, 0.3);
+}
+
+.btn-delete {
+  background: #341919;
+  border: 1px solid #803333;
+  color: #ff5c5c;
+}
+
+.btn-delete:hover {
+  background: #4a1f1f;
+  border-color: #ff5c5c;
+  box-shadow: 0 0 10px rgba(255, 92, 92, 0.3);
 }

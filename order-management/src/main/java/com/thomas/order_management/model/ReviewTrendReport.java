@@ -1,3 +1,4 @@
+// order-management/src/main/java/com/thomas/order_management/model/ReviewTrendReport.java
 package com.thomas.order_management.model;
 
 import jakarta.persistence.*;
@@ -11,26 +12,25 @@ import java.util.List;
 
 @Entity
 @Table(name = "review_trend_reports")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ReviewTrendReport {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Zeitfenster der Auswertung (optional filterbar) */
     private LocalDate windowStart;
     private LocalDate windowEnd;
 
-    /** Wann der Report erstellt wurde */
     private Instant generatedAt;
 
-    /** Kurz-Zusammenfassung */
     @Column(length = 2000)
     private String summary;
 
-    /** Trends als JSON (Postgres jsonb) */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private List<String> positiveTrends;

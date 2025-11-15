@@ -1,3 +1,4 @@
+// order-management/src/main/java/com/thomas/order_management/repository/ProductRepository.java
 package com.thomas.order_management.repository;
 
 import com.thomas.order_management.model.Product;
@@ -12,38 +13,36 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
-    
+
+    Optional<Product> findByName(String name);
+
     List<Product> findByActiveTrue();
-    
+
     List<Product> findByCategory(String category);
-    
+
     List<Product> findByNameContainingIgnoreCase(String name);
-    
+
     List<Product> findByPriceBetween(BigDecimal minPrice, BigDecimal maxPrice);
-    
+
     @Query("SELECT p FROM Product p WHERE p.stockQuantity > 0 AND p.active = true")
     List<Product> findAvailableProducts();
-    
+
     @Query("SELECT p FROM Product p WHERE p.stockQuantity <= 5 AND p.active = true")
     List<Product> findLowStockProducts();
-    
+
     @Query("SELECT DISTINCT p.category FROM Product p WHERE p.category IS NOT NULL")
     List<String> findAllCategories();
-    
+
     @Query("SELECT COUNT(p) FROM Product p WHERE p.active = true")
     long countActiveProducts();
 
     @Query("SELECT COUNT(p) FROM Product p WHERE p.stockQuantity <= 5 AND p.active = true")
     long countLowStockProducts();
 
-    // ================ ADVANCED SQL FEATURES ================
-
-    /**
-     * Window Function: Produkt-Rankings mit Kategorie-Analyse
-     */
     @Query(value = """
         SELECT 
             p.id,
@@ -61,9 +60,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         """, nativeQuery = true)
     List<Object[]> getProductRankingsWithWindowFunctions();
 
-    /**
-     * CTE (Common Table Expression): Erweiterte Kategorie-Statistiken
-     */
     @Query(value = """
         WITH category_stats AS (
             SELECT 
@@ -91,9 +87,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         """, nativeQuery = true)
     List<Object[]> getAdvancedCategoryStatistics();
 
-    /**
-     * Subquery: Produkte über Kategorie-Durchschnitt
-     */
     @Query("""
         SELECT p FROM Product p 
         WHERE p.price > (
@@ -105,9 +98,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         """)
     List<Product> findProductsAboveCategoryAverage();
 
-    /**
-     * Aggregation mit HAVING: Kategorien mit mindestens X Produkten
-     */
     @Query(value = """
         SELECT 
             p.category as category,
@@ -121,9 +111,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         """, nativeQuery = true)
     List<Object[]> getCategoryStatisticsNative(@Param("minCount") Long minCount);
 
-    /**
-     * Zeitbasierte Analyse: Produkte nach Erstellungsdatum
-     */
     @Query("""
         SELECT p FROM Product p 
         WHERE p.createdAt BETWEEN :startDate AND :endDate 
@@ -131,13 +118,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         ORDER BY p.createdAt DESC
         """)
     List<Product> findProductsCreatedBetween(
-        @Param("startDate") LocalDateTime startDate, 
+        @Param("startDate") LocalDateTime startDate,
         @Param("endDate") LocalDateTime endDate
     );
 
-    /**
-     * Full-Text Search mit Relevanz-Ranking
-     */
     @Query("""
         SELECT p FROM Product p 
         WHERE (LOWER(p.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) 
@@ -149,9 +133,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         """)
     Page<Product> searchProducts(@Param("searchTerm") String searchTerm, Pageable pageable);
 
-    /**
-     * Index-optimierte Abfrage für Performance
-     */
     @Query("""
         SELECT p FROM Product p 
         WHERE p.category = :category 
@@ -166,16 +147,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         @Param("maxPrice") BigDecimal maxPrice
     );
 
-    /**
-     * Batch Update für Stock-Anpassungen
-     */
     @Modifying
     @Query("UPDATE Product p SET p.stockQuantity = p.stockQuantity - :quantity WHERE p.id = :productId")
     int reduceStock(@Param("productId") Long productId, @Param("quantity") Integer quantity);
 
-    /**
-     * Inventory Value Analysis
-     */
     @Query(value = """
         SELECT 
             category,
@@ -190,9 +165,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         """, nativeQuery = true)
     List<Object[]> getInventoryAnalysis();
 
-    /**
-     * Price Distribution Analysis
-     */
     @Query(value = """
         SELECT 
             CASE 

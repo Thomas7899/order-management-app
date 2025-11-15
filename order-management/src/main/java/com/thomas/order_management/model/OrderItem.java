@@ -24,7 +24,7 @@ public class OrderItem {
     @JsonBackReference
     private Order order;
 
-    @ManyToOne(fetch = FetchType.LAZY) // WICHTIG: Geändert von EAGER zu LAZY zur Vermeidung von N+1 Problemen
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
@@ -34,7 +34,6 @@ public class OrderItem {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal unitPrice;
 
-    // Konstruktoren
     public OrderItem(Order order, Product product, Integer quantity, BigDecimal unitPrice) {
         this.order = order;
         this.product = product;
@@ -42,7 +41,6 @@ public class OrderItem {
         this.unitPrice = unitPrice;
     }
 
-    // Hilfsmethoden
     public BigDecimal getTotalPrice() {
         return unitPrice.multiply(BigDecimal.valueOf(quantity));
     }

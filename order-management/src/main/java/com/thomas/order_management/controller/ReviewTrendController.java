@@ -13,24 +13,22 @@ import java.util.Comparator;
 import java.util.List;
 
 @RestController
-@RequestMapping("/review-trends")
+@RequestMapping("/api/reviews/trends")
 @RequiredArgsConstructor
 public class ReviewTrendController {
 
     private final ReviewTrendAnalysisService analysisService;
 
-    /** Letzten Report abrufen */
     @GetMapping("/latest")
     public ResponseEntity<ReviewTrendReport> latest() {
         List<ReviewTrendReport> all = analysisService.listAll();
         return all.isEmpty()
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.ok(all.stream()
-                    .max(Comparator.comparing(ReviewTrendReport::getGeneratedAt))
-                    .orElseThrow());
+                .max(Comparator.comparing(ReviewTrendReport::getGeneratedAt))
+                .orElseThrow());
     }
 
-    /** Alle Reports (für Historie/Timeline) */
     @GetMapping
     public List<ReviewTrendReport> list() {
         return analysisService.listAll().stream()
@@ -38,7 +36,6 @@ public class ReviewTrendController {
                 .toList();
     }
 
-    /** Manuell Analyse anstoßen (optional mit Zeitfenster) */
     @PostMapping("/analyze")
     public ReviewTrendReport analyze(
             @RequestParam(required = false)

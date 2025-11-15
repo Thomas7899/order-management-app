@@ -14,19 +14,23 @@ public class ReviewEmbeddingRepository {
     private final JdbcTemplate jdbcTemplate;
 
     public void saveEmbedding(Long reviewId, List<Double> vector) {
-        String vectorStr = vector.toString(); 
+        String vectorStr = vector.toString();
         String sql = "INSERT INTO review_embeddings (review_id, embedding) VALUES (?, ?::vector)";
         jdbcTemplate.update(sql, reviewId, vectorStr);
     }
 
-    public List<Long> findSimilarReviewIds(List<Double> queryVector) {
-        String vectorStr = queryVector.toString(); 
+    public List<Long> findSimilarReviewIds(List<Double> queryVector, int limit) {
+        String vectorStr = queryVector.toString();
         String sql = """
-            SELECT review_id 
-            FROM review_embeddings 
-            ORDER BY embedding <-> (?::vector) 
-            LIMIT 5
+            SELECT review_id
+            FROM review_embeddings
+            ORDER BY embedding <-> (?::vector)
+            LIMIT ?
             """;
-        return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getLong("review_id"), vectorStr);
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> rs.getLong("review_id"),
+                vectorStr, limit
+        );
     }
 }

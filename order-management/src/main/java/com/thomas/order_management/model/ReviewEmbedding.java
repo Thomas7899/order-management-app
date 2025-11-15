@@ -4,11 +4,13 @@ package com.thomas.order_management.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+
 import java.util.List;
 
 @Entity
 @Table(name = "review_embeddings")
-@Getter @Setter
+@Getter
+@Setter
 public class ReviewEmbedding {
 
     @Id
