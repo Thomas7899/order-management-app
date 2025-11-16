@@ -6,11 +6,10 @@ import { environment } from '../../environments/environment';
 import { map } from 'rxjs/operators';
 
 @Component({
-  selector: 'app-dashboard',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.css']
+    selector: 'app-dashboard',
+    imports: [CommonModule],
+    templateUrl: './dashboard.component.html',
+    styleUrls: ['./dashboard.component.css']
 })
 export class DashboardComponent implements OnInit {
   stats: DashboardStats | null = null;

@@ -12,11 +12,10 @@ import {
 type TrendMode = 'product' | 'category' | 'anomalies';
 
 @Component({
-  selector: 'app-review-trends',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './review-trends.component.html',
-  styleUrls: ['./review-trends.component.css']
+    selector: 'app-review-trends',
+    imports: [CommonModule, FormsModule],
+    templateUrl: './review-trends.component.html',
+    styleUrls: ['./review-trends.component.css']
 })
 export class ReviewTrendsComponent {
   mode: TrendMode = 'product';

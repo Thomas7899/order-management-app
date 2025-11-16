@@ -10,11 +10,10 @@ import { ProductFormComponent } from './components/product-form/product-form.com
 import { ProductFiltersComponent } from './components/product-filters/product-filters.component';
 
 @Component({
-  selector: 'app-products',
-  standalone: true,
-  imports: [CommonModule, FormsModule, ProductCardComponent, ProductFormComponent, ProductFiltersComponent],
-  templateUrl: './products.component.html',
-  styleUrls: ['./products.component.css']
+    selector: 'app-products',
+    imports: [CommonModule, FormsModule, ProductCardComponent, ProductFormComponent, ProductFiltersComponent],
+    templateUrl: './products.component.html',
+    styleUrls: ['./products.component.css']
 })
 export class ProductsComponent implements OnInit {
 

@@ -7,11 +7,10 @@ import { CustomerService, Customer } from '../../services/customer.service';
 import { OrderService, Order } from '../../services/order.service';
 
 @Component({
-  standalone: true,
-  selector: 'app-customer-detail',
-  imports: [CommonModule],
-  templateUrl: './customer-detail.component.html',
-  styleUrls: ['./customer-detail.component.css']
+    selector: 'app-customer-detail',
+    imports: [CommonModule],
+    templateUrl: './customer-detail.component.html',
+    styleUrls: ['./customer-detail.component.css']
 })
 export class CustomerDetailComponent implements OnInit {
 

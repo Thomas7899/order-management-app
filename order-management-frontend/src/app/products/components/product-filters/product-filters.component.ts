@@ -4,11 +4,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 @Component({
-  selector: 'app-product-filters',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './product-filters.component.html',
-  styleUrls: ['./product-filters.component.css']
+    selector: 'app-product-filters',
+    imports: [CommonModule, FormsModule],
+    templateUrl: './product-filters.component.html',
+    styleUrls: ['./product-filters.component.css']
 })
 export class ProductFiltersComponent {
   @Input() searchTerm = '';

@@ -9,11 +9,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ToastService } from '../shared/toast.service';
 
 @Component({
-  selector: 'app-customers',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
-  templateUrl: './customers.component.html',
-  styleUrls: ['./customers.component.css']
+    selector: 'app-customers',
+    imports: [CommonModule, ReactiveFormsModule, RouterModule],
+    templateUrl: './customers.component.html',
+    styleUrls: ['./customers.component.css']
 })
 export class CustomersComponent implements OnInit {
   customers: Customer[] = [];

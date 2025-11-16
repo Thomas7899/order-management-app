@@ -5,11 +5,10 @@ import { FormsModule } from '@angular/forms';
 import { ReviewTrendService, ReviewTrendReport } from '../services/review-trend.service';
 
 @Component({
-  selector: 'app-review-trends',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './legacy-review-trend.component.html',
-  styleUrls: ['./legacy-review-trend.component.css']
+    selector: 'app-review-trends',
+    imports: [CommonModule, FormsModule],
+    templateUrl: './legacy-review-trend.component.html',
+    styleUrls: ['./legacy-review-trend.component.css']
 })
 export class LegacyReviewTrendComponent {
   from = '';

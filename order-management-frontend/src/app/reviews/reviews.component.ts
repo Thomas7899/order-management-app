@@ -5,11 +5,10 @@ import { FormsModule } from '@angular/forms';
 import { ReviewsService, Review } from '../services/reviews.service';
 
 @Component({
-  selector: 'app-reviews',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './reviews.component.html',
-  styleUrls: ['./reviews.component.css']
+    selector: 'app-reviews',
+    imports: [CommonModule, FormsModule],
+    templateUrl: './reviews.component.html',
+    styleUrls: ['./reviews.component.css']
 })
 export class ReviewsComponent {
   query = '';

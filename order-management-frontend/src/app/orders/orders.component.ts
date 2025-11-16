@@ -16,20 +16,19 @@ import { NgxEchartsModule } from 'ngx-echarts';
 
 
 @Component({
-  selector: 'app-orders',
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    OrderFormComponent,
-    OrderListComponent,
-    OrderDetailsModalComponent,
-  NgxEchartsModule.forRoot({
-    echarts: () => import('echarts')
-  })
-  ],
-  templateUrl: './orders.component.html',
-  styleUrls: ['./orders.component.css']
+    selector: 'app-orders',
+    imports: [
+        CommonModule,
+        FormsModule,
+        OrderFormComponent,
+        OrderListComponent,
+        OrderDetailsModalComponent,
+        NgxEchartsModule.forRoot({
+            echarts: () => import('echarts')
+        })
+    ],
+    templateUrl: './orders.component.html',
+    styleUrls: ['./orders.component.css']
 })
 export class OrdersComponent implements OnInit {
   orders: Order[] = [];

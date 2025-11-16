@@ -21,11 +21,10 @@ interface OrderFormData {
 }
 
 @Component({
-  selector: 'app-order-form',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './order-form.component.html',
-  styleUrls: ['./order-form.component.css']
+    selector: 'app-order-form',
+    imports: [CommonModule, FormsModule],
+    templateUrl: './order-form.component.html',
+    styleUrls: ['./order-form.component.css']
 })
 export class OrderFormComponent implements OnInit {
   @Input() order: Order | null = null;

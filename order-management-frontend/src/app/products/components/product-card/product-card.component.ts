@@ -5,11 +5,10 @@ import { Product } from '../../../types';
 import { environment } from '../../../../environments/environment';
 
 @Component({
-  selector: 'app-product-card',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './product-card.component.html',
-  styleUrls: ['./product-card.component.css']
+    selector: 'app-product-card',
+    imports: [CommonModule],
+    templateUrl: './product-card.component.html',
+    styleUrls: ['./product-card.component.css']
 })
 export class ProductCardComponent {
   @Input() product!: Product;

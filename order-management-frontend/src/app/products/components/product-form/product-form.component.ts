@@ -5,11 +5,10 @@ import { FormsModule } from '@angular/forms';
 import { Product, CreateProductRequest } from '../../../types/index';
 
 @Component({
-  selector: 'app-product-form',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './product-form.component.html',
-  styleUrls: ['./product-form.component.css']
+    selector: 'app-product-form',
+    imports: [CommonModule, FormsModule],
+    templateUrl: './product-form.component.html',
+    styleUrls: ['./product-form.component.css']
 })
 export class ProductFormComponent {
   @Input() product!: CreateProductRequest;
