@@ -1,12 +1,12 @@
-# 📦 AI-Powered Order Management System (OMS)
+# AI-Powered Order Management System
 
 Ein modernes Order Management System, das über die bloße Verwaltung von Bestellungen hinausgeht. Durch die Integration von **Spring Boot**, **pgvector** und **OpenAI** bietet dieses System tiefgehende Einblicke in Kundenbewertungen durch semantische Suche und KI-generierte Trendanalysen.
 
 -----
 
-## ✨ Highlights & Features
+## ✨ Highlights
 
-### 🧠 KI-gestützte Analyse (The Core Innovation)
+### 🧠 KI-gestützte Analyse
 
 Das Herzstück der Anwendung ist die intelligente Verarbeitung von Kundenfeedback:
 
@@ -21,32 +21,26 @@ Das Herzstück der Anwendung ist die intelligente Verarbeitung von Kundenfeedbac
   * **Interaktive Charts:** Visualisierung von Umsatzverläufen und Kategorie-Verteilungen.
   * **Kunden-Insights:** Identifizierung von Top-Kunden und Analyse des Kaufverhaltens.
 
-### 🛠 Robuste Verwaltung
+### 🛠 Verwaltung
 
   * Vollständiges Management von **Produkten, Kunden und Bestellungen**.
   * Lagerbestandsüberwachung und Status-Tracking für Bestellungen.
 
 -----
 
-## 📸 Einblicke in die Anwendung
+## 📸 Einblicke
 
 ### 1\. Das KI-Trend Center
 
 Hier werden die durch OpenAI analysierten Zusammenfassungen der Kundenstimmen dargestellt. Das System erkennt automatisch Probleme (z.B. "Defekte Produkte") und Highlights.
 
-
-
 ### 2\. Semantische Bewertungsanalyse
 
 Die Suche ermöglicht das Filtern von hunderten Bewertungen basierend auf ihrer inhaltlichen Bedeutung.
 
-
-
 ### 3\. Operational Dashboard
 
 Der zentrale Hub für den Shop-Manager mit Live-Daten.
-
-
 
 -----
 
