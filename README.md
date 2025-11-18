@@ -73,11 +73,6 @@ Das Datenmodell ist für relationale Integrität und Vektor-Performance optimier
 
 ```mermaid
 erDiagram
-    USER {
-        Long id
-        String email
-        String role
-    }
     CUSTOMER ||--o{ ORDER : places
     CUSTOMER ||--o{ PRODUCT_REVIEW : writes
     ORDER ||--|{ ORDER_ITEM : contains
@@ -106,10 +101,7 @@ erDiagram
         Long id
         Vector embedding "1536 dim (OpenAI)"
     }
-    REVIEW_TREND_REPORT {
-        Long id
-        Jsonb content "AI Summary"
-    }
+
 ```
 
 -----
@@ -159,12 +151,3 @@ ng serve
 -----
 
 Made with ❤️ and ☕ using Spring Boot & Angular.
-
-order-management/src/main/java/com/thomas/order_management/model/**
-order-management-frontend/src/app/orders/**
-order-management-frontend/src/app/**/*[Cc]ustomer*
-order-management-frontend/src/app/services/**
-order-management-frontend/src/app/**/*[Rr]eview*
-order-management/src/main/java/com/thomas/order_management/**/*[Oo]rder*.java
-order-management/src/main/java/com/thomas/order_management/**/*[Cc]ustomer*.java
-
