@@ -69,7 +69,11 @@ public class Customer {
 
     @PrePersist
     public void onPersist() {
-        this.createdAt = this.updatedAt = LocalDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = this.updatedAt = LocalDateTime.now();
+        } else if (this.updatedAt == null) {
+            this.updatedAt = this.createdAt;
+        }
     }
 
     @PreUpdate

@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/customers")
+@RequestMapping("/api/customers") 
 public class CustomerController {
 
     private final CustomerRepository customerRepository;
@@ -19,33 +19,37 @@ public class CustomerController {
         this.customerRepository = customerRepository;
     }
 
-    // Alle Kunden abrufen
+    // GET /customers
     @GetMapping
     public List<Customer> getAllCustomers() {
         return customerRepository.findAll();
     }
 
-    // Kunde nach ID abrufen
+    // GET /customers/{id}
     @GetMapping("/{id}")
     public ResponseEntity<Customer> getCustomerById(@PathVariable Long id) {
         Optional<Customer> customer = customerRepository.findById(id);
         return customer.map(ResponseEntity::ok)
-                      .orElse(ResponseEntity.notFound().build());
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    // Kunde erstellen
+    // POST /customers
     @PostMapping
     public Customer createCustomer(@RequestBody Customer customer) {
         return customerRepository.save(customer);
     }
 
-    // Kunde aktualisieren
+    // PUT /customers/{id}
     @PutMapping("/{id}")
-    public ResponseEntity<Customer> updateCustomer(@PathVariable Long id, @RequestBody Customer customerDetails) {
+    public ResponseEntity<Customer> updateCustomer(
+            @PathVariable Long id,
+            @RequestBody Customer customerDetails
+    ) {
         Optional<Customer> optionalCustomer = customerRepository.findById(id);
-        
+
         if (optionalCustomer.isPresent()) {
             Customer customer = optionalCustomer.get();
+
             customer.setFirstName(customerDetails.getFirstName());
             customer.setLastName(customerDetails.getLastName());
             customer.setEmail(customerDetails.getEmail());
@@ -54,14 +58,14 @@ public class CustomerController {
             customer.setCity(customerDetails.getCity());
             customer.setZipCode(customerDetails.getZipCode());
             customer.setCountry(customerDetails.getCountry());
-            
+
             return ResponseEntity.ok(customerRepository.save(customer));
         } else {
             return ResponseEntity.notFound().build();
         }
     }
 
-    // Kunde löschen
+    // DELETE /customers/{id}
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCustomer(@PathVariable Long id) {
         if (customerRepository.existsById(id)) {
@@ -72,21 +76,21 @@ public class CustomerController {
         }
     }
 
-    // Kunde nach Email suchen
-    @GetMapping("/search/email")
+    // GET /customers/email?email=...
+    @GetMapping("/email")
     public ResponseEntity<Customer> getCustomerByEmail(@RequestParam String email) {
         Optional<Customer> customer = customerRepository.findByEmail(email);
         return customer.map(ResponseEntity::ok)
-                      .orElse(ResponseEntity.notFound().build());
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    // Kunden nach Name suchen
+    // GET /customers/search?query=...
     @GetMapping("/search")
     public List<Customer> searchCustomers(@RequestParam String query) {
         return customerRepository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(query, query);
     }
 
-    // Anzahl der Kunden
+    // GET /customers/count
     @GetMapping("/count")
     public long getCustomerCount() {
         return customerRepository.countCustomers();

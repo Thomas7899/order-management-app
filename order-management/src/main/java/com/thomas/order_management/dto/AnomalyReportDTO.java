@@ -5,7 +5,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 public class AnomalyReportDTO {
-    public List<String> anomalies;
+    // ALT: public List<String> anomalies;
+    public List<ProductAnomalyDTO> anomalies; // <-- NEU
     public LocalDate windowStart;
     public LocalDate windowEnd;
 }

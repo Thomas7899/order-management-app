@@ -33,4 +33,9 @@ public class ReviewEmbeddingRepository {
                 vectorStr, limit
         );
     }
+
+    public void deleteAll() {
+        String sql = "DELETE FROM review_embeddings";
+        jdbcTemplate.update(sql);
+    }
 }
