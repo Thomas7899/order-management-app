@@ -1,1 +1,1 @@
-web: java -Dserver.port=$PORT -Dspring.profiles.active=heroku -jar order-management/target/*.jar
+web: java -Dserver.port=$PORT -Dspring.profiles.active=heroku -jar target/*.jar
