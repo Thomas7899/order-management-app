@@ -1,7 +1,7 @@
 <!-- src/app/products/components/product-card/product-card.component.html -->
 <div class="product-card">
   <div class="product-image">
-    <img [src]="getImageUrl(product.imageUrl)" [alt]="product.name" class="product-img">
+    <img [src]="finalImageUrl" [alt]="product.name" class="product-img">
   </div>
   <div class="product-info">
     <h5 class="product-title">{{ product.name }}</h5>

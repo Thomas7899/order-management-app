@@ -1,11 +1,20 @@
 /* order-management-frontend/src/app/customers/customers.component.css */
 /* === DARK MODE CUSTOMERS PAGE === */
-.customers-container {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-  background: #0e1a22;
+:host {
+  display: block;
+  width: 100%;
+  min-height: 100vh;
+  background: #0a131a;
+  padding: 30px;
   color: #e0f0ff;
+}
+
+.customers-container {
+  width: 100%;
+  background: #0e1a22;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.4);
 }
 
 /* Header */

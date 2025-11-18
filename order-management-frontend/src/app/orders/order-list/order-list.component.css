@@ -1,80 +1,169 @@
-/* order-management-frontend/src/app/orders/order-list/order-list.component.css */
-/* === ORDER LIST DARK THEME === */
+/* ============================================= */
+/*             ORDER LIST – DARK THEME           */
+/* ============================================= */
+
 .orders-list {
   background: #122b39;
-  border-radius: 10px;
-  padding: 20px;
+  border-radius: 14px;
+  padding: 25px;
   border: 1px solid #1f3a4a;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
   color: #e0f0ff;
 }
 
+/* Titel */
+.orders-list h3 {
+  margin-bottom: 20px;
+  color: #00c8ff;
+  font-size: 20px;
+  text-shadow: 0 0 8px rgba(0, 200, 255, 0.3);
+}
+
+/* GRID-LAYOUT */
 .table-header,
 .order-row {
   display: grid;
-  grid-template-columns: 80px 2fr 150px 120px 120px 200px;
+  grid-template-columns: 80px 2fr 150px 120px 120px 220px;
   gap: 15px;
-  padding: 12px 0;
+  padding: 14px 0;
   align-items: center;
-  border-bottom: 1px solid #1f3a4a;
 }
 
+/* Tabellenkopf */
 .table-header {
   color: #00c8ff;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   font-size: 13px;
+  border-bottom: 1px solid #1f3a4a;
+  letter-spacing: .5px;
 }
 
-.order-row:hover {
-  background: #0f2431;
-  transition: background 0.3s;
+/* Zeilen */
+.order-row {
+  border-bottom: 1px solid #1c3240;
+  color: #e0f0ff;
+  font-size: 15px;
+  transition: 0.2s;
 }
+
+/* Zeilen Hover */
+.order-row:hover {
+  background: rgba(0, 200, 255, 0.06);
+  transform: translateX(2px);
+}
+
+/* =============================== */
+/*           STATUS BADGES         */
+/* =============================== */
 
 .status-badge {
-  padding: 5px 10px;
+  padding: 6px 12px;
   border-radius: 12px;
+  font-weight: 700;
   font-size: 11px;
-  font-weight: 600;
   text-transform: uppercase;
-  display: inline-block;
+  letter-spacing: .5px;
+  border: 1px solid transparent;
 }
 
-/* Statusfarben */
-.status-badge.pending {
-  background: rgba(255, 165, 0, 0.15);
-  color: #ffb347;
-  border: 1px solid #ffb347;
+/* Farben */
+.status-badge[data-status="PENDING"] {
+  background: rgba(255, 183, 77, 0.15);
+  color: #ffb84d;
+  border-color: #ffb84d;
 }
-.status-badge.confirmed {
-  background: rgba(0, 200, 255, 0.1);
-  color: #00c8ff;
-  border: 1px solid #00c8ff;
+
+.status-badge[data-status="PROCESSING"] {
+  background: rgba(0, 122, 255, 0.15);
+  color: #4daaff;
+  border-color: #4daaff;
 }
-.status-badge.processing {
-  background: rgba(186, 85, 211, 0.15);
-  color: #ba55d3;
-  border: 1px solid #ba55d3;
+
+.status-badge[data-status="SHIPPED"] {
+  background: rgba(0, 200, 255, 0.15);
+  color: #00d4ff;
+  border-color: #00d4ff;
 }
-.status-badge.shipped {
-  background: rgba(0, 206, 209, 0.1);
-  color: #00ced1;
-  border: 1px solid #00ced1;
+
+.status-badge[data-status="DELIVERED"] {
+  background: rgba(0, 208, 132, 0.15);
+  color: #00e79b;
+  border-color: #00e79b;
 }
-.status-badge.delivered {
-  background: rgba(0, 208, 132, 0.1);
-  color: #00d084;
-  border: 1px solid #00d084;
+
+.status-badge[data-status="CANCELLED"] {
+  background: rgba(255, 80, 80, 0.15);
+  color: #ff6666;
+  border-color: #ff6666;
 }
-.status-badge.cancelled {
-  background: rgba(255, 91, 91, 0.1);
-  color: #ff5c5c;
-  border: 1px solid #ff5c5c;
+
+.status-badge[data-status="CONFIRMED"] {
+  background: rgba(0, 255, 170, 0.15);
+  color: #00ffaa;
+  border-color: #00ffaa;
 }
+
+/* ================================================ */
+/*             ACTION BUTTONS (NEU / DARK)          */
+/* ================================================ */
+
+.col-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.col-actions button {
+  background: #0f2430;
+  border: 1px solid #1f3a4a;
+  color: #e0f0ff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+/* Hover */
+.col-actions button:hover {
+  background: #00c8ff;
+  color: #0e1a22;
+  border-color: #00c8ff;
+  box-shadow: 0 0 10px rgba(0, 200, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Entfernt Bootstrap Outline Farben */
+.btn-outline-info,
+.btn-outline-primary,
+.btn-outline-danger {
+  border: none !important;
+  color: inherit !important;
+}
+
+/* Keine weißen Hintergründe */
+.btn-sm {
+  background: transparent !important;
+}
+
+/* ================================================ */
+/*                  EMPTY STATE                    */
+/* ================================================ */
 
 .no-orders {
   text-align: center;
   padding: 25px;
   color: #89a6b8;
   font-style: italic;
+}
+
+/* Mobile Fix */
+@media (max-width: 768px) {
+  .table-header,
+  .order-row {
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: auto;
+    gap: 10px;
+  }
 }

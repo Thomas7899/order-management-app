@@ -1,41 +1,84 @@
 <!-- src/app/products/products.component.html -->
-<div class="container">
+<div class="products-container">
 
-  <h2>Produktverwaltung</h2>
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h2>Produktverwaltung</h2>
+      <p class="subtitle">Alle Produkte im Überblick.</p>
+    </div>
 
-  <div *ngIf="snackbarMessage" class="snackbar">
-    {{ snackbarMessage }}
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="toggleAddForm()">
+        {{ showForm ? 'Abbrechen' : 'Neues Produkt' }}
+      </button>
+
+      <button class="btn btn-secondary" (click)="loadProducts()">
+        Neu laden
+      </button>
+    </div>
   </div>
 
-  <app-product-filters
-    [(searchTerm)]="searchTerm"
-    [(selectedCategory)]="selectedCategory"
-    [(showOnlyActive)]="showOnlyActive"
-    (filtersChanged)="applyFilters()">
-  </app-product-filters>
+  <!-- Analytics (mit Filtern synchronisiert) -->
+<app-product-analytics [products]="products"></app-product-analytics>
 
-  <button (click)="showForm = !showForm" class="btn btn-primary mb-3">
-    {{ showForm ? 'Abbrechen' : 'Neues Produkt hinzufügen' }}
-  </button>
 
-  <app-product-form
-    *ngIf="showForm"
-    [editingProduct]="editingProduct"
-    [product]="newProduct"
-    (cancel)="resetForm()"
-    (save)="addProduct()">
-  </app-product-form>
+  <!-- Filter -->
+  <div class="filters">
 
-  <div class="products-grid">
-    <app-product-card
-      *ngFor="let product of filteredProducts"
-      [product]="product"
-      (edit)="editProduct(product)"
-      (delete)="deleteProduct(product.id)">
-    </app-product-card>
+    <input
+      type="text"
+      [(ngModel)]="searchTerm"
+      (ngModelChange)="applyFilters()"
+      placeholder="Produkte suchen..."
+      class="form-control"
+    />
+
+    <select
+      [(ngModel)]="selectedCategory"
+      (ngModelChange)="applyFilters()"
+      class="form-control"
+    >
+      <option [ngValue]="''">Alle Kategorien</option>
+      <option *ngFor="let c of categories" [ngValue]="c">{{ c }}</option>
+    </select>
+
+    <label class="checkbox">
+      <input
+        type="checkbox"
+        [(ngModel)]="showOnlyActive"
+        (ngModelChange)="applyFilters()"
+      />
+      Nur aktive Produkte
+    </label>
+
   </div>
 
-  <div *ngIf="filteredProducts.length === 0" class="no-products">
-    <p>Keine Produkte gefunden.</p>
+  <!-- Produktformular -->
+  <div class="add-form" *ngIf="showForm">
+    <app-product-form
+      [product]="editingProduct"
+      (save)="saveProduct($event)"
+      (cancel)="toggleAddForm()"
+    ></app-product-form>
   </div>
+
+  <!-- Produktliste -->
+  <div class="products-list">
+
+    <div *ngIf="filteredProducts.length === 0" class="no-products">
+      Keine Produkte gefunden.
+    </div>
+
+    <div class="products-grid">
+      <app-product-card
+        *ngFor="let product of filteredProducts"
+        [product]="product"
+        (edit)="editProduct(product)"
+        (delete)="deleteProduct(product.id)"
+      ></app-product-card>
+    </div>
+
+  </div>
+
 </div>

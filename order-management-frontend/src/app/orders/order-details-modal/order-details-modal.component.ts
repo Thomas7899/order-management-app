@@ -4,10 +4,11 @@ import { CommonModule } from '@angular/common';
 import { Order } from '../../services/order.service';
 
 @Component({
-    selector: 'app-order-details-modal',
-    imports: [CommonModule],
-    templateUrl: './order-details-modal.component.html',
-    styleUrls: ['./order-details-modal.component.css']
+  selector: 'app-order-details-modal',
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './order-details-modal.component.html',
+  styleUrls: ['./order-details-modal.component.css']
 })
 export class OrderDetailsModalComponent {
   @Input() order!: Order;

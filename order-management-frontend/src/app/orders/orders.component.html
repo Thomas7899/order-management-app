@@ -1,5 +1,6 @@
 <!-- order-management-frontend/src/app/orders/orders.component.html -->
 <div class="orders-container">
+
   <div class="header">
     <h2>Bestellungsverwaltung</h2>
     <button class="btn btn-primary" (click)="toggleForm()">
@@ -7,17 +8,29 @@
     </button>
   </div>
 
+  @if (showAddForm) {
+    <app-order-form
+      [order]="editingOrder"
+      [customers]="customers"
+      [products]="products"
+      (save)="handleSave($event)"
+      (cancel)="toggleForm()">
+    </app-order-form>
+  }
+
   <div class="filters-bar">
     <div class="search-group">
-      <input
-        type="text"
-        [(ngModel)]="searchTerm"
-        (input)="searchOrders()"
-        placeholder="Bestellungen suchen..."
-        class="form-control" />
+      <input type="text"
+             [(ngModel)]="searchTerm"
+             (input)="searchOrders()"
+             placeholder="Bestellungen suchen..."
+             class="form-control" />
     </div>
+
     <div class="filter-group">
-      <select [(ngModel)]="statusFilter" (change)="filterOrders()" class="form-control">
+      <select [(ngModel)]="statusFilter"
+              (change)="filterOrders()"
+              class="form-control">
         <option value="">Alle Status</option>
         <option value="PENDING">Ausstehend</option>
         <option value="PROCESSING">In Bearbeitung</option>
@@ -28,50 +41,17 @@
     </div>
   </div>
 
-  <!-- ANALYTICS CHART SECTION -->
-<div class="orders-analytics" *ngIf="chartData.length > 0">
-  <h3>📊 Bestellungsanalyse</h3>
-
-  <recharts-line-chart
-    [width]="1100"
-    [height]="280"
-    [data]="chartData"
-    class="chart-wrapper">
-
-    <recharts-cartesian-grid stroke="rgba(0,255,255,0.1)" />
-    <recharts-x-axis dataKey="date" stroke="#7cc7ff"></recharts-x-axis>
-    <recharts-y-axis stroke="#7cc7ff"></recharts-y-axis>
-    <recharts-tooltip></recharts-tooltip>
-
-    <!-- Anzahl -->
-    <recharts-line
-      type="monotone"
-      dataKey="count"
-      stroke="#00c8ff"
-      strokeWidth="3"
-      dot="false">
-    </recharts-line>
-
-    <!-- Umsatz -->
-    <recharts-line
-      type="monotone"
-      dataKey="revenue"
-      stroke="#00d084"
-      strokeWidth="3"
-      dot="false">
-    </recharts-line>
-
-  </recharts-line-chart>
-</div>
-
-  <app-order-form
-    *ngIf="showAddForm"
-    [order]="editingOrder"
-    [customers]="customers"
-    [products]="products"
-    (save)="handleSave($event)"
-    (cancel)="toggleForm()">
-  </app-order-form>
+  <div class="orders-analytics">
+    <h3>📊 Bestellungsanalyse</h3>
+    <div class="chart-container">
+      @if (chartOptions) {
+        <echarts
+          [options]="chartOptions"
+          [autoResize]="true"
+          class="chart"></echarts>
+      }
+    </div>
+  </div>
 
   <app-order-list
     [orders]="displayedOrders"
@@ -80,9 +60,10 @@
     (view)="handleView($event)">
   </app-order-list>
 
-  <app-order-details-modal
-    *ngIf="selectedOrder"
-    [order]="selectedOrder"
-    (close)="handleCloseDetails()">
-  </app-order-details-modal>
+  @if (selectedOrder) {
+    <app-order-details-modal
+      [order]="selectedOrder"
+      (close)="handleCloseDetails()">
+    </app-order-details-modal>
+  }
 </div>

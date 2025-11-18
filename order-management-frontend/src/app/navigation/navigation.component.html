@@ -1,13 +1,12 @@
 <!-- order-management-frontend/src/app/navigation/navigation.component.html -->
 <nav class="navbar">
   <div class="navbar-container">
+    
     <div class="navbar-brand">
-  <a routerLink="/dashboard">
-    <span class="brand-icon">🏪</span>
-    <span class="brand-text">OM</span>
-  </a>
-</div>
-
+      <a routerLink="/dashboard" (click)="closeMenu()">
+        <span class="brand-icon">OM</span>
+      </a>
+    </div>
 
     <button class="mobile-menu-toggle" (click)="toggleMenu()" [class.active]="isMenuOpen">
       <span></span>
@@ -17,58 +16,31 @@
 
     <div class="navbar-menu" [class.active]="isMenuOpen">
       <div class="navbar-nav">
-
-        <a routerLink="/users" 
-           routerLinkActive="active" 
-           class="nav-link"
-           (click)="closeMenu()">
+        
+        <a class="nav-link" routerLink="/customers" routerLinkActive="active" (click)="closeMenu()">
           <span class="nav-icon">👥</span>
-          Benutzer
-        </a>
-
-        <a routerLink="/customers" 
-           routerLinkActive="active" 
-           class="nav-link"
-           (click)="closeMenu()">
-          <span class="nav-icon">🤝</span>
           Kunden
         </a>
-
-        <a routerLink="/products" 
-           routerLinkActive="active" 
-           class="nav-link"
-           (click)="closeMenu()">
+        <a class="nav-link" routerLink="/products" routerLinkActive="active" (click)="closeMenu()">
           <span class="nav-icon">📦</span>
           Produkte
         </a>
-
-        <a routerLink="/orders" 
-           routerLinkActive="active" 
-           class="nav-link"
-           (click)="closeMenu()">
+        <a class="nav-link" routerLink="/orders" routerLinkActive="active" (click)="closeMenu()">
           <span class="nav-icon">🛒</span>
           Bestellungen
         </a>
-
-        <!-- 💬 Bewertungen -->
-        <a routerLink="/reviews"
-           routerLinkActive="active"
-           class="nav-link"
-           (click)="closeMenu()">
-          <span class="nav-icon">💬</span>
+        <a class="nav-link" routerLink="/reviews" routerLinkActive="active" (click)="closeMenu()">
+          <span class="nav-icon">⭐</span>
           Bewertungen
         </a>
 
-        <!-- 🤖 KI-Trends -->
-        <a routerLink="/review-trends"
-           routerLinkActive="active"
-           class="nav-link"
-           (click)="closeMenu()">
+        <a class="nav-link" routerLink="/ki-trends" routerLinkActive="active" (click)="closeMenu()">
           <span class="nav-icon">🤖</span>
           KI-Trends
         </a>
 
-      </div>
+        </div>
     </div>
+
   </div>
 </nav>

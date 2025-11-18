@@ -1,56 +1,43 @@
-/* order-management-frontend/src/app/orders/orders.component.css */
-/* === DARK MODE ORDERS PAGE === */
+/* ============================================= */
+/*            DARK THEME – ORDERS PAGE           */
+/* ============================================= */
+
+/* Hauptcontainer */
 .orders-container {
-  padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
-  color: #e0f0ff;
   background-color: #0e1a22;
+  padding: 25px;
+  width: 100% !important;
+  display: block !important;
 }
 
+/* ============================================= */
+/*                    HEADER                     */
+/* ============================================= */
+
 .header {
+  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 25px;
-}
-
-.header h1 {
-  color: #00c8ff;
-  text-shadow: 0 0 8px rgba(0, 200, 255, 0.3);
-}
-
-.filters-bar {
-  display: flex;
-  gap: 15px;
-  align-items: center;
-  margin-bottom: 20px;
   flex-wrap: wrap;
+  margin-bottom: 20px;
 }
 
-.search-group .form-control,
-.filter-group .form-control {
-  background: #122b39;
-  border: 1px solid #1f3a4a;
-  color: #e0f0ff;
-  padding: 8px 12px;
-  border-radius: 6px;
-  transition: all 0.3s;
+.header h2 {
+  margin: 0;
+  font-size: 26px;
+  color: #00c8ff;
+  text-shadow: 0 0 10px rgba(0, 200, 255, 0.3);
 }
 
-.form-control:focus {
-  border-color: #00c8ff;
-  outline: none;
-  box-shadow: 0 0 5px rgba(0, 200, 255, 0.4);
-}
-
+/* Buttons */
 .btn {
   padding: 8px 16px;
+  font-weight: 600;
   border-radius: 6px;
   cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
   border: none;
+  transition: all 0.3s ease;
 }
 
 .btn-primary {
@@ -63,22 +50,214 @@
   box-shadow: 0 0 10px rgba(0, 200, 255, 0.4);
 }
 
+.btn-secondary {
+  background: #1f3a4a;
+  color: #e0f0ff;
+}
+
+.btn-secondary:hover {
+  background: #00c8ff;
+  color: #0e1a22;
+}
+
+/* ============================================= */
+/*                FILTER LEISTE                  */
+/* ============================================= */
+
+.filters-bar {
+  width: 100%;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+/* Inputs / Selects */
+.orders-container .form-control {
+  background: #122b39 !important;
+  color: #e0f0ff !important;
+  border: 1px solid #1f3a4a !important;
+  border-radius: 8px !important;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.orders-container .form-control::placeholder {
+  color: #89a6b8;
+}
+
+.orders-container .form-control:focus {
+  border-color: #00c8ff !important;
+  box-shadow: 0 0 0 3px rgba(0, 200, 255, 0.25);
+  outline: none;
+}
+
+/* Select Pfeil */
+.orders-container select.form-control {
+  appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg fill="%23e0f0ff" height="24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-color: #122b39 !important;
+}
+
+/* ============================================= */
+/*           ANALYTICS / CHART SECTION           */
+/* ============================================= */
+
 .orders-analytics {
   background: #122b39;
   border: 1px solid #1f3a4a;
   border-radius: 10px;
   padding: 20px;
   margin-bottom: 30px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  color: #e0f0ff;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+
+  width: 100% !important;
+  display: block !important;
 }
 
 .orders-analytics h3 {
+  margin-bottom: 20px;
   color: #00c8ff;
-  margin-bottom: 15px;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   text-shadow: 0 0 8px rgba(0, 200, 255, 0.3);
 }
 
-.chart-wrapper {
-  width: 100%;
-  max-width: 100%;
+/* Chart */
+.chart-container {
+  display: block !important;
+  width: 100% !important;
+  height: 420px;
+  min-height: 420px;
+}
+
+.chart {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 420px !important;
+}
+
+.echarts {
+  background: transparent !important;
+}
+
+/* ============================== */
+/*       MODERNE ORDER LISTE      */
+/* ============================== */
+
+app-order-list {
+  display: block;
+  background: #122b39;
+  padding: 25px;
+  border-radius: 14px;
+  border: 1px solid #1f3a4a;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+}
+
+/* Tabellenkopf */
+app-order-list table thead th {
+  background-color: transparent;
+  color: #00c8ff;
+  padding: 14px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  border-bottom: 2px solid #1f3a4a;
+}
+
+/* Tabellenzellen */
+app-order-list table tbody td {
+  padding: 16px 12px;
+  border-bottom: 1px solid #1c3240;
+  color: #e0f0ff;
+  font-size: 15px;
+}
+
+/* Zeilen-Hover */
+app-order-list table tbody tr:hover {
+  background: rgba(0, 200, 255, 0.07);
+  transform: translateX(2px);
+  transition: 0.2s ease;
+}
+
+/* ============================== */
+/*        STATUS BADGES           */
+/* ============================== */
+
+.status-chip {
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.status-pending    { background: #ffb70026; color: #ffc54d; }
+.status-processing { background: #1f7aff33; color: #4da6ff; }
+.status-shipped    { background: #00c8ff33; color: #00dbff; }
+.status-delivered  { background: #00d08433; color: #00e79b; }
+.status-cancelled  { background: #ff4f4f33; color: #ff6b6b; }
+
+/* ============================== */
+/*        ACTION BUTTONS          */
+/* ============================== */
+
+.table-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Moderne Dark-Buttons */
+.table-actions button {
+  padding: 6px 12px;
+  background: #0f2430;
+  border: 1px solid #1f3a4a;
+  color: #e0f0ff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+/* Hover */
+.table-actions button:hover {
+  background: #00c8ff;
+  color: #0e1a22;
+  border-color: #00c8ff;
+  box-shadow: 0 0 10px rgba(0, 200, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+/* ============================================= */
+/*                    MODALS                     */
+/* ============================================= */
+
+app-order-details-modal,
+app-order-form {
+  display: block;
+}
+
+/* ============================================= */
+/*                 MOBILE FIXES                  */
+/* ============================================= */
+
+@media (max-width: 768px) {
+  .filters-bar {
+    flex-direction: column;
+  }
+
+  .chart-container {
+    height: 300px;
+    min-height: 300px;
+  }
 }

@@ -7,6 +7,11 @@
     </button>
   </div>
 
+  <app-customer-analytics
+  [customers]="customers"
+  [orders]="orders">
+</app-customer-analytics>
+
   <div class="alert alert-danger" *ngIf="errorMessage">
     {{ errorMessage }}
     <button (click)="errorMessage = null" class="close-alert">&times;</button>
@@ -171,3 +176,5 @@
     </div>
   </div>
 </div>
+
+

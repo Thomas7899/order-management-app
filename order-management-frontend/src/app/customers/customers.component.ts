@@ -3,22 +3,40 @@ import { Component, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup, FormControl } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+
 import { CustomerService, Customer } from '../services/customer.service';
+import { OrderService, Order } from '../services/order.service';
+
 import { debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
 import { ToastService } from '../shared/toast.service';
 
+// 🔥 Analytics-Komponente
+import { CustomerAnalyticsComponent } from './customer-analytics/customer-analytics.component';
+
 @Component({
-    selector: 'app-customers',
-    imports: [CommonModule, ReactiveFormsModule, RouterModule],
-    templateUrl: './customers.component.html',
-    styleUrls: ['./customers.component.css']
+  selector: 'app-customers',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterModule,
+    CustomerAnalyticsComponent  // <-- WICHTIG für Analytics
+  ],
+  templateUrl: './customers.component.html',
+  styleUrls: ['./customers.component.css']
 })
 export class CustomersComponent implements OnInit {
+
   customers: Customer[] = [];
+  orders: Order[] = [];               // <-- WICHTIG für Analytics
+
   editingCustomer: Customer | null = null;
+
   customerForm: FormGroup;
   searchControl = new FormControl('');
+
   showAddForm = false;
   isLoading = false;
   isSaving = false;
@@ -26,6 +44,7 @@ export class CustomersComponent implements OnInit {
 
   constructor(
     private customerService: CustomerService,
+    private orderService: OrderService,   // <-- Orderservice benötigt
     private fb: FormBuilder,
     private destroyRef: DestroyRef,
     private toastService: ToastService
@@ -44,9 +63,11 @@ export class CustomersComponent implements OnInit {
 
   ngOnInit() {
     this.loadCustomers();
+    this.loadOrders();  // <-- Orders laden für Analytics
     this.setupSearchSubscription();
   }
 
+  // 🔍 Suche
   private setupSearchSubscription() {
     this.searchControl.valueChanges.pipe(
       debounceTime(400),
@@ -77,6 +98,7 @@ export class CustomersComponent implements OnInit {
     });
   }
 
+  // 📥 Kunden laden
   loadCustomers() {
     this.isLoading = true;
     this.errorMessage = null;
@@ -95,6 +117,21 @@ export class CustomersComponent implements OnInit {
       });
   }
 
+  // 📥 Orders laden (für Analytics notwendig)
+  loadOrders() {
+    this.orderService.getOrders()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (orders) => {
+          this.orders = orders;
+        },
+        error: () => {
+          console.error('Orders konnten nicht geladen werden.');
+        }
+      });
+  }
+
+  // ➕/✏ Formular anzeigen
   toggleAddForm() {
     this.showAddForm = !this.showAddForm;
     if (!this.showAddForm) {
@@ -102,6 +139,7 @@ export class CustomersComponent implements OnInit {
     }
   }
 
+  // 💾 Speichern
   saveCustomer() {
     if (this.customerForm.invalid) {
       this.customerForm.markAllAsTouched();
@@ -113,6 +151,7 @@ export class CustomersComponent implements OnInit {
 
     const customerData = this.customerForm.value;
 
+    // Update
     if (this.editingCustomer) {
       this.customerService.updateCustomer(this.editingCustomer.id!, customerData)
         .pipe(takeUntilDestroyed(this.destroyRef))
@@ -128,6 +167,8 @@ export class CustomersComponent implements OnInit {
             this.isSaving = false;
           }
         });
+
+    // Neuer Kunde
     } else {
       this.customerService.createCustomer(customerData)
         .pipe(takeUntilDestroyed(this.destroyRef))
@@ -145,6 +186,7 @@ export class CustomersComponent implements OnInit {
     }
   }
 
+  // ✏ Bearbeiten
   editCustomer(customer: Customer) {
     this.editingCustomer = customer;
     this.customerForm.patchValue(customer);
@@ -152,6 +194,7 @@ export class CustomersComponent implements OnInit {
     this.errorMessage = null;
   }
 
+  // 🗑 Löschen
   deleteCustomer(id: number) {
     if (!confirm('Sind Sie sicher, dass Sie diesen Kunden löschen möchten?')) return;
 
@@ -169,10 +212,12 @@ export class CustomersComponent implements OnInit {
       });
   }
 
+  // ❌ Formular schließen
   closeForm() {
     this.resetForm();
   }
 
+  // ↩ Reset
   private resetForm() {
     this.customerForm.reset({
       country: 'Deutschland'

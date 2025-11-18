@@ -3,180 +3,112 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProductService } from '../services/product.service';
-import { Product, ProductCategory, CreateProductRequest, UpdateProductRequest, ProductFilter } from '../types/index';
-import { environment } from '../../environments/environment';
+import {
+  Product,
+  ProductCategory,
+  CreateProductRequest,
+  UpdateProductRequest,
+  ID
+} from '../types';
 import { ProductCardComponent } from './components/product-card/product-card.component';
 import { ProductFormComponent } from './components/product-form/product-form.component';
-import { ProductFiltersComponent } from './components/product-filters/product-filters.component';
+import { ProductAnalyticsComponent } from './components/product-analytics/product-analytics.component';
 
 @Component({
-    selector: 'app-products',
-    imports: [CommonModule, FormsModule, ProductCardComponent, ProductFormComponent, ProductFiltersComponent],
-    templateUrl: './products.component.html',
-    styleUrls: ['./products.component.css']
+  selector: 'app-products',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    ProductCardComponent,
+    ProductFormComponent,
+    ProductAnalyticsComponent
+  ],
+  templateUrl: './products.component.html',
+  styleUrls: ['./products.component.css']
 })
 export class ProductsComponent implements OnInit {
-
   products: Product[] = [];
   filteredProducts: Product[] = [];
+  categories: ProductCategory[] = [];
+
+  searchTerm = '';
+  selectedCategory: '' | ProductCategory = '';
+  showOnlyActive = false;
+
   showForm = false;
   editingProduct: Product | null = null;
-  searchTerm = '';
-  selectedCategory = '';
-  showOnlyActive = false;
-  snackbarMessage: string | null = null;
-
-  newProduct: CreateProductRequest = {
-    name: '',
-    category: ProductCategory.ELEKTRONIK,
-    description: '',
-    price: 0,
-    stockQuantity: 0,
-    imageUrl: '',
-    active: true
-  };
 
   constructor(private productService: ProductService) {}
 
   ngOnInit(): void {
     this.loadProducts();
+    this.loadCategories();
   }
 
   loadProducts(): void {
-    this.productService.getAll().subscribe({
-      next: products => {
-        this.products = products;
-        this.filteredProducts = products;
-        this.applyFilters();
-      },
-      error: error => console.error('Fehler beim Laden der Produkte:', error)
+    this.productService.getAll().subscribe(products => {
+      this.products = products;
+      this.applyFilters();
+    });
+  }
+
+  loadCategories(): void {
+    this.productService.getCategories().subscribe(cats => {
+      this.categories = cats;
     });
   }
 
   applyFilters(): void {
-    const filter: ProductFilter = {
-      search: this.searchTerm.trim() || undefined,
-      category: this.selectedCategory as ProductCategory || undefined,
-      active: this.showOnlyActive || undefined
-    };
-
-    if (this.hasActiveFilters(filter)) {
-      this.productService.getWithFilter(filter).subscribe({
-        next: products => this.filteredProducts = products,
-        error: () => this.filteredProducts = this.filterProductsLocally()
-      });
-    } else {
-      this.filteredProducts = [...this.products];
-    }
-  }
-
-  private hasActiveFilters(filter: ProductFilter): boolean {
-    return !!(filter.search || filter.category || filter.active);
-  }
-
-  private filterProductsLocally(): Product[] {
-    return this.products.filter(p => {
+    this.filteredProducts = this.products.filter(product => {
       const matchesSearch =
         !this.searchTerm ||
-        p.name.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        p.description?.toLowerCase().includes(this.searchTerm.toLowerCase());
-      const matchesCategory = !this.selectedCategory || p.category === this.selectedCategory;
-      const matchesActive = !this.showOnlyActive || p.active;
+        product.name.toLowerCase().includes(this.searchTerm.toLowerCase());
+
+      const matchesCategory =
+        !this.selectedCategory || product.category === this.selectedCategory;
+
+      const matchesActive = !this.showOnlyActive || product.active;
+
       return matchesSearch && matchesCategory && matchesActive;
     });
   }
 
-  getImageUrl(imageUrl: string | undefined): string {
-    const backendBase = environment.apiUrl.replace('/api', '');
-    if (!imageUrl) {
-      return `${backendBase}/images/placeholder.jpg?t=${Date.now()}`;
+  toggleAddForm(): void {
+    this.showForm = !this.showForm;
+    if (!this.showForm) {
+      this.editingProduct = null;
     }
-    if (!imageUrl.startsWith('http')) {
-      if (!imageUrl.startsWith('/')) {
-        imageUrl = '/' + imageUrl;
-      }
-      if (!imageUrl.startsWith('/images/')) {
-        imageUrl = '/images' + imageUrl;
-      }
-      return `${backendBase}${imageUrl}?t=${Date.now()}`;
+  }
+
+  saveProduct(data: CreateProductRequest): void {
+    if (this.editingProduct) {
+      const update: UpdateProductRequest = {
+        ...data,
+        id: this.editingProduct.id
+      };
+
+      this.productService.update(this.editingProduct.id as ID, update).subscribe(() => {
+        this.loadProducts();
+        this.showForm = false;
+        this.editingProduct = null;
+      });
+    } else {
+      this.productService.create(data).subscribe(() => {
+        this.loadProducts();
+        this.showForm = false;
+      });
     }
-    return imageUrl;
-  }
-
-  getStockStatusClass(stockQuantity: number): string {
-    if (stockQuantity <= 5) return 'stock-low';
-    if (stockQuantity <= 15) return 'stock-medium';
-    return 'stock-good';
-  }
-
-  addProduct(): void {
-    this.editingProduct ? this.updateProduct() : this.createProduct();
-  }
-
-  private createProduct(): void {
-    this.productService.create(this.newProduct).subscribe({
-      next: product => {
-        this.products.push(product);
-        this.applyFilters();
-        this.resetForm();
-        this.showSnackbar('Produkt gespeichert ✔️');
-      },
-      error: error => console.error('Fehler beim Erstellen des Produkts:', error)
-    });
-  }
-
-  private updateProduct(): void {
-    if (!this.editingProduct?.id) return;
-    const updateRequest: UpdateProductRequest = { ...this.newProduct, id: this.editingProduct.id };
-    const productId = Number(this.editingProduct.id);
-
-    this.productService.update(productId, updateRequest).subscribe({
-      next: updatedProduct => {
-        const index = this.products.findIndex(p => p.id === updatedProduct.id);
-        if (index > -1) this.products[index] = updatedProduct;
-        this.applyFilters();
-        this.resetForm();
-        this.showSnackbar('Produkt aktualisiert ✔️');
-      },
-      error: error => console.error('Fehler beim Aktualisieren:', error)
-    });
   }
 
   editProduct(product: Product): void {
     this.editingProduct = product;
-    this.newProduct = { ...product };
     this.showForm = true;
   }
 
-  deleteProduct(id: string | number): void {
-    if (!confirm('Produkt löschen?')) return;
-    const productId = Number(id);
-    this.productService.delete(productId).subscribe({
-      next: () => {
-        this.products = this.products.filter(p => p.id !== productId);
-        this.applyFilters();
-        this.showSnackbar('Produkt gelöscht 🗑️');
-      },
-      error: error => console.error('Fehler beim Löschen:', error)
+  deleteProduct(id: ID): void {
+    this.productService.delete(id).subscribe(() => {
+      this.loadProducts();
     });
-  }
-
-  resetForm(): void {
-    this.newProduct = {
-      name: '',
-      category: ProductCategory.ELEKTRONIK,
-      description: '',
-      price: 0,
-      stockQuantity: 0,
-      imageUrl: '',
-      active: true
-    };
-    this.editingProduct = null;
-    this.showForm = false;
-  }
-
-  showSnackbar(message: string) {
-    this.snackbarMessage = message;
-    setTimeout(() => this.snackbarMessage = null, 3000);
   }
 }
