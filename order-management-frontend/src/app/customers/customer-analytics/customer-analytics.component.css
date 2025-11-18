@@ -1,0 +1,53 @@
+/* order-management-frontend/src/app/customers/customer-analytics/customer-analytics.component.css */
+.customers-analytics {
+  background: #122b39;
+  padding: 25px;
+  border-radius: 10px;
+  border: 1px solid #1f3a4a;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  margin-top: 40px;
+  color: #e0f0ff;
+}
+
+.customers-analytics h3 {
+  margin-bottom: 25px;
+  font-size: 22px;
+  color: #00c8ff; 
+  text-shadow: 0 0 8px rgba(0, 200, 255, 0.3); 
+}
+
+.analytics-grid {
+  display: grid;
+  gap: 25px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.chart-box {
+  background: #0e1a22;
+  border: 1px solid #1f3a4a;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+  transition: 0.3s ease;
+}
+
+.chart-box:hover {
+  box-shadow: 0 0 15px rgba(0, 200, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.chart-box h4 {
+  margin-bottom: 15px;
+  color: #00c8ff;
+  text-shadow: 0 0 6px rgba(0, 200, 255, 0.3);
+  font-weight: 600;
+}
+
+.chart {
+  width: 100%;
+  height: 300px;
+}
+
+.chart-box.wide .chart {
+  height: 350px;
+}

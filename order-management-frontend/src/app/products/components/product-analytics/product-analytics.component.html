@@ -1,0 +1,43 @@
+<!-- src/app/products/components/product-analytics/product-analytics.component.html -->
+<div class="analytics-grid">
+
+  <div class="stat-card">
+    <h4>Gesamtprodukte</h4>
+    <p>{{ totalProducts }}</p>
+  </div>
+
+  <div class="stat-card">
+    <h4>Aktive Produkte</h4>
+    <p>{{ activeProducts }}</p>
+  </div>
+
+  <div class="stat-card">
+    <h4>Ø Preis</h4>
+    <p>€{{ avgPrice | number: '1.2-2' }}</p>
+  </div>
+
+  <div class="stat-card">
+    <h4>Gesamtbestand</h4>
+    <p>{{ totalStock }}</p>
+  </div>
+
+</div>
+
+<div class="charts-grid">
+
+  <div class="chart-box">
+    <h3>Produkte pro Kategorie</h3>
+    <div echarts [options]="chartCategoryCount" class="chart"></div>
+  </div>
+
+  <div class="chart-box">
+    <h3>Aktiv vs Inaktiv</h3>
+    <div echarts [options]="chartActiveInactive" class="chart"></div>
+  </div>
+
+  <div class="chart-box">
+    <h3>Durchschnittspreis pro Kategorie</h3>
+    <div echarts [options]="chartAvgPriceCategory" class="chart"></div>
+  </div>
+
+</div>

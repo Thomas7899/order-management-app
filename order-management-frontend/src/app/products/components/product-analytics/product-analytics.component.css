@@ -1,0 +1,47 @@
+/* src/app/products/components/product-analytics/product-analytics.component.css */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: #101f2a;
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid #1c3a4a;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.stat-card h4 {
+  margin: 0;
+  font-size: 14px;
+  color: #89a6b8;
+}
+
+.stat-card p {
+  margin: 10px 0 0;
+  font-size: 28px;
+  font-weight: bold;
+  color: #00e5ff;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 30px;
+}
+
+.chart-box {
+  background: #101f2a;
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid #1c3a4a;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.chart {
+  width: 100%;
+  height: 300px;
+}
