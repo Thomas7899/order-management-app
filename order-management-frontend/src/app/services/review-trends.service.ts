@@ -61,8 +61,8 @@ export interface AnomalyReport {
   providedIn: 'root'
 })
 export class ReviewTrendsService {
-  private baseUrl = `${environment.apiUrl}/reviews/trends`;
-  private productSearchUrl = `${environment.apiUrl}/products/search`;
+  private baseUrl = `${environment.apiUrl}/api/reviews/trends`;
+private productSearchUrl = `${environment.apiUrl}/api/products/search`;
 
   constructor(private http: HttpClient) {}
 

@@ -22,7 +22,7 @@ export interface Customer {
   providedIn: 'root'
 })
 export class CustomerService {
-  private apiUrl = `${environment.apiUrl}/customers`;
+  private apiUrl = `${environment.apiUrl}/api/customers`;
 
   constructor(private http: HttpClient) {}
 

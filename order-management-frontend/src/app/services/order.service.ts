@@ -45,7 +45,7 @@ export interface Order {
   providedIn: 'root'
 })
 export class OrderService {
-  private apiUrl = `${environment.apiUrl}/orders`;
+  private apiUrl = `${environment.apiUrl}/api/orders`;
 
   constructor(private http: HttpClient) {}
 

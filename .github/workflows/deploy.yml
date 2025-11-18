@@ -1,10 +1,8 @@
 name: Deploy to Heroku
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  # Nur manueller Start per Button
+  workflow_dispatch:
 
 jobs:
   test:
@@ -34,6 +32,7 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
+    # Dieser Check ist bei manuellem Trigger optional, aber schadet nicht
     if: github.ref == 'refs/heads/main'
     
     steps:

@@ -1,156 +1,169 @@
-# 🏢 Order Management System
+# 📦 AI-Powered Order Management System (OMS)
 
-> **Enterprise-Level Full-Stack Application**  
-> Modern Order Management System mit Spring Boot, PostgreSQL, Angular und Advanced SQL Features
+Ein modernes Order Management System, das über die bloße Verwaltung von Bestellungen hinausgeht. Durch die Integration von **Spring Boot**, **pgvector** und **OpenAI** bietet dieses System tiefgehende Einblicke in Kundenbewertungen durch semantische Suche und KI-generierte Trendanalysen.
 
-## 🎯 **Projekt-Übersicht**
+-----
 
-Dieses Projekt demonstriert **moderne Enterprise-Entwicklung** mit:
-- **Backend**: Spring Boot 3.5.6 mit Advanced SQL Features
-- **Frontend**: Angular 18 mit Standalone Components  
-- **Database**: PostgreSQL mit Complex Queries, Window Functions, CTEs
-- **DevOps**: Docker, Multi-Environment Configuration
-- **Architecture**: Clean Code, SOLID Principles, RESTful APIs
+## ✨ Highlights & Features
 
----
+### 🧠 KI-gestützte Analyse (The Core Innovation)
 
-## 🚀 **Technologie-Stack**
+Das Herzstück der Anwendung ist die intelligente Verarbeitung von Kundenfeedback:
 
-### **Backend Technologies**
-- ☕ **Java 17** 
-- 🍃 **Spring Boot 3.5.6** - Enterprise Framework
-- 🗄️ **PostgreSQL** - Production Database
-- 🔍 **H2** - Development Database
-- 📊 **Advanced SQL** - Window Functions, CTEs, Complex Queries
-- 🐳 **Docker** - Containerization
-- 🔧 **Maven** - Build Management
+  * **Semantische Suche (Vector Search):** Anders als herkömmliche Keyword-Suchen versteht das System den *Kontext*. Eine Suche nach *"schlechte Qualität"* findet auch Bewertungen wie *"ging sofort kaputt"* oder *"Material fühlt sich billig an"*.
+      * *Tech:* OpenAI Embeddings (`text-embedding-3-small`) gespeichert in PostgreSQL via `pgvector`.
+  * **Trend- & Anomalie-Erkennung:** Das System aggregiert Bewertungen über Zeiträume und generiert mittels LLMs Zusammenfassungen über Qualitätsmängel oder positive Trends (z.B. "Verpackung oft beschädigt").
+  * **Sentiment Analysis:** Automatische Einordnung von Feedback in positive, neutrale und negative Cluster.
 
-### **Frontend Technologies**  
-- 🅰️ **Angular 18** - Modern Frontend Framework
-- 📝 **TypeScript** - Type-Safe Development
-- 🎨 **CSS Grid** - Responsive Design
-- 🔄 **RxJS** - Reactive Programming
-- 🧩 **Standalone Components** - Modern Architecture
+### 📊 Modernes Dashboard & Analytics
 
-### **Database Features**
-- 🪟 **Window Functions** - Rankings, Analytics
-- 🔗 **CTEs** - Complex Table Expressions  
-- 🔍 **Subqueries** - Correlated & Nested Queries
-- 📈 **Analytics Views** - Business Intelligence
-- ⚡ **Performance Indexes** - Query Optimization
-- 🔧 **Stored Procedures** - Advanced Logic
+  * **Echtzeit-KPIs:** Umsatzübersicht, Bestellvolumen und aktive Produkte auf einen Blick.
+  * **Interaktive Charts:** Visualisierung von Umsatzverläufen und Kategorie-Verteilungen.
+  * **Kunden-Insights:** Identifizierung von Top-Kunden und Analyse des Kaufverhaltens.
 
----
+### 🛠 Robuste Verwaltung
 
-## 📋 **Features**
+  * Vollständiges Management von **Produkten, Kunden und Bestellungen**.
+  * Lagerbestandsüberwachung und Status-Tracking für Bestellungen.
 
-### **🏗️ Enterprise Architecture**
-- ✅ **Multi-Environment Setup** (Dev/Prod/Test)
-- ✅ **Docker Integration** with PostgreSQL
-- ✅ **Configuration Management** with Spring Profiles
-- ✅ **Database Migration** with Flyway
-- ✅ **Performance Monitoring** with Actuator
+-----
 
-### **📊 Advanced SQL Analytics**
-- ✅ **Product Rankings** with Window Functions
-- ✅ **Category Statistics** with CTEs
-- ✅ **Inventory Analysis** with Complex Joins
-- ✅ **Price Distribution** Analysis
-- ✅ **Time-Series Analytics** for Business Intelligence
-- ✅ **Full-Text Search** with GIN Indexes
+## 📸 Einblicke in die Anwendung
 
-### **🎨 Modern Frontend**
-- ✅ **Responsive Design** with CSS Grid
-- ✅ **Reactive Forms** with Angular
-- ✅ **TypeScript Type Safety** throughout
-- ✅ **Component-Based Architecture**
-- ✅ **HTTP Interceptors** for API Communication
+### 1\. Das KI-Trend Center
 
----
+Hier werden die durch OpenAI analysierten Zusammenfassungen der Kundenstimmen dargestellt. Das System erkennt automatisch Probleme (z.B. "Defekte Produkte") und Highlights.
 
-## 📊 **Database Schema**
 
-### **Products Table**
-```sql
-CREATE TABLE products (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    price DECIMAL(10,2) NOT NULL,
-    category VARCHAR(100) NOT NULL,
-    stock_quantity INTEGER NOT NULL,
-    image_url VARCHAR(500),
-    active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP
-);
-```
 
-### **Advanced SQL Features**
-```sql
--- Window Functions für Rankings
-SELECT name, category, price,
-       ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) as rank
-FROM products;
+### 2\. Semantische Bewertungsanalyse
 
--- CTEs für komplexe Statistiken  
-WITH category_stats AS (
-    SELECT category, COUNT(*) as count, AVG(price) as avg_price
-    FROM products GROUP BY category
-)
-SELECT * FROM category_stats ORDER BY avg_price DESC;
-```
----
+Die Suche ermöglicht das Filtern von hunderten Bewertungen basierend auf ihrer inhaltlichen Bedeutung.
 
-## 📈 **Performance Features**
 
-- 🔍 **Strategic Database Indexes** für häufige Queries
-- 🪟 **Window Functions** für Analytics ohne N+1 Queries  
-- 📊 **Materialized Views** für komplexe Berechnungen
-- ⚡ **Connection Pooling** mit HikariCP
-- 🗜️ **Query Optimization** mit EXPLAIN ANALYZE
 
----
+### 3\. Operational Dashboard
 
-### **Java & Spring Expertise**
-- ✅ **Spring Boot 3.5.6** - Latest Enterprise Features
-- ✅ **JPA/Hibernate** - Advanced ORM Patterns  
-- ✅ **Custom Repositories** - Complex SQL Integration
-- ✅ **Configuration Management** - Multi-Environment Setup
-- ✅ **RESTful APIs** - Modern Web Service Design
+Der zentrale Hub für den Shop-Manager mit Live-Daten.
 
-### **PostgreSQL & SQL **
-- ✅ **Window Functions** - ROW_NUMBER(), RANK(), Analytics
-- ✅ **CTEs** - Common Table Expressions für Complex Logic
-- ✅ **Subqueries** - Correlated & Nested Query Patterns
-- ✅ **Performance Tuning** - Indexes, Query Optimization  
-- ✅ **Database Design** - Normalization, Relationships
 
-### **TypeScript & Angular Mastery**
-- ✅ **Angular 18** - Latest Framework Features
-- ✅ **Standalone Components** - Modern Architecture
-- ✅ **Reactive Programming** - RxJS Observables
-- ✅ **Type Safety** - Comprehensive TypeScript Usage
-- ✅ **Responsive Design** - CSS Grid, Mobile-First
 
----
+-----
 
+## 🏗 Architektur & Tech Stack
+
+### Frontend (Angular)
+
+  * **Framework:** Angular 16+
+  * **Styling:** Modernes Dark-Mode UI (Custom CSS & Chart.js Integration).
+  * **Struktur:** Modulares Design (`/products`, `/orders`, `/analytics`).
+
+### Backend (Spring Boot 3)
+
+  * **API:** RESTful Services.
+  * **Data Access:** Spring Data JPA & Hibernate.
+  * **AI Integration:**
+      * `ReviewEmbeddingService`: Generiert Vektoren für neue Bewertungen.
+      * `ReviewTrendAnalysisService`: Kommuniziert mit OpenAI für High-Level Reports.
+  * **Database:** PostgreSQL mit `pgvector` Extension für hochperformante Ähnlichkeitssuchen (Cosine Similarity).
+
+### 🗂 Datenmodell (ER-Diagramm)
+
+Das Datenmodell ist für relationale Integrität und Vektor-Performance optimiert:
+
+```mermaid
 erDiagram
-
+    USER {
+        Long id
+        String email
+        String role
+    }
     CUSTOMER ||--o{ ORDER : places
-    ORDER ||--o{ ORDERITEM : contains
-    PRODUCT ||--o{ ORDERITEM : "is ordered in"
+    CUSTOMER ||--o{ PRODUCT_REVIEW : writes
+    ORDER ||--|{ ORDER_ITEM : contains
+    PRODUCT ||--o{ ORDER_ITEM : includes
+    PRODUCT ||--o{ PRODUCT_REVIEW : has
+    PRODUCT_REVIEW ||--|| REVIEW_EMBEDDING : has_vector
 
-    CUSTOMER ||--o{ PRODUCTREVIEW : writes
-    PRODUCT ||--o{ PRODUCTREVIEW : "is reviewed in"
-    ORDERITEM ||--o{ PRODUCTREVIEW : "belongs to purchased item"
+    CUSTOMER {
+        Long id
+        String firstName
+        String email
+    }
+    PRODUCT {
+        Long id
+        String name
+        Decimal price
+        Boolean active
+    }
+    PRODUCT_REVIEW {
+        Long id
+        String comment
+        Integer rating
+        DateTime createdAt
+    }
+    REVIEW_EMBEDDING {
+        Long id
+        Vector embedding "1536 dim (OpenAI)"
+    }
+    REVIEW_TREND_REPORT {
+        Long id
+        Jsonb content "AI Summary"
+    }
+```
 
-    PRODUCTREVIEW ||--|| REVIEWEMBEDDING : "has embedding"
+-----
+
+## 🚀 Installation & Setup
+
+### Voraussetzungen
+
+  * Java 17+
+  * Node.js & NPM
+  * PostgreSQL (mit installierter `vector` Extension)
+  * OpenAI API Key
+
+### 1\. Datenbank vorbereiten
+
+```sql
+CREATE DATABASE order_management;
+\c order_management
+CREATE EXTENSION vector;
+```
+
+### 2\. Backend starten
+
+```bash
+git clone https://github.com/dein-user/order-management.git
+cd order-management
+# Application.properties anpassen (DB User/Pass, OpenAI Key)
+./mvnw spring-boot:run
+```
+
+### 3\. Frontend starten
+
+```bash
+cd order-management-frontend
+npm install
+ng serve
+```
+
+-----
+
+## 🔮 Roadmap
+
+  * [ ] **Automatisierte E-Mail-Alerts:** Benachrichtigung bei sprunghaftem Anstieg negativer KI-Trends.
+  * [ ] **Chatbot:** Ein RAG (Retrieval Augmented Generation) Chatbot für Support-Mitarbeiter, um Fragen zum Bestellstatus oder Produktproblemen zu beantworten.
+  * [ ] **Multi-Tenant Support:** Mandantenfähigkeit für mehrere Shops.
+
+-----
+
+Made with ❤️ and ☕ using Spring Boot & Angular.
 
 order-management/src/main/java/com/thomas/order_management/model/**
 order-management-frontend/src/app/orders/**
 order-management-frontend/src/app/**/*[Cc]ustomer*
-order-management-frontend/src/app/orders/**
+order-management-frontend/src/app/services/**
 order-management-frontend/src/app/**/*[Rr]eview*
 order-management/src/main/java/com/thomas/order_management/**/*[Oo]rder*.java
 order-management/src/main/java/com/thomas/order_management/**/*[Cc]ustomer*.java

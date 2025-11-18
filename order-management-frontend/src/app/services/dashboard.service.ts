@@ -26,7 +26,7 @@ export interface RecentActivity {
   providedIn: 'root'
 })
 export class DashboardService {
-  private apiUrl = `${environment.apiUrl}/dashboard`;
+  private apiUrl = `${environment.apiUrl}/api/dashboard`;
 
   constructor(private http: HttpClient) {}
 
