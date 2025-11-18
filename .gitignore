@@ -74,3 +74,6 @@ order-management-frontend/yarn-debug.log*
 order-management-frontend/yarn-error.log*
 order-management-frontend/package-lock.json
 order-management-frontend/yarn.lock
+
+# ================ DOCUMENTATION ================
+docs

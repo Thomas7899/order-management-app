@@ -149,3 +149,9 @@ erDiagram
 
 order-management/src/main/java/com/thomas/order_management/model/**
 order-management-frontend/src/app/orders/**
+order-management-frontend/src/app/**/*[Cc]ustomer*
+order-management-frontend/src/app/orders/**
+order-management-frontend/src/app/**/*[Rr]eview*
+order-management/src/main/java/com/thomas/order_management/**/*[Oo]rder*.java
+order-management/src/main/java/com/thomas/order_management/**/*[Cc]ustomer*.java
+
