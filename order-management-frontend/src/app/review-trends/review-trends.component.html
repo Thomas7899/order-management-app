@@ -1,3 +1,4 @@
+<!--order-management-frontend/src/app/review-trends/review-trends.component.html-->
 <div class="trends-container">
   <div class="trends-header">
     <h1>Bewertungs-Trendanalyse</h1>
@@ -8,12 +9,18 @@
     <div class="mode-toggle">
       <button
         type="button"
+        [class.active]="mode === 'global'"
+        (click)="setMode('global')"
+      >
+        Globale Übersicht
+      </button>
+      <button
+        type="button"
         [class.active]="mode === 'product'"
         (click)="setMode('product')"
       >
         Produkt
       </button>
-
       <button
         type="button"
         [class.active]="mode === 'category'"
@@ -21,7 +28,6 @@
       >
         Kategorie
       </button>
-
       <button
         type="button"
         [class.active]="mode === 'anomalies'"
@@ -32,8 +38,7 @@
     </div>
 
     <div class="filters">
-
-      <div class="filter-group">
+      <div class="filter-group date-range">
         <label>Zeitraum</label>
         <div class="date-row">
           <input type="date" [(ngModel)]="startDate" />
@@ -43,21 +48,17 @@
       </div>
 
       <div class="filter-group" *ngIf="mode === 'product'">
-        <label>Produkt-ID</label>
+        <label for="productId">Produkt-ID</label>
         <input
           type="number"
+          id="productId"
           [(ngModel)]="productId"
           placeholder="z.B. 1"
         />
       </div>
-
-      <!-- 🔽 Dropdown eingebaut -->
       <div class="filter-group" *ngIf="mode === 'category'">
-        <label>Kategorie</label>
-        <select [(ngModel)]="category">
-          <option value="">Bitte Kategorie wählen</option>
-          <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
-        </select>
+        <label for="category">Kategorie</label>
+        <input type="text" id="category" [(ngModel)]="category" />
       </div>
 
       <div class="filter-actions">
@@ -66,17 +67,60 @@
         </button>
       </div>
     </div>
-  </div>
 
-  <div *ngIf="error" class="error-message">
-    {{ error }}
+    <div *ngIf="error" class="error-message">
+      {{ error }}
+    </div>
   </div>
 
   <div *ngIf="loading" class="loading">
     🔍 Analysiere Trends...
   </div>
 
-  <div *ngIf="!loading && mode === 'product' && productTrend" class="results">
+  <div *ngIf="!loading && globalTrend && mode === 'global'" class="results">
+    <div class="summary-card">
+      <h2>💡 Globale Trend-Übersicht</h2>
+      <div class="meta">
+        <span>Zeitraum: {{ formatDate(globalTrend.windowStart) }} – {{ formatDate(globalTrend.windowEnd) }}</span>
+        <span>Generiert: {{ formatDateTime(globalTrend.generatedAt) }}</span>
+      </div>
+      <p class="summary-text">
+        {{ globalTrend.summary }}
+      </p>
+    </div>
+
+    <div class="trend-grid">
+      <div class="trend-card positive">
+        <h3>✅ Positive Trends</h3>
+        <ul>
+          <li *ngFor="let t of globalTrend.positiveTrends">{{ t }}</li>
+          <li *ngIf="globalTrend.positiveTrends.length === 0" class="empty">
+            Keine positiven Trends erkannt.
+          </li>
+        </ul>
+      </div>
+      <div class="trend-card negative">
+        <h3>🚫 Negative Trends</h3>
+        <ul>
+          <li *ngFor="let t of globalTrend.negativeTrends">{{ t }}</li>
+          <li *ngIf="globalTrend.negativeTrends.length === 0" class="empty">
+            Keine negativen Trends erkannt.
+          </li>
+        </ul>
+      </div>
+      <div class="trend-card neutral">
+        <h3>💬 Neutrale Beobachtungen</h3>
+        <ul>
+          <li *ngFor="let t of globalTrend.neutralObservations">{{ t }}</li>
+          <li *ngIf="globalTrend.neutralObservations.length === 0" class="empty">
+            Keine neutralen Beobachtungen erkannt.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && productTrend && mode === 'product'" class="results">
     <div class="summary-card">
       <h2>Produkt-Trend: {{ productTrend.productName }} (ID {{ productTrend.productId }})</h2>
       <div class="meta">
@@ -88,41 +132,11 @@
         {{ productTrend.summary }}
       </p>
     </div>
-
     <div class="trend-grid">
-      <div class="trend-card positive">
-        <h3>Positive Trends</h3>
-        <ul>
-          <li *ngFor="let t of productTrend.positiveTrends">{{ t }}</li>
-          <li *ngIf="productTrend.positiveTrends.length === 0" class="empty">
-            Keine positiven Trends erkannt.
-          </li>
-        </ul>
       </div>
-
-      <div class="trend-card negative">
-        <h3>Negative Trends</h3>
-        <ul>
-          <li *ngFor="let t of productTrend.negativeTrends">{{ t }}</li>
-          <li *ngIf="productTrend.negativeTrends.length === 0" class="empty">
-            Keine negativen Trends erkannt.
-          </li>
-        </ul>
-      </div>
-
-      <div class="trend-card neutral">
-        <h3>Neutrale Beobachtungen</h3>
-        <ul>
-          <li *ngFor="let t of productTrend.neutralObservations">{{ t }}</li>
-          <li *ngIf="productTrend.neutralObservations.length === 0" class="empty">
-            Keine neutralen Beobachtungen erkannt.
-          </li>
-        </ul>
-      </div>
-    </div>
   </div>
 
-  <div *ngIf="!loading && mode === 'category' && categoryTrend" class="results">
+  <div *ngIf="!loading && categoryTrend && mode === 'category'" class="results">
     <div class="summary-card">
       <h2>Kategorie-Trend: {{ categoryTrend.category }}</h2>
       <div class="meta">
@@ -134,60 +148,54 @@
         {{ categoryTrend.summary }}
       </p>
     </div>
-
     <div class="trend-grid">
-      <div class="trend-card positive">
-        <h3>Positive Trends</h3>
-        <ul>
-          <li *ngFor="let t of categoryTrend.positiveTrends">{{ t }}</li>
-          <li *ngIf="categoryTrend.positiveTrends.length === 0" class="empty">
-            Keine positiven Trends erkannt.
-          </li>
-        </ul>
       </div>
-
-      <div class="trend-card negative">
-        <h3>Negative Trends</h3>
-        <ul>
-          <li *ngFor="let t of categoryTrend.negativeTrends">{{ t }}</li>
-          <li *ngIf="categoryTrend.negativeTrends.length === 0" class="empty">
-            Keine negativen Trends erkannt.
-          </li>
-        </ul>
-      </div>
-
-      <div class="trend-card neutral">
-        <h3>Neutrale Beobachtungen</h3>
-        <ul>
-          <li *ngFor="let t of categoryTrend.neutralObservations">{{ t }}</li>
-          <li *ngIf="categoryTrend.neutralObservations.length === 0" class="empty">
-            Keine neutralen Beobachtungen erkannt.
-          </li>
-        </ul>
-      </div>
-    </div>
   </div>
 
-  <div *ngIf="!loading && mode === 'anomalies' && anomalyReport" class="results">
+  <div *ngIf="!loading && anomalyReport && mode === 'anomalies'" class="results">
     <div class="summary-card">
       <h2>Auffällige Produkte</h2>
       <div class="meta">
         <span>Zeitraum: {{ formatDate(anomalyReport.windowStart) }} – {{ formatDate(anomalyReport.windowEnd) }}</span>
       </div>
 
-      <ul class="anomaly-list">
-        <li *ngFor="let a of anomalyReport.anomalies">
-          {{ a }}
-        </li>
-
-        <li *ngIf="anomalyReport.anomalies.length === 0" class="empty">
-          Keine Auffälligkeiten erkannt.
-        </li>
-      </ul>
+      <table class="anomaly-table">
+        <thead>
+          <tr>
+            <th>Produkt (ID)</th>
+            <th>Problem / Grund</th>
+            <th>Ø Bewertung</th>
+            <th>Negative Keywords</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let a of anomalyReport.anomalies">
+            <td>
+              <strong>{{ a.productName }}</strong>
+              <br>
+              <small>ID: {{ a.productId }}</small>
+            </td>
+            <td>{{ a.reason }}</td>
+            <td>
+              {{ a.avgRating | number:'1.1-1' }} / 5
+              <br>
+              <small>({{ a.reviewCount }} Reviews)</small>
+            </td>
+            <td>
+              <span *ngFor="let k of a.negativeKeywords" class="keyword-chip">{{ k }}</span>
+            </td>
+          </tr>
+          <tr *ngIf="anomalyReport.anomalies.length === 0">
+            <td colspan="4" class="empty">
+              Keine Auffälligkeiten erkannt.
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
-  <div *ngIf="!loading && !error && !productTrend && !categoryTrend && !anomalyReport" class="no-results">
+  <div *ngIf="!loading && !error && !globalTrend && !productTrend && !categoryTrend && !anomalyReport" class="no-results">
     Noch keine Analyse durchgeführt. Bitte Filter setzen und auf „Analyse starten“ klicken.
   </div>
 </div>
