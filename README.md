@@ -54,7 +54,7 @@ Der zentrale Hub für den Shop-Manager mit Live-Daten.
 
 ### Frontend (Angular)
 
-  * **Framework:** Angular 16+
+  * **Framework:** Angular 20
   * **Styling:** Modernes Dark-Mode UI (Custom CSS & Chart.js Integration).
   * **Struktur:** Modulares Design (`/products`, `/orders`, `/analytics`).
 
@@ -146,7 +146,6 @@ ng serve
 
   * [ ] **Automatisierte E-Mail-Alerts:** Benachrichtigung bei sprunghaftem Anstieg negativer KI-Trends.
   * [ ] **Chatbot:** Ein RAG (Retrieval Augmented Generation) Chatbot für Support-Mitarbeiter, um Fragen zum Bestellstatus oder Produktproblemen zu beantworten.
-  * [ ] **Multi-Tenant Support:** Mandantenfähigkeit für mehrere Shops.
 
 -----
 
