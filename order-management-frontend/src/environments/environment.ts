@@ -1,3 +1,4 @@
+// order-management-frontend/src/environments/environment.ts
 // Development environment configuration
 export const environment = {
   production: false,

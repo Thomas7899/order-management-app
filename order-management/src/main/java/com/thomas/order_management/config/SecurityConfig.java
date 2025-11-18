@@ -43,7 +43,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
             "http://localhost:4200",
-            "https://thomas-order-frontend.netlify.app",
+            "https://order-management-front.netlify.app",
             "https://*.netlify.app",
             "https://*.vercel.app"
         ));
