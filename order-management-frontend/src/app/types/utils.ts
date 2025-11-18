@@ -1,3 +1,4 @@
+// src/app/types/index.ts
 import { ID, BaseEntity } from './index';
 
 // Utility Types für erweiterte TypeScript Features

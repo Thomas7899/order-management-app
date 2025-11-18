@@ -1,3 +1,4 @@
+// src/app/types/index.ts
 // === IMPORTS ===
 import { Observable } from 'rxjs';
 

@@ -1,3 +1,4 @@
+// order-management-frontend/src/app/app.routes.ts
 import { Routes } from '@angular/router';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { UsersComponent } from './users/users.component';
@@ -18,18 +19,12 @@ export const routes: Routes = [
       import('./reviews/reviews.component').then((m) => m.ReviewsComponent),
   },
   {
-  path: 'review-trend',
-  loadComponent: () =>
-    import('./review-trend/legacy-review-trend.component')
-      .then((m) => m.LegacyReviewTrendComponent),
-},
-{
-  path: 'review-trends',
-  loadComponent: () =>
-    import('./review-trends/review-trends.component')
-      .then((m) => m.ReviewTrendsComponent),
-},
- {
+    path: 'ki-trends',
+    loadComponent: () =>
+      import('./review-trends/review-trends.component')
+        .then((m) => m.ReviewTrendsComponent),
+  },
+  {
     path: 'customers/:id',
     loadComponent: () =>
       import('./customers/customer-detail/customer-detail.component')
