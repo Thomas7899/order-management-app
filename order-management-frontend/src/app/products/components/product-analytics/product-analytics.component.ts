@@ -25,9 +25,11 @@ export class ProductAnalyticsComponent implements OnChanges {
   chartAvgPriceCategory: any;
 
   ngOnChanges() {
+    const productsArray: Product[] = Array.isArray(this.products) ? this.products : [];
+
     const data = this.selectedCategory
-      ? this.products.filter(p => p.category === this.selectedCategory)
-      : this.products;
+      ? productsArray.filter(p => p.category === this.selectedCategory)
+      : productsArray;
 
     this.totalProducts = data.length;
     this.activeProducts = data.filter(p => p.active).length;

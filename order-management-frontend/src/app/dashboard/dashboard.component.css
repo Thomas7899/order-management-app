@@ -205,7 +205,7 @@
   bottom: 10px;
   right: 14px;
   font-size: 34px;
-  opacity: 0.18;
+  opacity: 0.56;
   pointer-events: none;
 }
 
@@ -219,7 +219,7 @@
 }
 
 .kpi-highlight .kpi-icon {
-  opacity: 0.26;
+  opacity: 0.56;
 }
 
 /* SECTIONS / CARDS ============================================== */
