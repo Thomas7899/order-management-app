@@ -1,98 +1,80 @@
 // src/main/java/com/thomas/order_management/controller/CustomerController.java
 package com.thomas.order_management.controller;
 
-import com.thomas.order_management.model.Customer;
-import com.thomas.order_management.repository.CustomerRepository;
+import com.thomas.order_management.controller.assembler.CustomerModelAssembler;
+import com.thomas.order_management.dto.CustomerDTO;
+import com.thomas.order_management.dto.CustomerRequestDTO;
+import com.thomas.order_management.service.CustomerService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.IanaLinkRelations;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
-@RequestMapping("/api/customers") 
+@RequestMapping("/api/customers")
+@RequiredArgsConstructor
 public class CustomerController {
 
-    private final CustomerRepository customerRepository;
+    private final CustomerService customerService;
+    private final CustomerModelAssembler assembler;
 
-    public CustomerController(CustomerRepository customerRepository) {
-        this.customerRepository = customerRepository;
-    }
-
-    // GET /customers
     @GetMapping
-    public List<Customer> getAllCustomers() {
-        return customerRepository.findAll();
+    @SuppressWarnings("null")
+    public ResponseEntity<CollectionModel<EntityModel<CustomerDTO>>> getAllCustomers() {
+        List<EntityModel<CustomerDTO>> customers = customerService.getAllCustomers().stream()
+                .map(customerDto -> assembler.toModel(Objects.requireNonNull(customerDto, "customerDto")))
+                .toList();
+
+        return ResponseEntity.ok(CollectionModel.of(customers,
+                linkTo(methodOn(CustomerController.class).getAllCustomers()).withSelfRel()));
     }
 
-    // GET /customers/{id}
     @GetMapping("/{id}")
-    public ResponseEntity<Customer> getCustomerById(@PathVariable Long id) {
-        Optional<Customer> customer = customerRepository.findById(id);
-        return customer.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<EntityModel<CustomerDTO>> getCustomerById(@PathVariable Long id) {
+        // Service wirft Exception wenn nicht gefunden -> GlobalExceptionHandler fängt das ab
+        // Daher können wir hier direkt mappen
+        CustomerDTO customer = Objects.requireNonNull(customerService.getCustomerById(id), "customer");
+        return ResponseEntity.ok(assembler.toModel(customer));
     }
 
-    // POST /customers
     @PostMapping
-    public Customer createCustomer(@RequestBody Customer customer) {
-        return customerRepository.save(customer);
+    @SuppressWarnings("null")
+    public ResponseEntity<EntityModel<CustomerDTO>> createCustomer(@RequestBody CustomerRequestDTO customerDto) {
+        CustomerDTO createdCustomer = Objects.requireNonNull(customerService.createCustomer(customerDto), "createdCustomer");
+        EntityModel<CustomerDTO> model = assembler.toModel(createdCustomer);
+
+        return ResponseEntity
+                .created(model.getRequiredLink(IanaLinkRelations.SELF).toUri())
+                .body(model);
     }
 
-    // PUT /customers/{id}
     @PutMapping("/{id}")
-    public ResponseEntity<Customer> updateCustomer(
-            @PathVariable Long id,
-            @RequestBody Customer customerDetails
-    ) {
-        Optional<Customer> optionalCustomer = customerRepository.findById(id);
-
-        if (optionalCustomer.isPresent()) {
-            Customer customer = optionalCustomer.get();
-
-            customer.setFirstName(customerDetails.getFirstName());
-            customer.setLastName(customerDetails.getLastName());
-            customer.setEmail(customerDetails.getEmail());
-            customer.setPhone(customerDetails.getPhone());
-            customer.setAddress(customerDetails.getAddress());
-            customer.setCity(customerDetails.getCity());
-            customer.setZipCode(customerDetails.getZipCode());
-            customer.setCountry(customerDetails.getCountry());
-
-            return ResponseEntity.ok(customerRepository.save(customer));
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<EntityModel<CustomerDTO>> updateCustomer(@PathVariable Long id, @RequestBody CustomerRequestDTO customerDetails) {
+        CustomerDTO updatedCustomer = Objects.requireNonNull(customerService.updateCustomer(id, customerDetails), "updatedCustomer");
+        return ResponseEntity.ok(assembler.toModel(updatedCustomer));
     }
 
-    // DELETE /customers/{id}
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCustomer(@PathVariable Long id) {
-        if (customerRepository.existsById(id)) {
-            customerRepository.deleteById(id);
-            return ResponseEntity.ok().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        customerService.deleteCustomer(id);
+        return ResponseEntity.noContent().build();
     }
 
-    // GET /customers/email?email=...
-    @GetMapping("/email")
-    public ResponseEntity<Customer> getCustomerByEmail(@RequestParam String email) {
-        Optional<Customer> customer = customerRepository.findByEmail(email);
-        return customer.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    // GET /customers/search?query=...
     @GetMapping("/search")
-    public List<Customer> searchCustomers(@RequestParam String query) {
-        return customerRepository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(query, query);
-    }
-
-    // GET /customers/count
-    @GetMapping("/count")
-    public long getCustomerCount() {
-        return customerRepository.countCustomers();
+    @SuppressWarnings("null")
+    public ResponseEntity<CollectionModel<EntityModel<CustomerDTO>>> searchCustomers(@RequestParam String query) {
+        List<EntityModel<CustomerDTO>> customers = customerService.searchCustomers(query).stream()
+                .map(customerDto -> assembler.toModel(Objects.requireNonNull(customerDto, "customerDto")))
+                .toList();
+        
+        return ResponseEntity.ok(CollectionModel.of(customers));
     }
 }

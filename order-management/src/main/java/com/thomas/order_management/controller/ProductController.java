@@ -1,179 +1,232 @@
 // src/main/java/com/thomas/order_management/controller/ProductController.java
 package com.thomas.order_management.controller;
 
+import com.thomas.order_management.controller.assembler.ProductModelAssembler;
+import com.thomas.order_management.dto.ProductDto;
+import com.thomas.order_management.mapper.ProductMapper;
 import com.thomas.order_management.model.Product;
 import com.thomas.order_management.repository.ProductRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.IanaLinkRelations;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @RequestMapping("/api/products")
+@RequiredArgsConstructor
 public class ProductController {
 
     private final ProductRepository productRepository;
+    private final ProductMapper productMapper;
+    private final ProductModelAssembler assembler;
 
-    public ProductController(ProductRepository productRepository) {
-        this.productRepository = productRepository;
-    }
-
-    // Alle Produkte abrufen
     @GetMapping
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    @SuppressWarnings("null")
+    public ResponseEntity<CollectionModel<EntityModel<ProductDto>>> getAllProducts() {
+        List<EntityModel<ProductDto>> products = productRepository.findAll().stream()
+                .map(productMapper::toDto)
+                .map(productDto -> assembler.toModel(Objects.requireNonNull(productDto, "productDto")))
+                .toList();
+
+        return ResponseEntity.ok(CollectionModel.of(products,
+                linkTo(methodOn(ProductController.class).getAllProducts()).withSelfRel()));
     }
 
-    // Nur aktive Produkte abrufen
     @GetMapping("/active")
-    public List<Product> getActiveProducts() {
-        return productRepository.findByActiveTrue();
+    @SuppressWarnings("null")
+    public ResponseEntity<CollectionModel<EntityModel<ProductDto>>> getActiveProducts() {
+        List<EntityModel<ProductDto>> products = productRepository.findByActiveTrue().stream()
+                .map(productMapper::toDto)
+                .map(productDto -> assembler.toModel(Objects.requireNonNull(productDto, "productDto")))
+                .toList();
+
+        return ResponseEntity.ok(CollectionModel.of(products,
+                linkTo(methodOn(ProductController.class).getActiveProducts()).withSelfRel()));
     }
 
-    // Verfügbare Produkte (auf Lager und aktiv)
     @GetMapping("/available")
-    public List<Product> getAvailableProducts() {
-        return productRepository.findAvailableProducts();
+    @SuppressWarnings("null")
+    public ResponseEntity<CollectionModel<EntityModel<ProductDto>>> getAvailableProducts() {
+        List<EntityModel<ProductDto>> products = productRepository.findAvailableProducts().stream()
+                .map(productMapper::toDto)
+                .map(productDto -> assembler.toModel(Objects.requireNonNull(productDto, "productDto")))
+                .toList();
+
+        return ResponseEntity.ok(CollectionModel.of(products,
+                linkTo(methodOn(ProductController.class).getAvailableProducts()).withSelfRel()));
     }
 
-    // Product nach ID abrufen
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
-        Optional<Product> product = productRepository.findById(id);
-        return product.map(ResponseEntity::ok)
-                     .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<EntityModel<ProductDto>> getProductById(@PathVariable Long id) {
+        return productRepository.findById(Objects.requireNonNull(id, "id"))
+                .map(productMapper::toDto)
+                .map(productDto -> assembler.toModel(Objects.requireNonNull(productDto, "productDto")))
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    // Produkt erstellen
     @PostMapping
-    public Product createProduct(@RequestBody Product product) {
-        return productRepository.save(product);
+    @SuppressWarnings("null")
+    public ResponseEntity<EntityModel<ProductDto>> createProduct(@RequestBody Product product) {
+        Product savedProduct = productRepository.save(product);
+        ProductDto productDto = Objects.requireNonNull(productMapper.toDto(savedProduct), "productDto");
+        EntityModel<ProductDto> model = assembler.toModel(productDto);
+
+        return ResponseEntity
+                .created(model.getRequiredLink(IanaLinkRelations.SELF).toUri())
+                .body(model);
     }
 
-    // Produkt aktualisieren
     @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody Product productDetails) {
-        Optional<Product> optionalProduct = productRepository.findById(id);
-        
-        if (optionalProduct.isPresent()) {
-            Product product = optionalProduct.get();
-            product.setName(productDetails.getName());
-            product.setDescription(productDetails.getDescription());
-            product.setPrice(productDetails.getPrice());
-            product.setStockQuantity(productDetails.getStockQuantity());
-            product.setCategory(productDetails.getCategory());
-            product.setImageUrl(productDetails.getImageUrl());
-            product.setActive(productDetails.getActive());
-            
-            return ResponseEntity.ok(productRepository.save(product));
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<EntityModel<ProductDto>> updateProduct(@PathVariable Long id, @RequestBody Product productDetails) {
+        return productRepository.findById(Objects.requireNonNull(id, "id"))
+                .map(product -> {
+                    product.setName(productDetails.getName());
+                    product.setDescription(productDetails.getDescription());
+                    product.setPrice(productDetails.getPrice());
+                    product.setStockQuantity(productDetails.getStockQuantity());
+                    product.setCategory(productDetails.getCategory());
+                    product.setImageUrl(productDetails.getImageUrl());
+                    product.setActive(productDetails.getActive());
+                    
+                    Product savedProduct = productRepository.save(product);
+                    ProductDto productDto = Objects.requireNonNull(productMapper.toDto(savedProduct), "productDto");
+                    return assembler.toModel(productDto);
+                })
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    // Produkt löschen (soft delete - als inaktiv markieren)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
-        Optional<Product> optionalProduct = productRepository.findById(id);
-        
-        if (optionalProduct.isPresent()) {
-            Product product = optionalProduct.get();
-            product.setActive(false);
-            productRepository.save(product);
-            return ResponseEntity.ok().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        return productRepository.findById(Objects.requireNonNull(id, "id"))
+                .map(product -> {
+                    product.setActive(false);
+                    productRepository.save(product);
+                    return ResponseEntity.noContent().<Void>build();
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    // Produkte nach Kategorie
     @GetMapping("/category/{category}")
-    public List<Product> getProductsByCategory(@PathVariable String category) {
-        return productRepository.findByCategory(category);
+    @SuppressWarnings("null")
+    public ResponseEntity<CollectionModel<EntityModel<ProductDto>>> getProductsByCategory(@PathVariable String category) {
+        List<EntityModel<ProductDto>> products = productRepository.findByCategory(category).stream()
+                .map(productMapper::toDto)
+                .map(productDto -> assembler.toModel(Objects.requireNonNull(productDto, "productDto")))
+                .toList();
+
+        return ResponseEntity.ok(CollectionModel.of(products));
     }
 
-    // Produkte suchen
     @GetMapping("/search")
-    public List<Product> searchProducts(@RequestParam String query) {
-        return productRepository.findByNameContainingIgnoreCase(query);
+    @SuppressWarnings("null")
+    public ResponseEntity<CollectionModel<EntityModel<ProductDto>>> searchProducts(@RequestParam String query) {
+        List<EntityModel<ProductDto>> products = productRepository.findByNameContainingIgnoreCase(query).stream()
+                .map(productMapper::toDto)
+                .map(productDto -> assembler.toModel(Objects.requireNonNull(productDto, "productDto")))
+                .toList();
+
+        return ResponseEntity.ok(CollectionModel.of(products));
     }
 
-    // Produkte nach Preisbereich
     @GetMapping("/price-range")
-    public List<Product> getProductsByPriceRange(@RequestParam BigDecimal minPrice, @RequestParam BigDecimal maxPrice) {
-        return productRepository.findByPriceBetween(minPrice, maxPrice);
+    @SuppressWarnings("null")
+    public ResponseEntity<CollectionModel<EntityModel<ProductDto>>> getProductsByPriceRange(
+            @RequestParam BigDecimal minPrice, 
+            @RequestParam BigDecimal maxPrice) {
+        List<EntityModel<ProductDto>> products = productRepository.findByPriceBetween(minPrice, maxPrice).stream()
+                .map(productMapper::toDto)
+                .map(productDto -> assembler.toModel(Objects.requireNonNull(productDto, "productDto")))
+                .toList();
+
+        return ResponseEntity.ok(CollectionModel.of(products));
     }
 
-    // Produkte mit niedrigem Lagerbestand
     @GetMapping("/low-stock")
-    public List<Product> getLowStockProducts() {
-        return productRepository.findLowStockProducts();
+    @SuppressWarnings("null")
+    public ResponseEntity<CollectionModel<EntityModel<ProductDto>>> getLowStockProducts() {
+        List<EntityModel<ProductDto>> products = productRepository.findLowStockProducts().stream()
+                .map(productMapper::toDto)
+                .map(productDto -> assembler.toModel(Objects.requireNonNull(productDto, "productDto")))
+                .toList();
+
+        return ResponseEntity.ok(CollectionModel.of(products));
     }
 
-    // Alle Kategorien
     @GetMapping("/categories")
-    public List<String> getAllCategories() {
-        return productRepository.findAllCategories();
+    public ResponseEntity<List<String>> getAllCategories() {
+        return ResponseEntity.ok(productRepository.findAllCategories());
     }
 
-    // Anzahl aktiver Produkte
-    @GetMapping("/count")
+    @GetMapping("/count/active")
     public long getActiveProductCount() {
         return productRepository.countActiveProducts();
     }
 
-    // Produkte filtern
     @GetMapping("/filter")
-    public List<Product> getFilteredProducts(
+    @SuppressWarnings("null")
+    public ResponseEntity<CollectionModel<EntityModel<ProductDto>>> filterProducts(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Boolean active,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) Boolean inStock) {
-        
+
         List<Product> products = productRepository.findAll();
-        
-        // Anwenden der Filter
+
         if (search != null && !search.trim().isEmpty()) {
             products = products.stream()
-                .filter(p -> p.getName().toLowerCase().contains(search.toLowerCase()) || 
-                           p.getDescription().toLowerCase().contains(search.toLowerCase()))
-                .toList();
+                    .filter(p -> p.getName().toLowerCase().contains(search.toLowerCase()) || 
+                                 p.getDescription().toLowerCase().contains(search.toLowerCase()))
+                    .toList();
         }
-        
+
         if (category != null && !category.trim().isEmpty()) {
             products = products.stream()
-                .filter(p -> category.equals(p.getCategory()))
-                .toList();
+                    .filter(p -> category.equals(p.getCategory()))
+                    .toList();
         }
-        
+
         if (active != null) {
             products = products.stream()
-                .filter(p -> active.equals(p.getActive()))
-                .toList();
+                    .filter(p -> active.equals(p.getActive()))
+                    .toList();
         }
-        
+
         if (minPrice != null) {
             products = products.stream()
-                .filter(p -> p.getPrice().compareTo(minPrice) >= 0)
-                .toList();
+                    .filter(p -> p.getPrice().compareTo(minPrice) >= 0)
+                    .toList();
         }
-        
+
         if (maxPrice != null) {
             products = products.stream()
-                .filter(p -> p.getPrice().compareTo(maxPrice) <= 0)
-                .toList();
+                    .filter(p -> p.getPrice().compareTo(maxPrice) <= 0)
+                    .toList();
         }
-        
+
         if (inStock != null && inStock) {
             products = products.stream()
-                .filter(p -> p.getStockQuantity() > 0)
-                .toList();
+                    .filter(p -> p.getStockQuantity() > 0)
+                    .toList();
         }
-        
-        return products;
+
+        List<EntityModel<ProductDto>> resultModels = products.stream()
+                .map(productMapper::toDto)
+            .map(productDto -> assembler.toModel(Objects.requireNonNull(productDto, "productDto")))
+                .toList();
+
+        return ResponseEntity.ok(CollectionModel.of(resultModels));
     }
 }
