@@ -1,0 +1,656 @@
+<!-- order-management-frontend/src/app/inventory/inventory.component.html -->
+<div class="inventory-container">
+  <header class="page-header">
+    <h1>📦 Lager- & Bestandsmanagement</h1>
+    <p class="subtitle">Verwaltung von Lagern, Beständen und Warenbewegungen</p>
+  </header>
+
+  <!-- Quick Stats -->
+  <div class="quick-stats">
+    <div class="stat-card">
+      <span class="stat-icon">🏭</span>
+      <div class="stat-content">
+        <span class="stat-value">{{ warehouses.length }}</span>
+        <span class="stat-label">Lager</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-icon">📦</span>
+      <div class="stat-content">
+        <span class="stat-value">{{ formatNumber(getTotalStock()) }}</span>
+        <span class="stat-label">Gesamtbestand</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-icon">💰</span>
+      <div class="stat-content">
+        <span class="stat-value">{{ formatCurrency(getTotalInventoryValue()) }}</span>
+        <span class="stat-label">Lagerwert</span>
+      </div>
+    </div>
+    <div class="stat-card warning" *ngIf="lowStockItems.length > 0">
+      <span class="stat-icon">⚠️</span>
+      <div class="stat-content">
+        <span class="stat-value">{{ lowStockItems.length }}</span>
+        <span class="stat-label">Niedrige Bestände</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="tab-navigation">
+    <button [class.active]="activeTab === 'overview'" (click)="setActiveTab('overview')">
+      📊 Übersicht
+    </button>
+    <button [class.active]="activeTab === 'warehouses'" (click)="setActiveTab('warehouses')">
+      🏭 Lager
+    </button>
+    <button [class.active]="activeTab === 'movements'" (click)="setActiveTab('movements')">
+      🔄 Bewegungen
+    </button>
+    <button [class.active]="activeTab === 'alerts'" (click)="setActiveTab('alerts')">
+      ⚠️ Alerts
+      <span class="badge" *ngIf="lowStockItems.length > 0">{{ lowStockItems.length }}</span>
+    </button>
+    <button [class.active]="activeTab === 'ai'" (click)="setActiveTab('ai')">
+      🤖 KI-Analyse
+    </button>
+  </div>
+
+  <!-- Overview Tab -->
+  <div class="tab-content" *ngIf="activeTab === 'overview'">
+    <div class="overview-grid">
+      <!-- Warehouse Selector -->
+      <div class="warehouse-selector card">
+        <h3>🏭 Lager auswählen</h3>
+        <div class="warehouse-list">
+          <div 
+            *ngFor="let warehouse of warehouses" 
+            class="warehouse-item"
+            [class.selected]="selectedWarehouse?.id === warehouse.id"
+            (click)="selectWarehouse(warehouse)">
+            <div class="warehouse-info">
+              <span class="warehouse-code">{{ warehouse.code }}</span>
+              <span class="warehouse-name">{{ warehouse.name }}</span>
+              <span class="warehouse-default" *ngIf="warehouse.isDefault">⭐ Standard</span>
+            </div>
+            <div class="warehouse-stats">
+              <span>{{ formatNumber(warehouse.totalStock) }} Einh.</span>
+              <span>{{ formatCurrency(warehouse.inventoryValue) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stock Overview Chart -->
+      <div class="chart-card card">
+        <h3>📈 Bestandsübersicht nach Lager</h3>
+        <div echarts [options]="stockChartOptions" class="chart"></div>
+      </div>
+    </div>
+
+    <!-- Stock Table for Selected Warehouse -->
+    <div class="stock-section card" *ngIf="selectedWarehouse">
+      <div class="section-header">
+        <h3>📋 Bestand: {{ selectedWarehouse.name }}</h3>
+        <button class="btn-primary" (click)="openMovementModal()">
+          ➕ Bewegung buchen
+        </button>
+      </div>
+
+      <div *ngIf="loading.stock" class="loading">
+        <span class="spinner"></span> Lade Bestandsdaten...
+      </div>
+
+      <table class="stock-table" *ngIf="!loading.stock && warehouseStock.length > 0">
+        <thead>
+          <tr>
+            <th>Produkt</th>
+            <th>Kategorie</th>
+            <th>Lagerplatz</th>
+            <th>Bestand</th>
+            <th>Min</th>
+            <th>Max</th>
+            <th>Status</th>
+            <th>Wert</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let stock of warehouseStock" [class.low-stock]="stock.stockStatus === 'LOW' || stock.stockStatus === 'OUT'">
+            <td>{{ stock.productName }}</td>
+            <td>{{ stock.productCategory || '-' }}</td>
+            <td>{{ stock.binLocation || '-' }}</td>
+            <td class="number">{{ formatNumber(stock.quantity) }}</td>
+            <td class="number muted">{{ stock.minStock }}</td>
+            <td class="number muted">{{ stock.maxStock }}</td>
+            <td>
+              <span class="status-badge" [class]="getStockStatusClass(stock.stockStatus)">
+                {{ getStockStatusLabel(stock.stockStatus) }}
+              </span>
+            </td>
+            <td class="number">{{ formatCurrency(stock.stockValue) }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="empty-state" *ngIf="!loading.stock && warehouseStock.length === 0">
+        <p>Keine Bestände in diesem Lager vorhanden.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Warehouses Tab -->
+  <div class="tab-content" *ngIf="activeTab === 'warehouses'">
+    <div class="section-header">
+      <h3>🏭 Lagerverwaltung</h3>
+      <button class="btn-primary" (click)="openWarehouseModal()">
+        ➕ Neues Lager
+      </button>
+    </div>
+
+    <div class="warehouses-grid">
+      <div *ngFor="let warehouse of warehouses" class="warehouse-card card">
+        <div class="warehouse-header">
+          <div>
+            <span class="code">{{ warehouse.code }}</span>
+            <h4>{{ warehouse.name }}</h4>
+          </div>
+          <div class="warehouse-badges">
+            <span class="badge default" *ngIf="warehouse.isDefault">Standard</span>
+            <span class="badge" [class.active]="warehouse.active" [class.inactive]="!warehouse.active">
+              {{ warehouse.active ? 'Aktiv' : 'Inaktiv' }}
+            </span>
+          </div>
+        </div>
+        
+        <p class="description" *ngIf="warehouse.description">{{ warehouse.description }}</p>
+        
+        <div class="warehouse-address" *ngIf="warehouse.address">
+          <span>📍 {{ warehouse.address }}, {{ warehouse.zipCode }} {{ warehouse.city }}</span>
+        </div>
+
+        <div class="warehouse-metrics">
+          <div class="metric">
+            <span class="metric-value">{{ formatNumber(warehouse.productCount) }}</span>
+            <span class="metric-label">Produkte</span>
+          </div>
+          <div class="metric">
+            <span class="metric-value">{{ formatNumber(warehouse.totalStock) }}</span>
+            <span class="metric-label">Einheiten</span>
+          </div>
+          <div class="metric">
+            <span class="metric-value">{{ formatCurrency(warehouse.inventoryValue) }}</span>
+            <span class="metric-label">Wert</span>
+          </div>
+        </div>
+
+        <div class="warehouse-actions">
+          <button class="btn-secondary" (click)="openWarehouseModal(warehouse)">✏️ Bearbeiten</button>
+          <button class="btn-secondary" (click)="selectWarehouse(warehouse); setActiveTab('overview')">📋 Bestand</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Movements Tab -->
+  <div class="tab-content" *ngIf="activeTab === 'movements'">
+    <div class="section-header">
+      <h3>🔄 Warenbewegungen</h3>
+      <button class="btn-primary" (click)="openMovementModal()">
+        ➕ Neue Bewegung
+      </button>
+    </div>
+
+    <div *ngIf="loading.movements" class="loading">
+      <span class="spinner"></span> Lade Bewegungen...
+    </div>
+
+    <div class="movements-section" *ngIf="!loading.movements">
+      <!-- Movement Chart -->
+      <div class="chart-card card" *ngIf="movements.length > 0">
+        <h4>Bewegungen nach Typ</h4>
+        <div echarts [options]="movementChartOptions" class="chart small"></div>
+      </div>
+
+      <!-- Movements Table -->
+      <div class="card">
+        <table class="movements-table" *ngIf="movements.length > 0">
+          <thead>
+            <tr>
+              <th>Nummer</th>
+              <th>Typ</th>
+              <th>Produkt</th>
+              <th>Von</th>
+              <th>Nach</th>
+              <th>Menge</th>
+              <th>Datum</th>
+              <th>Grund</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let movement of movements">
+              <td class="mono">{{ movement.movementNumber }}</td>
+              <td>
+                <span class="movement-type-badge" [attr.data-type]="movement.movementType">
+                  {{ getMovementTypeLabel(movement.movementType) }}
+                </span>
+              </td>
+              <td>{{ movement.productName }}</td>
+              <td>{{ movement.sourceWarehouseCode || '-' }}</td>
+              <td>{{ movement.targetWarehouseCode || '-' }}</td>
+              <td class="number">
+                <span [class.positive]="['GOODS_RECEIPT', 'RETURN'].includes(movement.movementType)"
+                      [class.negative]="['GOODS_ISSUE', 'SCRAP'].includes(movement.movementType)">
+                  {{ movement.movementType === 'GOODS_ISSUE' || movement.movementType === 'SCRAP' ? '-' : '+' }}{{ movement.quantity }}
+                </span>
+              </td>
+              <td>{{ formatDate(movement.createdAt) }}</td>
+              <td>{{ movement.reason || '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="empty-state" *ngIf="movements.length === 0">
+          <p>Keine Warenbewegungen vorhanden.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerts Tab -->
+  <div class="tab-content" *ngIf="activeTab === 'alerts'">
+    <div class="section-header">
+      <h3>⚠️ Bestandswarnungen</h3>
+    </div>
+
+    <div *ngIf="loading.alerts" class="loading">
+      <span class="spinner"></span> Lade Warnungen...
+    </div>
+
+    <div class="alerts-section" *ngIf="!loading.alerts">
+      <div class="alert-card card" *ngFor="let item of lowStockItems" [class]="'alert-' + item.stockStatus.toLowerCase()">
+        <div class="alert-icon">
+          {{ item.stockStatus === 'OUT' ? '🚫' : '⚠️' }}
+        </div>
+        <div class="alert-content">
+          <h4>{{ item.productName }}</h4>
+          <p>
+            <strong>{{ item.warehouseName }}</strong> - 
+            Bestand: <span class="alert-quantity">{{ item.quantity }}</span> 
+            (Min: {{ item.minStock }})
+          </p>
+          <p *ngIf="item.reorderQuantity" class="reorder-hint">
+            💡 Empfohlene Nachbestellung: {{ item.reorderQuantity }} Einheiten
+          </p>
+        </div>
+        <div class="alert-actions">
+          <button class="btn-primary btn-sm" (click)="handleAlertAction(item)">
+            ➕ Wareneingang
+          </button>
+        </div>
+      </div>
+
+      <div class="empty-state success" *ngIf="lowStockItems.length === 0">
+        <span class="success-icon">✅</span>
+        <p>Alle Bestände sind optimal!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Warehouse Modal -->
+<div class="modal-overlay" *ngIf="showWarehouseModal" (click)="closeWarehouseModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>{{ editingWarehouse.id ? 'Lager bearbeiten' : 'Neues Lager' }}</h3>
+      <button class="close-btn" (click)="closeWarehouseModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Code *</label>
+          <input type="text" [(ngModel)]="editingWarehouse.code" placeholder="z.B. WH-001" required>
+        </div>
+        <div class="form-group">
+          <label>Name *</label>
+          <input type="text" [(ngModel)]="editingWarehouse.name" placeholder="z.B. Hauptlager" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Beschreibung</label>
+        <textarea [(ngModel)]="editingWarehouse.description" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Adresse</label>
+        <input type="text" [(ngModel)]="editingWarehouse.address" placeholder="Straße, Hausnummer">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>PLZ</label>
+          <input type="text" [(ngModel)]="editingWarehouse.zipCode">
+        </div>
+        <div class="form-group">
+          <label>Stadt</label>
+          <input type="text" [(ngModel)]="editingWarehouse.city">
+        </div>
+        <div class="form-group">
+          <label>Land</label>
+          <input type="text" [(ngModel)]="editingWarehouse.country" value="Deutschland">
+        </div>
+      </div>
+      <div class="form-row checkboxes">
+        <label class="checkbox">
+          <input type="checkbox" [(ngModel)]="editingWarehouse.active">
+          Aktiv
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" [(ngModel)]="editingWarehouse.isDefault">
+          Standard-Lager
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="closeWarehouseModal()">Abbrechen</button>
+      <button class="btn-primary" (click)="saveWarehouse()" [disabled]="!editingWarehouse.code || !editingWarehouse.name">
+        💾 Speichern
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Movement Modal -->
+<div class="modal-overlay" *ngIf="showMovementModal" (click)="closeMovementModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>🔄 Warenbewegung buchen</h3>
+      <button class="close-btn" (click)="closeMovementModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Bewegungsart *</label>
+        <select [(ngModel)]="movementForm.movementType" (change)="onMovementTypeChange()">
+          <option *ngFor="let type of movementTypes" [value]="type.value">{{ type.label }}</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label>Produkt *</label>
+        <select [(ngModel)]="movementForm.productId">
+          <option *ngFor="let product of products" [value]="product.id">{{ product.name }}</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" *ngIf="needsSourceWarehouse()">
+          <label>Quelllager *</label>
+          <select [(ngModel)]="movementForm.sourceWarehouseId">
+            <option *ngFor="let wh of warehouses" [value]="wh.id">{{ wh.code }} - {{ wh.name }}</option>
+          </select>
+        </div>
+        
+        <div class="form-group" *ngIf="needsTargetWarehouse()">
+          <label>Ziellager *</label>
+          <select [(ngModel)]="movementForm.targetWarehouseId">
+            <option *ngFor="let wh of warehouses" [value]="wh.id">{{ wh.code }} - {{ wh.name }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Menge *</label>
+        <input type="number" [(ngModel)]="movementForm.quantity" min="1" required>
+      </div>
+
+      <div class="form-group">
+        <label>Grund / Bemerkung</label>
+        <input type="text" [(ngModel)]="movementForm.reason" placeholder="z.B. Lieferung #12345">
+      </div>
+
+      <div class="form-group">
+        <label>Referenznummer</label>
+        <input type="text" [(ngModel)]="movementForm.referenceNumber" placeholder="z.B. ORD-12345">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="closeMovementModal()">Abbrechen</button>
+      <button class="btn-primary" (click)="saveMovement()" 
+              [disabled]="!movementForm.productId || movementForm.quantity < 1">
+        ✅ Buchen
+      </button>
+    </div>
+  </div>
+</div>
+<!-- AI Tab -->
+<div class="tab-content ai-tab" *ngIf="activeTab === 'ai'">
+  <div class="ai-header">
+    <h2>🤖 KI-gestützte Bestandsanalyse</h2>
+    <button class="btn-refresh" (click)="refreshAiReport()" [disabled]="aiLoading">
+      🔄 Analyse aktualisieren
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div class="ai-loading" *ngIf="aiLoading">
+    <div class="spinner"></div>
+    <p>KI analysiert Bestandsdaten...</p>
+  </div>
+
+  <!-- AI Content -->
+  <div class="ai-content" *ngIf="!aiLoading && aiReport">
+    <!-- Sub-Navigation -->
+    <div class="ai-sub-tabs">
+      <button [class.active]="aiActiveSubTab === 'report'" (click)="setAiSubTab('report')">
+        📋 Übersicht
+      </button>
+      <button [class.active]="aiActiveSubTab === 'forecasts'" (click)="setAiSubTab('forecasts')">
+        📈 Prognosen
+      </button>
+      <button [class.active]="aiActiveSubTab === 'reorder'" (click)="setAiSubTab('reorder')">
+        🛒 Nachbestellung
+      </button>
+      <button [class.active]="aiActiveSubTab === 'anomalies'" (click)="setAiSubTab('anomalies')">
+        ⚠️ Anomalien
+      </button>
+    </div>
+
+    <!-- Report Overview Sub-Tab -->
+    <div *ngIf="aiActiveSubTab === 'report'" class="ai-sub-content">
+      <!-- Executive Summary -->
+      <div class="ai-summary card">
+        <h3>📊 Executive Summary</h3>
+        <p class="summary-text">{{ aiReport.executiveSummary }}</p>
+        <p class="generated-at">Generiert am: {{ formatDateShort(aiReport.generatedAt) }}</p>
+      </div>
+
+      <div class="ai-overview-grid">
+        <!-- Health Score -->
+        <div class="health-score-card card" *ngIf="healthScore">
+          <h3>🏥 Lager-Gesundheit</h3>
+          <div echarts [options]="healthScoreChartOptions" class="health-gauge"></div>
+          <div class="score-details">
+            <div class="score-item">
+              <span class="score-label">Verfügbarkeit</span>
+              <span class="score-value">{{ healthScore.stockAvailabilityScore }}%</span>
+            </div>
+            <div class="score-item">
+              <span class="score-label">Umschlag</span>
+              <span class="score-value">{{ healthScore.turnoverScore }}%</span>
+            </div>
+            <div class="score-item">
+              <span class="score-label">Genauigkeit</span>
+              <span class="score-value">{{ healthScore.accuracyScore }}%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Items -->
+        <div class="action-items-card card">
+          <h3>🎯 Handlungsempfehlungen</h3>
+          <ul class="action-list" *ngIf="aiReport.actionItems?.length">
+            <li *ngFor="let action of aiReport.actionItems">{{ action }}</li>
+          </ul>
+          <p *ngIf="!aiReport.actionItems?.length" class="no-data">Keine dringenden Maßnahmen erforderlich</p>
+        </div>
+
+        <!-- Strengths & Weaknesses -->
+        <div class="insights-card card" *ngIf="healthScore">
+          <h3>💡 Insights</h3>
+          <div class="insights-columns">
+            <div class="strengths">
+              <h4>✅ Stärken</h4>
+              <ul>
+                <li *ngFor="let s of healthScore.strengths">{{ s }}</li>
+              </ul>
+            </div>
+            <div class="weaknesses">
+              <h4>⚠️ Schwächen</h4>
+              <ul>
+                <li *ngFor="let w of healthScore.weaknesses">{{ w }}</li>
+              </ul>
+            </div>
+            <div class="opportunities">
+              <h4>🚀 Chancen</h4>
+              <ul>
+                <li *ngFor="let o of healthScore.opportunities">{{ o }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Forecasts Sub-Tab -->
+    <div *ngIf="aiActiveSubTab === 'forecasts'" class="ai-sub-content">
+      <div class="forecast-chart card">
+        <h3>📈 Nachfrageprognose</h3>
+        <div echarts [options]="forecastChartOptions" class="forecast-echart"></div>
+      </div>
+
+      <div class="forecast-table card">
+        <h3>📊 Detaillierte Prognosen</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Produkt</th>
+              <th>Kategorie</th>
+              <th>Bestand</th>
+              <th>7 Tage</th>
+              <th>14 Tage</th>
+              <th>30 Tage</th>
+              <th>Trend</th>
+              <th>Konfidenz</th>
+              <th>Insight</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let forecast of demandForecasts">
+              <td class="product-name">{{ forecast.productName }}</td>
+              <td>{{ forecast.category }}</td>
+              <td class="number">{{ forecast.currentStock }}</td>
+              <td class="number">{{ forecast.predictedDemand7Days }}</td>
+              <td class="number">{{ forecast.predictedDemand14Days }}</td>
+              <td class="number">{{ forecast.predictedDemand30Days }}</td>
+              <td class="trend">
+                <span class="trend-icon">{{ getTrendIcon(forecast.trendDirection) }}</span>
+                {{ forecast.trendDirection }}
+              </td>
+              <td>
+                <span class="confidence" 
+                      [style.color]="forecast.confidenceScore > 0.7 ? '#28a745' : forecast.confidenceScore > 0.5 ? '#ffc107' : '#dc3545'">
+                  {{ (forecast.confidenceScore * 100).toFixed(0) }}%
+                </span>
+              </td>
+              <td class="insight">{{ forecast.aiInsight }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p *ngIf="demandForecasts.length === 0" class="no-data">Keine Prognosen verfügbar</p>
+      </div>
+    </div>
+
+    <!-- Reorder Sub-Tab -->
+    <div *ngIf="aiActiveSubTab === 'reorder'" class="ai-sub-content">
+      <div class="reorder-cards">
+        <div *ngFor="let rec of reorderRecommendations" class="reorder-card card"
+             [style.border-left-color]="getUrgencyColor(rec.urgency)">
+          <div class="reorder-header">
+            <span class="urgency-badge" [style.background-color]="getUrgencyColor(rec.urgency)">
+              {{ rec.urgency }}
+            </span>
+            <span class="product-name">{{ rec.productName }}</span>
+          </div>
+          <div class="reorder-body">
+            <div class="reorder-stats">
+              <div class="stat">
+                <span class="label">Aktuell</span>
+                <span class="value">{{ rec.currentStock }}</span>
+              </div>
+              <div class="stat">
+                <span class="label">Minimum</span>
+                <span class="value">{{ rec.minStock }}</span>
+              </div>
+              <div class="stat">
+                <span class="label">Empfohlen</span>
+                <span class="value highlight">{{ rec.recommendedOrderQuantity }}</span>
+              </div>
+              <div class="stat">
+                <span class="label">Kosten</span>
+                <span class="value">{{ formatCurrency(rec.estimatedCost) }}</span>
+              </div>
+            </div>
+            <div class="reorder-info">
+              <p class="reason">💡 {{ rec.reason }}</p>
+              <p class="dates">
+                <span>📅 Bestellen bis: {{ formatDateShort(rec.suggestedOrderDate) }}</span>
+                <span>⏳ Tage bis Stockout: {{ rec.daysUntilStockout }}</span>
+              </p>
+              <p class="sentiment" *ngIf="rec.reviewSentimentImpact !== 0">
+                <span [style.color]="rec.reviewSentimentImpact > 0 ? '#28a745' : '#dc3545'">
+                  {{ rec.reviewSentimentImpact > 0 ? '👍' : '👎' }} Sentiment-Impact: {{ (rec.reviewSentimentImpact * 100).toFixed(0) }}%
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+        <p *ngIf="reorderRecommendations.length === 0" class="no-data card">
+          ✅ Alle Bestände sind im grünen Bereich - keine Nachbestellungen erforderlich
+        </p>
+      </div>
+    </div>
+
+    <!-- Anomalies Sub-Tab -->
+    <div *ngIf="aiActiveSubTab === 'anomalies'" class="ai-sub-content">
+      <div class="anomaly-cards">
+        <div *ngFor="let anomaly of inventoryAnomalies" class="anomaly-card card"
+             [style.border-left-color]="getSeverityColor(anomaly.severity)">
+          <div class="anomaly-header">
+            <span class="severity-badge" [style.background-color]="getSeverityColor(anomaly.severity)">
+              {{ anomaly.severity }}
+            </span>
+            <span class="anomaly-type">{{ anomaly.anomalyType }}</span>
+          </div>
+          <div class="anomaly-body">
+            <p class="anomaly-product">
+              <strong>{{ anomaly.productName }}</strong>
+              <span *ngIf="anomaly.warehouseName"> - {{ anomaly.warehouseName }}</span>
+            </p>
+            <p class="anomaly-description">{{ anomaly.description }}</p>
+            <p class="anomaly-action">
+              <span class="action-label">💡 Empfehlung:</span>
+              {{ anomaly.suggestedAction }}
+            </p>
+            <p class="anomaly-date">Erkannt am: {{ formatDateShort(anomaly.detectedAt) }}</p>
+          </div>
+        </div>
+        <p *ngIf="inventoryAnomalies.length === 0" class="no-data card">
+          ✅ Keine Anomalien erkannt - Lagerbestände sind stabil
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- No Data State -->
+  <div class="ai-no-data" *ngIf="!aiLoading && !aiReport">
+    <p>Klicken Sie auf "Analyse aktualisieren", um die KI-Analyse zu starten.</p>
+  </div>
+</div>
