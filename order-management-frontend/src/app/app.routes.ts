@@ -30,4 +30,17 @@ export const routes: Routes = [
       import('./customers/customer-detail/customer-detail.component')
         .then(m => m.CustomerDetailComponent),
   },
+  // ===== NEU: Reporting & Inventory =====
+  {
+    path: 'reporting',
+    loadComponent: () =>
+      import('./reporting/reporting.component')
+        .then(m => m.ReportingComponent),
+  },
+  {
+    path: 'inventory',
+    loadComponent: () =>
+      import('./inventory/inventory.component')
+        .then(m => m.InventoryComponent),
+  },
 ];
