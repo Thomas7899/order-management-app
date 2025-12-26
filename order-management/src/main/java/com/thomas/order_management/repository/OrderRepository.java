@@ -5,6 +5,7 @@ import com.thomas.order_management.model.Order;
 import com.thomas.order_management.model.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
@@ -37,4 +38,40 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     
     @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.orderDate >= :startDate AND o.orderDate <= :endDate")
     BigDecimal getTotalRevenueInPeriod(LocalDateTime startDate, LocalDateTime endDate);
+
+    // Neue Methoden für Reporting
+
+    // Monatliche Umsatzdaten für Prognose
+    @Query(value = """
+        SELECT EXTRACT(YEAR FROM order_date) as year, EXTRACT(MONTH FROM order_date) as month,
+               SUM(total_amount) as revenue, COUNT(*) as order_count
+        FROM orders
+        WHERE order_date >= :startDate AND status = 'DELIVERED'
+        GROUP BY EXTRACT(YEAR FROM order_date), EXTRACT(MONTH FROM order_date)
+        ORDER BY year, month
+        """, nativeQuery = true)
+    List<Object[]> getMonthlySalesData(@Param("startDate") LocalDateTime startDate);
+
+    // Monatliche Bestellanzahl
+    @Query(value = """
+        SELECT EXTRACT(YEAR FROM order_date) as year, EXTRACT(MONTH FROM order_date) as month,
+               COUNT(*) as order_count
+        FROM orders
+        WHERE order_date >= :startDate
+        GROUP BY EXTRACT(YEAR FROM order_date), EXTRACT(MONTH FROM order_date)
+        ORDER BY year, month
+        """, nativeQuery = true)
+    List<Object[]> getMonthlyOrderCount(@Param("startDate") LocalDateTime startDate);
+
+    // Kunden-ABC-Analyse
+    @Query(value = """
+        SELECT c.id, c.first_name, c.last_name, 
+               COALESCE(SUM(o.total_amount), 0) as total_revenue,
+               COUNT(o.id) as order_count
+        FROM customers c
+        LEFT JOIN orders o ON c.id = o.customer_id AND o.status = 'DELIVERED'
+        GROUP BY c.id, c.first_name, c.last_name
+        ORDER BY total_revenue DESC
+        """, nativeQuery = true)
+    List<Object[]> getCustomerSalesData();
 }

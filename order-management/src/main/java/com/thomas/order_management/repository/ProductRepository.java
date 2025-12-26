@@ -187,4 +187,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         ORDER BY avg_price
         """, nativeQuery = true)
     List<Object[]> getPriceDistributionAnalysis();
+
+    // Neue Methode für KPI-Dashboard
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.stockQuantity = 0 AND p.active = true")
+    long countOutOfStockProducts();
 }
