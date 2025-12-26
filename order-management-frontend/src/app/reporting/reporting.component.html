@@ -1,0 +1,322 @@
+<!-- order-management-frontend/src/app/reporting/reporting.component.html -->
+<div class="reporting-container">
+  <header class="page-header">
+    <h1>📊 Business Intelligence & Reporting</h1>
+    <p class="subtitle">Erweiterte Analysen und Prognosen</p>
+  </header>
+
+  <!-- Tab Navigation -->
+  <div class="tab-navigation">
+    <button 
+      [class.active]="activeTab === 'kpi'" 
+      (click)="setActiveTab('kpi')">
+      🎯 KPI-Dashboard
+    </button>
+    <button 
+      [class.active]="activeTab === 'abc'" 
+      (click)="setActiveTab('abc')">
+      📊 ABC-Analyse
+    </button>
+    <button 
+      [class.active]="activeTab === 'forecast'" 
+      (click)="setActiveTab('forecast')">
+      🔮 Prognose
+    </button>
+  </div>
+
+  <!-- KPI Dashboard Tab -->
+  <div class="tab-content" *ngIf="activeTab === 'kpi'">
+    <div *ngIf="loading.kpi" class="loading">
+      <span class="spinner"></span> Lade KPI-Daten...
+    </div>
+
+    <div *ngIf="!loading.kpi && kpiData" class="kpi-dashboard">
+      <!-- Financial KPIs -->
+      <section class="kpi-section">
+        <h2>💰 Finanz-KPIs</h2>
+        <div class="kpi-grid">
+          <div class="kpi-card highlight">
+            <span class="kpi-label">Gesamtumsatz</span>
+            <span class="kpi-value">{{ formatCurrency(kpiData.financial.totalRevenue) }}</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Umsatz diesen Monat</span>
+            <span class="kpi-value">{{ formatCurrency(kpiData.financial.revenueThisMonth) }}</span>
+            <span class="kpi-change" [class]="getTrendClass(kpiData.financial.revenueGrowth)">
+              {{ getTrendIcon(kpiData.financial.revenueGrowth) }} {{ formatPercent(kpiData.financial.revenueGrowth) }}
+            </span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Ø Bestellwert</span>
+            <span class="kpi-value">{{ formatCurrency(kpiData.financial.averageOrderValue) }}</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Umsatz/Kunde</span>
+            <span class="kpi-value">{{ formatCurrency(kpiData.financial.revenuePerCustomer) }}</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Operational KPIs -->
+      <section class="kpi-section">
+        <h2>⚙️ Operations-KPIs</h2>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-label">Gesamtbestellungen</span>
+            <span class="kpi-value">{{ formatNumber(kpiData.operational.totalOrders) }}</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Bestellungen/Tag (Ø)</span>
+            <span class="kpi-value">{{ kpiData.operational.averageOrdersPerDay | number:'1.1-1' }}</span>
+          </div>
+          <div class="kpi-card success">
+            <span class="kpi-label">Fulfillment-Rate</span>
+            <span class="kpi-value">{{ kpiData.operational.fulfillmentRate }}%</span>
+          </div>
+          <div class="kpi-card warning">
+            <span class="kpi-label">Stornoquote</span>
+            <span class="kpi-value">{{ kpiData.operational.cancellationRate }}%</span>
+          </div>
+        </div>
+        
+        <div class="chart-container">
+          <h3>Bestellstatus-Verteilung</h3>
+          <div echarts [options]="orderStatusChartOptions" class="chart"></div>
+        </div>
+      </section>
+
+      <!-- Customer KPIs -->
+      <section class="kpi-section">
+        <h2>👥 Kunden-KPIs</h2>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-label">Gesamtkunden</span>
+            <span class="kpi-value">{{ formatNumber(kpiData.customer.totalCustomers) }}</span>
+          </div>
+          <div class="kpi-card success">
+            <span class="kpi-label">Neue Kunden (Monat)</span>
+            <span class="kpi-value">+{{ formatNumber(kpiData.customer.newCustomersThisMonth) }}</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Aktive Kunden</span>
+            <span class="kpi-value">{{ formatNumber(kpiData.customer.activeCustomers) }}</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Kundenbindungsrate</span>
+            <span class="kpi-value">{{ kpiData.customer.customerRetentionRate }}%</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Inventory KPIs -->
+      <section class="kpi-section">
+        <h2>📦 Lager-KPIs</h2>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-label">Lagerwert</span>
+            <span class="kpi-value">{{ formatCurrency(kpiData.inventory.totalInventoryValue) }}</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Aktive Produkte</span>
+            <span class="kpi-value">{{ formatNumber(kpiData.inventory.activeProducts) }}</span>
+          </div>
+          <div class="kpi-card warning">
+            <span class="kpi-label">Niedriger Bestand</span>
+            <span class="kpi-value">{{ formatNumber(kpiData.inventory.lowStockItems) }}</span>
+          </div>
+          <div class="kpi-card danger">
+            <span class="kpi-label">Nicht verfügbar</span>
+            <span class="kpi-value">{{ formatNumber(kpiData.inventory.outOfStockItems) }}</span>
+          </div>
+        </div>
+        
+        <div class="chart-container">
+          <h3>Lagerwert nach Kategorie</h3>
+          <div echarts [options]="inventoryCategoryChartOptions" class="chart"></div>
+        </div>
+      </section>
+
+      <!-- Trend Charts -->
+      <section class="kpi-section charts-row">
+        <div class="chart-container">
+          <h3>📈 Umsatzentwicklung</h3>
+          <div echarts [options]="revenueTrendChartOptions" class="chart"></div>
+        </div>
+        <div class="chart-container">
+          <h3>📊 Bestellentwicklung</h3>
+          <div echarts [options]="orderTrendChartOptions" class="chart"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ABC Analysis Tab -->
+  <div class="tab-content" *ngIf="activeTab === 'abc'">
+    <div class="abc-controls">
+      <button 
+        [class.active]="abcType === 'products'" 
+        (click)="setAbcType('products')">
+        📦 Produkte
+      </button>
+      <button 
+        [class.active]="abcType === 'customers'" 
+        (click)="setAbcType('customers')">
+        👥 Kunden
+      </button>
+    </div>
+
+    <div *ngIf="loading.abc" class="loading">
+      <span class="spinner"></span> Lade ABC-Analyse...
+    </div>
+
+    <div *ngIf="!loading.abc" class="abc-analysis">
+      <!-- Summary Cards -->
+      <div class="abc-summary" *ngIf="(abcType === 'products' ? productAbcData : customerAbcData) as data">
+        <div class="abc-card a-class">
+          <div class="abc-class-badge">A</div>
+          <div class="abc-stats">
+            <span class="count">{{ data.summary.aClassCount }} {{ abcType === 'products' ? 'Produkte' : 'Kunden' }}</span>
+            <span class="revenue">{{ formatCurrency(data.summary.aClassRevenue) }}</span>
+            <span class="percentage">{{ data.summary.aClassPercentage }}% vom Umsatz</span>
+          </div>
+          <p class="abc-description">Top-Performer (80% des Umsatzes)</p>
+        </div>
+        
+        <div class="abc-card b-class">
+          <div class="abc-class-badge">B</div>
+          <div class="abc-stats">
+            <span class="count">{{ data.summary.bClassCount }} {{ abcType === 'products' ? 'Produkte' : 'Kunden' }}</span>
+            <span class="revenue">{{ formatCurrency(data.summary.bClassRevenue) }}</span>
+            <span class="percentage">{{ data.summary.bClassPercentage }}% vom Umsatz</span>
+          </div>
+          <p class="abc-description">Mittelklasse (15% des Umsatzes)</p>
+        </div>
+        
+        <div class="abc-card c-class">
+          <div class="abc-class-badge">C</div>
+          <div class="abc-stats">
+            <span class="count">{{ data.summary.cClassCount }} {{ abcType === 'products' ? 'Produkte' : 'Kunden' }}</span>
+            <span class="revenue">{{ formatCurrency(data.summary.cClassRevenue) }}</span>
+            <span class="percentage">{{ data.summary.cClassPercentage }}% vom Umsatz</span>
+          </div>
+          <p class="abc-description">Long-Tail (5% des Umsatzes)</p>
+        </div>
+      </div>
+
+      <!-- ABC Chart -->
+      <div class="chart-container large">
+        <h3>Top 20 nach Umsatz (ABC-Klassifizierung)</h3>
+        <div echarts [options]="abcChartOptions" class="chart large"></div>
+      </div>
+
+      <!-- ABC Table -->
+      <div class="abc-table-container" *ngIf="(abcType === 'products' ? productAbcData : customerAbcData) as data">
+        <table class="abc-table">
+          <thead>
+            <tr>
+              <th>Rang</th>
+              <th>Name</th>
+              <th *ngIf="abcType === 'products'">Kategorie</th>
+              <th>Umsatz</th>
+              <th>Anteil</th>
+              <th>Kumuliert</th>
+              <th>Klasse</th>
+              <th>Bestellungen</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of data.items; let i = index">
+              <td>{{ i + 1 }}</td>
+              <td>{{ item.name }}</td>
+              <td *ngIf="abcType === 'products'">{{ item.category || '-' }}</td>
+              <td class="number">{{ formatCurrency(item.revenue) }}</td>
+              <td class="number">{{ item.revenuePercentage }}%</td>
+              <td class="number">{{ item.cumulativePercentage }}%</td>
+              <td>
+                <span class="abc-badge" [style.background-color]="getAbcClassColor(item.abcClass)">
+                  {{ item.abcClass }}
+                </span>
+              </td>
+              <td class="number">{{ item.orderCount }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forecast Tab -->
+  <div class="tab-content" *ngIf="activeTab === 'forecast'">
+    <div *ngIf="loading.forecast" class="loading">
+      <span class="spinner"></span> Lade Prognosedaten...
+    </div>
+
+    <div *ngIf="!loading.forecast && forecastData" class="forecast-section">
+      <!-- Forecast Summary -->
+      <div class="forecast-summary">
+        <div class="forecast-card">
+          <span class="forecast-label">Ø Monatsumsatz</span>
+          <span class="forecast-value">{{ formatCurrency(forecastData.summary.averageMonthlyRevenue) }}</span>
+        </div>
+        <div class="forecast-card highlight">
+          <span class="forecast-label">Prognose nächster Monat</span>
+          <span class="forecast-value">{{ formatCurrency(forecastData.summary.predictedNextMonth) }}</span>
+        </div>
+        <div class="forecast-card">
+          <span class="forecast-label">Prognose Quartal</span>
+          <span class="forecast-value">{{ formatCurrency(forecastData.summary.predictedNextQuarter) }}</span>
+        </div>
+        <div class="forecast-card" [class]="getTrendClass(forecastData.summary.growthTrend)">
+          <span class="forecast-label">Wachstumstrend</span>
+          <span class="forecast-value">
+            {{ getTrendIcon(forecastData.summary.growthTrend) }}
+            {{ formatPercent(forecastData.summary.growthTrend) }}
+          </span>
+          <span class="trend-direction">{{ forecastData.summary.trendDirection }}</span>
+        </div>
+      </div>
+
+      <!-- Forecast Chart -->
+      <div class="chart-container large">
+        <h3>🔮 Umsatzprognose (12 Monate Historie + 3 Monate Forecast)</h3>
+        <div echarts [options]="forecastChartOptions" class="chart large"></div>
+      </div>
+
+      <!-- Forecast Details Table -->
+      <div class="forecast-table-container">
+        <h3>📅 Monatliche Details</h3>
+        <table class="forecast-table">
+          <thead>
+            <tr>
+              <th>Periode</th>
+              <th>Ist-Umsatz</th>
+              <th>Prognose</th>
+              <th>Wachstum</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let period of forecastData.historicalData">
+              <td>{{ period.period }}</td>
+              <td class="number">{{ formatCurrency(period.actualRevenue) }}</td>
+              <td class="number">-</td>
+              <td class="number" [class]="getTrendClass(period.growthRate)">
+                {{ period.growthRate != null ? formatPercent(period.growthRate) : '-' }}
+              </td>
+              <td><span class="status-badge actual">Ist</span></td>
+            </tr>
+            <tr *ngFor="let period of forecastData.forecastData" class="forecast-row">
+              <td>{{ period.period }}</td>
+              <td class="number">-</td>
+              <td class="number">{{ formatCurrency(period.forecastedRevenue) }}</td>
+              <td class="number" [class]="getTrendClass(period.growthRate)">
+                {{ period.growthRate != null ? formatPercent(period.growthRate) : '-' }}
+              </td>
+              <td><span class="status-badge forecast">Prognose</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
