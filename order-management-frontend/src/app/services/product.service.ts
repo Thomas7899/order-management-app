@@ -12,8 +12,28 @@ export class ProductService {
 
   constructor(private readonly http: HttpClient) {}
 
+  private unwrapCollection<T>(value: unknown): T[] {
+    if (Array.isArray(value)) return value as T[];
+
+    const asAny = value as any;
+    if (asAny && Array.isArray(asAny.content)) return asAny.content as T[];
+
+    const embedded = asAny?._embedded;
+    if (embedded && typeof embedded === 'object') {
+      for (const key of Object.keys(embedded)) {
+        const candidate = (embedded as any)[key];
+        if (Array.isArray(candidate)) return candidate as T[];
+      }
+    }
+
+    return [];
+  }
+
   getAll(): Observable<Product[]> {
-    return this.http.get<Product[]>(this.apiUrl).pipe(catchError(this.handleError));
+    return this.http.get<unknown>(this.apiUrl).pipe(
+      map(res => this.unwrapCollection<Product>(res)),
+      catchError(this.handleError)
+    );
   }
 
   getById(id: ID): Observable<Product | null> {
@@ -46,15 +66,24 @@ export class ProductService {
     if (filter.minPrice) params = params.set('minPrice', filter.minPrice);
     if (filter.maxPrice) params = params.set('maxPrice', filter.maxPrice);
     if (filter.inStock !== undefined) params = params.set('inStock', filter.inStock);
-    return this.http.get<Product[]>(`${this.apiUrl}/filter`, { params }).pipe(catchError(this.handleError));
+    return this.http.get<unknown>(`${this.apiUrl}/filter`, { params }).pipe(
+      map(res => this.unwrapCollection<Product>(res)),
+      catchError(this.handleError)
+    );
   }
 
   getActiveProducts(): Observable<Product[]> {
-    return this.http.get<Product[]>(`${this.apiUrl}/active`).pipe(catchError(this.handleError));
+    return this.http.get<unknown>(`${this.apiUrl}/active`).pipe(
+      map(res => this.unwrapCollection<Product>(res)),
+      catchError(this.handleError)
+    );
   }
 
   getLowStockProducts(threshold: number = 10): Observable<Product[]> {
-    return this.http.get<Product[]>(`${this.apiUrl}/low-stock?threshold=${threshold}`).pipe(catchError(this.handleError));
+    return this.http.get<unknown>(`${this.apiUrl}/low-stock?threshold=${threshold}`).pipe(
+      map(res => this.unwrapCollection<Product>(res)),
+      catchError(this.handleError)
+    );
   }
 
   getCategories(): Observable<ProductCategory[]> {

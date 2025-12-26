@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { Customer } from './customer.service';
 import { Product } from '../types';
 import { environment } from '../../environments/environment';
@@ -49,8 +50,27 @@ export class OrderService {
 
   constructor(private http: HttpClient) {}
 
+  private unwrapCollection<T>(value: unknown): T[] {
+    if (Array.isArray(value)) return value as T[];
+
+    const asAny = value as any;
+    if (asAny && Array.isArray(asAny.content)) return asAny.content as T[];
+
+    const embedded = asAny?._embedded;
+    if (embedded && typeof embedded === 'object') {
+      for (const key of Object.keys(embedded)) {
+        const candidate = (embedded as any)[key];
+        if (Array.isArray(candidate)) return candidate as T[];
+      }
+    }
+
+    return [];
+  }
+
   getOrders(): Observable<Order[]> {
-    return this.http.get<Order[]>(this.apiUrl);
+    return this.http.get<unknown>(this.apiUrl).pipe(
+      map(res => this.unwrapCollection<Order>(res))
+    );
   }
 
   getOrder(id: number): Observable<Order> {
@@ -78,15 +98,21 @@ export class OrderService {
   }
 
   getOrdersByCustomer(customerId: number): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.apiUrl}/customer/${customerId}`);
+    return this.http.get<unknown>(`${this.apiUrl}/customer/${customerId}`).pipe(
+      map(res => this.unwrapCollection<Order>(res))
+    );
   }
 
   getOrdersByStatus(status: OrderStatus): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.apiUrl}/status/${status}`);
+    return this.http.get<unknown>(`${this.apiUrl}/status/${status}`).pipe(
+      map(res => this.unwrapCollection<Order>(res))
+    );
   }
 
   getOrdersInPeriod(startDate: string, endDate: string): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.apiUrl}/period?startDate=${startDate}&endDate=${endDate}`);
+    return this.http.get<unknown>(`${this.apiUrl}/filter?startDate=${startDate}&endDate=${endDate}`).pipe(
+      map(res => this.unwrapCollection<Order>(res))
+    );
   }
 
   getRevenueByStatus(status: OrderStatus): Observable<number> {
