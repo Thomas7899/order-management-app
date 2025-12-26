@@ -38,4 +38,16 @@ public class ReviewEmbeddingRepository {
         String sql = "DELETE FROM review_embeddings";
         jdbcTemplate.update(sql);
     }
+
+    public void upsertEmbedding(Long reviewId, List<Double> vector) {
+    String vectorStr = vector.toString();
+    String sql = """
+        INSERT INTO review_embeddings (review_id, embedding)
+        VALUES (?, ?::vector)
+        ON CONFLICT (review_id)
+        DO UPDATE SET embedding = EXCLUDED.embedding
+    """;
+    jdbcTemplate.update(sql, reviewId, vectorStr);
+}
+
 }
