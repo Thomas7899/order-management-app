@@ -20,6 +20,7 @@
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <lombok.version>1.18.34</lombok.version>
         <spring.ai.version>1.0.3</spring.ai.version>
+        <springdoc.version>2.7.0</springdoc.version>
     </properties>
 
     <dependencyManagement>
@@ -80,12 +81,25 @@
             <scope>runtime</scope>
         </dependency>
 
-      <!-- H2 
-       <dependency>
+        <!-- H2 für Tests -->
+        <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>  -->
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Liquibase für Datenbank-Migrationen -->
+        <dependency>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-core</artifactId>
+        </dependency>
+
+        <!-- OpenAPI / Swagger Dokumentation -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.projectlombok</groupId>

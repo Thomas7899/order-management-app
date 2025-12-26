@@ -1,0 +1,39 @@
+# ===== TEST CONFIGURATION =====
+# H2 In-Memory Database für schnelle Unit- und Integrationstests
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+
+  # Deaktiviere AI-Features für Tests
+  ai:
+    openai:
+      api-key: test-key-not-used
+    vectorstore:
+      pgvector:
+        enabled: false
+
+# Deaktiviere Scheduling in Tests
+app:
+  dev:
+    reset-on-start: false
+    generate-embeddings: false
+  analytics:
+    enabled: false
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
