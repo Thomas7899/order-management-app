@@ -1,12 +1,12 @@
-# AI-Powered Order Management System
+# 📦 AI-Powered Order Management System (OMS)
 
 Ein modernes Order Management System, das über die bloße Verwaltung von Bestellungen hinausgeht. Durch die Integration von **Spring Boot**, **pgvector** und **OpenAI** bietet dieses System tiefgehende Einblicke in Kundenbewertungen durch semantische Suche und KI-generierte Trendanalysen.
 
 -----
 
-## ✨ Highlights
+## ✨ Highlights & Features
 
-### 🧠 KI-gestützte Analyse
+### 🧠 KI-gestützte Analyse (The Core Innovation)
 
 Das Herzstück der Anwendung ist die intelligente Verarbeitung von Kundenfeedback:
 
@@ -21,26 +21,32 @@ Das Herzstück der Anwendung ist die intelligente Verarbeitung von Kundenfeedbac
   * **Interaktive Charts:** Visualisierung von Umsatzverläufen und Kategorie-Verteilungen.
   * **Kunden-Insights:** Identifizierung von Top-Kunden und Analyse des Kaufverhaltens.
 
-### 🛠 Verwaltung
+### 🛠 Robuste Verwaltung
 
   * Vollständiges Management von **Produkten, Kunden und Bestellungen**.
   * Lagerbestandsüberwachung und Status-Tracking für Bestellungen.
 
 -----
 
-## 📸 Einblicke
+## 📸 Einblicke in die Anwendung
 
 ### 1\. Das KI-Trend Center
 
 Hier werden die durch OpenAI analysierten Zusammenfassungen der Kundenstimmen dargestellt. Das System erkennt automatisch Probleme (z.B. "Defekte Produkte") und Highlights.
 
+
+
 ### 2\. Semantische Bewertungsanalyse
 
 Die Suche ermöglicht das Filtern von hunderten Bewertungen basierend auf ihrer inhaltlichen Bedeutung.
 
+
+
 ### 3\. Operational Dashboard
 
 Der zentrale Hub für den Shop-Manager mit Live-Daten.
+
+
 
 -----
 
@@ -48,7 +54,7 @@ Der zentrale Hub für den Shop-Manager mit Live-Daten.
 
 ### Frontend (Angular)
 
-  * **Framework:** Angular 20
+  * **Framework:** Angular 16+
   * **Styling:** Modernes Dark-Mode UI (Custom CSS & Chart.js Integration).
   * **Struktur:** Modulares Design (`/products`, `/orders`, `/analytics`).
 
@@ -67,6 +73,11 @@ Das Datenmodell ist für relationale Integrität und Vektor-Performance optimier
 
 ```mermaid
 erDiagram
+    USER {
+        Long id
+        String email
+        String role
+    }
     CUSTOMER ||--o{ ORDER : places
     CUSTOMER ||--o{ PRODUCT_REVIEW : writes
     ORDER ||--|{ ORDER_ITEM : contains
@@ -95,7 +106,10 @@ erDiagram
         Long id
         Vector embedding "1536 dim (OpenAI)"
     }
-
+    REVIEW_TREND_REPORT {
+        Long id
+        Jsonb content "AI Summary"
+    }
 ```
 
 -----
@@ -140,7 +154,18 @@ ng serve
 
   * [ ] **Automatisierte E-Mail-Alerts:** Benachrichtigung bei sprunghaftem Anstieg negativer KI-Trends.
   * [ ] **Chatbot:** Ein RAG (Retrieval Augmented Generation) Chatbot für Support-Mitarbeiter, um Fragen zum Bestellstatus oder Produktproblemen zu beantworten.
+  * [ ] **Multi-Tenant Support:** Mandantenfähigkeit für mehrere Shops.
 
 -----
 
 Made with ❤️ and ☕ using Spring Boot & Angular.
+
+order-management/src/main/java/com/thomas/order_management/model/**
+order-management-frontend/src/app/orders/**
+order-management-frontend/src/app/dashboard/**
+order-management-frontend/src/app/**/*[Cc]ustomer*
+order-management-frontend/src/app/services/**
+order-management-frontend/src/app/**/*[Rr]eview*
+order-management/src/main/java/com/thomas/order_management/**/*[Oo]rder*.java
+order-management/src/main/java/com/thomas/order_management/**/*[Cc]ustomer*.java
+
