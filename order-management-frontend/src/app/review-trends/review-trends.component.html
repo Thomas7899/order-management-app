@@ -35,6 +35,14 @@
       >
         Auffällige Produkte
       </button>
+      <button
+        type="button"
+        [class.active]="mode === 'sentiment'"
+        (click)="setMode('sentiment')"
+        class="ai-button"
+      >
+        🤖 KI-Sentiment
+      </button>
     </div>
 
     <div class="filters">
@@ -195,7 +203,186 @@
     </div>
   </div>
 
-  <div *ngIf="!loading && !error && !globalTrend && !productTrend && !categoryTrend && !anomalyReport" class="no-results">
+  <!-- Sentiment Analyse (KI) -->
+  <div *ngIf="sentimentReport && mode === 'sentiment'" class="results-section sentiment-results">
+    <div class="sentiment-sub-tabs">
+      <button
+        [class.active]="sentimentSubTab === 'overview'"
+        (click)="setSentimentSubTab('overview')"
+      >
+        📊 Übersicht
+      </button>
+      <button
+        [class.active]="sentimentSubTab === 'emotions'"
+        (click)="setSentimentSubTab('emotions')"
+      >
+        😊 Emotionen
+      </button>
+      <button
+        [class.active]="sentimentSubTab === 'themes'"
+        (click)="setSentimentSubTab('themes')"
+      >
+        🏷️ Themen
+      </button>
+      <button
+        [class.active]="sentimentSubTab === 'critical'"
+        (click)="setSentimentSubTab('critical')"
+      >
+        ⚠️ Kritische Reviews
+      </button>
+    </div>
+
+    <!-- Übersicht -->
+    <div *ngIf="sentimentSubTab === 'overview'" class="sentiment-overview">
+      <div class="sentiment-summary-cards">
+        <div class="summary-card">
+          <div class="summary-icon">📝</div>
+          <div class="summary-value">{{ getTotalReviews() }}</div>
+          <div class="summary-label">Analysierte Reviews</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon">⭐</div>
+          <div class="summary-value">{{ sentimentReport.overallSentimentScore | number:'1.2-2' }}</div>
+          <div class="summary-label">Ø Sentiment Score</div>
+        </div>
+        <div class="summary-card positive">
+          <div class="summary-icon">👍</div>
+          <div class="summary-value">{{ getPositivePercentage() | number:'1.0-0' }}%</div>
+          <div class="summary-label">Positiv</div>
+        </div>
+        <div class="summary-card neutral">
+          <div class="summary-icon">😐</div>
+          <div class="summary-value">{{ getNeutralPercentage() | number:'1.0-0' }}%</div>
+          <div class="summary-label">Neutral</div>
+        </div>
+        <div class="summary-card negative">
+          <div class="summary-icon">👎</div>
+          <div class="summary-value">{{ getNegativePercentage() | number:'1.0-0' }}%</div>
+          <div class="summary-label">Negativ</div>
+        </div>
+      </div>
+
+      <div class="sentiment-charts-row">
+        <div class="chart-container half-width" *ngIf="emotionChartOptions">
+          <h3>Emotionsverteilung</h3>
+          <div echarts [options]="emotionChartOptions" class="sentiment-chart"></div>
+        </div>
+        <div class="chart-container half-width" *ngIf="themeChartOptions">
+          <h3>Top Themen</h3>
+          <div echarts [options]="themeChartOptions" class="sentiment-chart"></div>
+        </div>
+      </div>
+
+      <div class="chart-container full-width" *ngIf="sentimentTrendChartOptions">
+        <h3>Sentiment-Trend über Zeit</h3>
+        <div echarts [options]="sentimentTrendChartOptions" class="sentiment-trend-chart"></div>
+      </div>
+
+      <div class="ai-summary" *ngIf="sentimentReport.executiveSummary">
+        <h3>🤖 KI-Zusammenfassung</h3>
+        <p>{{ sentimentReport.executiveSummary }}</p>
+      </div>
+      
+      <!-- Priority Actions -->
+      <div class="priority-actions" *ngIf="sentimentReport.priorityActions && sentimentReport.priorityActions.length">
+        <h3>🎯 Prioritäre Maßnahmen</h3>
+        <ul>
+          <li *ngFor="let action of sentimentReport.priorityActions">{{ action }}</li>
+        </ul>
+      </div>
+      
+      <!-- Positive Highlights -->
+      <div class="positive-highlights" *ngIf="sentimentReport.positiveHighlights && sentimentReport.positiveHighlights.length">
+        <h3>✨ Positive Highlights</h3>
+        <ul>
+          <li *ngFor="let highlight of sentimentReport.positiveHighlights">{{ highlight }}</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Emotionen Detail -->
+    <div *ngIf="sentimentSubTab === 'emotions'" class="sentiment-emotions">
+      <h3>Detaillierte Emotionsanalyse</h3>
+      <div class="emotion-grid">
+        <div *ngFor="let emotion of getEmotionEntries()" class="emotion-card">
+          <div class="emotion-icon">{{ getEmotionIcon(emotion.key) }}</div>
+          <div class="emotion-name">{{ emotion.key | titlecase }}</div>
+          <div class="emotion-bar">
+            <div class="emotion-fill" [style.width.%]="emotion.value * 100"></div>
+          </div>
+          <div class="emotion-value">{{ emotion.value | percent:'1.0-0' }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Themen Detail -->
+    <div *ngIf="sentimentSubTab === 'themes'" class="sentiment-themes">
+      <h3>Themen-Cluster</h3>
+      <div class="theme-list">
+        <div *ngFor="let cluster of sentimentReport.themeClusters" class="theme-card">
+          <div class="theme-header">
+            <span class="theme-name">{{ cluster.themeName }}</span>
+            <span class="theme-count">{{ cluster.reviewCount }} Reviews</span>
+          </div>
+          <div class="theme-description" *ngIf="cluster.themeDescription">
+            <p>{{ cluster.themeDescription }}</p>
+          </div>
+          <div class="theme-sentiment">
+            <span class="sentiment-indicator" [class]="cluster.overallSentiment.toLowerCase()">
+              {{ cluster.overallSentiment }}
+            </span>
+            <span class="sentiment-label">Ø {{ cluster.averageRating | number:'1.1-1' }} ⭐</span>
+            <span class="trend-badge" [class]="cluster.trendDirection.toLowerCase()">
+              {{ getTrendIcon(cluster.trendDirection) }} {{ cluster.trendDirection }}
+            </span>
+          </div>
+          <div class="theme-keywords">
+            <span *ngFor="let kw of cluster.topKeywords" class="keyword-chip">{{ kw }}</span>
+          </div>
+          <div class="theme-impact" *ngIf="cluster.businessImpact">
+            <span class="impact-badge" [class]="cluster.businessImpact.toLowerCase()">
+              Business Impact: {{ cluster.businessImpact }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kritische Reviews -->
+    <div *ngIf="sentimentSubTab === 'critical'" class="sentiment-critical">
+      <h3>Kritische Reviews (benötigen Aufmerksamkeit)</h3>
+      <div class="critical-list">
+        <div *ngFor="let review of sentimentReport.criticalReviews" class="critical-card">
+          <div class="critical-header">
+            <span class="product-name">{{ review.productName || 'Produkt #' + review.reviewId }}</span>
+            <span class="review-rating">
+              <span *ngFor="let star of [1,2,3,4,5]" [class.filled]="star <= review.rating">★</span>
+            </span>
+          </div>
+          <div class="critical-content">
+            <p class="review-text">„{{ review.comment }}"</p>
+          </div>
+          <div class="critical-analysis">
+            <span class="sentiment-score" [class]="getSentimentClass(0)">
+              Score: {{ 0 | number:'1.2-2' }}
+            </span>
+            <span class="primary-emotion">
+              {{ getEmotionIcon("NEUTRAL") }} {{ "NEUTRAL" }}
+            </span>
+            <span class="review-date">{{ "" | date:'dd.MM.yyyy' }}</span>
+          </div>
+          <div class="critical-themes" *ngIf="review.secondaryCategories && review.secondaryCategories.length">
+            <span *ngFor="let theme of review.secondaryCategories" class="theme-tag">{{ theme }}</span>
+          </div>
+        </div>
+        <div *ngIf="!sentimentReport.criticalReviews || sentimentReport.criticalReviews.length === 0" class="no-critical">
+          ✅ Keine kritischen Reviews gefunden.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && !error && !globalTrend && !productTrend && !categoryTrend && !anomalyReport && !sentimentReport" class="no-results">
     Noch keine Analyse durchgeführt. Bitte Filter setzen und auf „Analyse starten“ klicken.
   </div>
 </div>

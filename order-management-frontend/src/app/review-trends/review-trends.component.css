@@ -354,3 +354,556 @@
     transform: translateY(0);
   }
 }
+
+/* ========================================
+ * SENTIMENT ANALYSE (KI)
+ * ========================================
+*/
+
+.sentiment-results {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.sentiment-sub-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+  border-bottom: 2px solid #1b3643;
+  padding-bottom: 15px;
+}
+
+.sentiment-sub-tabs button {
+  background: transparent;
+  border: 1px solid #1b3643;
+  color: #8aa7b7;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.sentiment-sub-tabs button:hover {
+  background: rgba(100, 181, 246, 0.1);
+  border-color: #64B5F6;
+  color: #64B5F6;
+}
+
+.sentiment-sub-tabs button.active {
+  background: linear-gradient(135deg, #1565C0, #1976D2);
+  border-color: #64B5F6;
+  color: #fff;
+}
+
+/* Summary Cards */
+.sentiment-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.summary-card {
+  background: linear-gradient(135deg, #102932 0%, #0d1f26 100%);
+  border: 1px solid #1b3643;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+
+.summary-card .summary-icon {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+.summary-card .summary-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #64B5F6;
+  margin-bottom: 5px;
+}
+
+.summary-card .summary-label {
+  font-size: 12px;
+  color: #8aa7b7;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-card.positive .summary-value { color: #66BB6A; }
+.summary-card.neutral .summary-value { color: #FFA726; }
+.summary-card.negative .summary-value { color: #EF5350; }
+
+/* Chart Containers */
+.sentiment-charts-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.chart-container {
+  background: linear-gradient(135deg, #102932 0%, #0d1f26 100%);
+  border: 1px solid #1b3643;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.chart-container h3 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  color: #dce7f0;
+}
+
+.chart-container.half-width {
+  flex: 1;
+}
+
+.chart-container.full-width {
+  width: 100%;
+}
+
+.sentiment-chart {
+  height: 280px;
+}
+
+.sentiment-trend-chart {
+  height: 300px;
+}
+
+/* AI Summary */
+.ai-summary {
+  background: linear-gradient(135deg, #1a3a4a 0%, #102932 100%);
+  border: 1px solid #64B5F6;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 25px;
+}
+
+.ai-summary h3 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  color: #64B5F6;
+}
+
+.ai-summary p {
+  color: #dce7f0;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Emotions Tab */
+.sentiment-emotions h3 {
+  margin: 0 0 20px 0;
+  color: #dce7f0;
+}
+
+.emotion-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.emotion-card {
+  background: linear-gradient(135deg, #102932 0%, #0d1f26 100%);
+  border: 1px solid #1b3643;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.emotion-icon {
+  font-size: 32px;
+}
+
+.emotion-name {
+  font-size: 14px;
+  color: #dce7f0;
+  font-weight: 500;
+}
+
+.emotion-bar {
+  width: 100%;
+  height: 8px;
+  background: #1b3643;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.emotion-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #64B5F6, #1565C0);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.emotion-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #64B5F6;
+}
+
+/* Themes Tab */
+.sentiment-themes h3 {
+  margin: 0 0 20px 0;
+  color: #dce7f0;
+}
+
+.theme-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.theme-card {
+  background: linear-gradient(135deg, #102932 0%, #0d1f26 100%);
+  border: 1px solid #1b3643;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.theme-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.theme-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #dce7f0;
+}
+
+.theme-count {
+  font-size: 13px;
+  color: #8aa7b7;
+  background: #1b3643;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.theme-sentiment {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.sentiment-indicator {
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.sentiment-indicator.positive {
+  background: rgba(102, 187, 106, 0.2);
+  color: #66BB6A;
+}
+
+.sentiment-indicator.neutral {
+  background: rgba(255, 167, 38, 0.2);
+  color: #FFA726;
+}
+
+.sentiment-indicator.negative {
+  background: rgba(239, 83, 80, 0.2);
+  color: #EF5350;
+}
+
+.sentiment-label {
+  font-size: 13px;
+  color: #8aa7b7;
+}
+
+.theme-keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.keyword-chip {
+  background: rgba(100, 181, 246, 0.15);
+  color: #64B5F6;
+  border: 1px solid rgba(100, 181, 246, 0.3);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+/* Critical Reviews Tab */
+.sentiment-critical h3 {
+  margin: 0 0 20px 0;
+  color: #dce7f0;
+}
+
+.critical-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.critical-card {
+  background: linear-gradient(135deg, #2a1a1a 0%, #1a1010 100%);
+  border: 1px solid #5a2020;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.critical-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.product-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #dce7f0;
+}
+
+.review-rating {
+  font-size: 16px;
+  color: #5a5a5a;
+}
+
+.review-rating .filled {
+  color: #FFA726;
+}
+
+.critical-content {
+  margin-bottom: 15px;
+}
+
+.review-text {
+  color: #b0b0b0;
+  font-style: italic;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.critical-analysis {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.sentiment-score {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.sentiment-score.positive {
+  background: rgba(102, 187, 106, 0.2);
+  color: #66BB6A;
+}
+
+.sentiment-score.neutral {
+  background: rgba(255, 167, 38, 0.2);
+  color: #FFA726;
+}
+
+.sentiment-score.negative {
+  background: rgba(239, 83, 80, 0.2);
+  color: #EF5350;
+}
+
+.primary-emotion {
+  font-size: 14px;
+  color: #dce7f0;
+}
+
+.review-date {
+  font-size: 12px;
+  color: #8aa7b7;
+}
+
+.critical-themes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.theme-tag {
+  background: rgba(239, 83, 80, 0.15);
+  color: #EF5350;
+  border: 1px solid rgba(239, 83, 80, 0.3);
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+.no-critical {
+  text-align: center;
+  padding: 40px;
+  color: #66BB6A;
+  font-size: 16px;
+}
+
+/* AI Button Styling */
+.mode-toggle .ai-button {
+  background: linear-gradient(135deg, #1565C0, #1976D2);
+  border-color: #64B5F6;
+}
+
+.mode-toggle .ai-button:hover {
+  background: linear-gradient(135deg, #1976D2, #2196F3);
+}
+
+/* Additional Sentiment Styles */
+.priority-actions,
+.positive-highlights {
+  background: linear-gradient(135deg, #102932 0%, #0d1f26 100%);
+  border: 1px solid #1b3643;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.priority-actions h3,
+.positive-highlights h3 {
+  margin: 0 0 15px 0;
+  color: #dce7f0;
+  font-size: 16px;
+}
+
+.priority-actions ul,
+.positive-highlights ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.priority-actions li,
+.positive-highlights li {
+  color: #8aa7b7;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.theme-description {
+  margin-bottom: 12px;
+}
+
+.theme-description p {
+  color: #8aa7b7;
+  font-size: 13px;
+  margin: 0;
+  font-style: italic;
+}
+
+.trend-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.trend-badge.improving {
+  background: rgba(102, 187, 106, 0.2);
+  color: #66BB6A;
+}
+
+.trend-badge.stable {
+  background: rgba(100, 181, 246, 0.2);
+  color: #64B5F6;
+}
+
+.trend-badge.declining {
+  background: rgba(239, 83, 80, 0.2);
+  color: #EF5350;
+}
+
+.impact-badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.impact-badge.high {
+  background: rgba(239, 83, 80, 0.2);
+  color: #EF5350;
+}
+
+.impact-badge.medium {
+  background: rgba(255, 167, 38, 0.2);
+  color: #FFA726;
+}
+
+.impact-badge.low {
+  background: rgba(102, 187, 106, 0.2);
+  color: #66BB6A;
+}
+
+.theme-impact {
+  margin-top: 10px;
+}
+
+.category-badge {
+  background: rgba(100, 181, 246, 0.2);
+  color: #64B5F6;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.keywords-list {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.keyword-chip.small {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
+.actionable-insight {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(100, 181, 246, 0.1);
+  border-left: 3px solid #64B5F6;
+  border-radius: 0 8px 8px 0;
+  color: #dce7f0;
+  font-size: 13px;
+}
+
+.actionable-insight strong {
+  color: #64B5F6;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .sentiment-summary-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .sentiment-charts-row {
+    flex-direction: column;
+  }
+  
+  .sentiment-summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .sentiment-sub-tabs {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 600px) {
+  .sentiment-summary-cards {
+    grid-template-columns: 1fr;
+  }
+}
