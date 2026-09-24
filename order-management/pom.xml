@@ -21,6 +21,11 @@
         <lombok.version>1.18.34</lombok.version>
         <spring.ai.version>1.0.3</spring.ai.version>
         <springdoc.version>2.7.0</springdoc.version>
+        <tomcat.version>10.1.58</tomcat.version>
+        <spring-framework.version>6.2.19</spring-framework.version>
+        <spring-security.version>6.5.11</spring-security.version>
+        <jackson-bom.version>2.18.9</jackson-bom.version>
+        <postgresql.version>42.7.12</postgresql.version>
     </properties>
 
     <dependencyManagement>
