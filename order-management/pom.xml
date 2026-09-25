@@ -19,8 +19,9 @@
         <java.version>17</java.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <lombok.version>1.18.34</lombok.version>
-        <spring.ai.version>1.0.6</spring.ai.version>
+        <spring.ai.version>1.0.7</spring.ai.version>
         <springdoc.version>2.7.0</springdoc.version>
+        <tomcat.version>10.1.60</tomcat.version>
         <spring-framework.version>6.2.19</spring-framework.version>
         <spring-security.version>6.5.11</spring-security.version>
         <jackson-bom.version>2.18.9</jackson-bom.version>
@@ -142,10 +143,16 @@
         </dependency>
 
         <dependency>
-    <groupId>com.github.javafaker</groupId>
-    <artifactId>javafaker</artifactId>
-    <version>1.0.2</version>
-</dependency>
+            <groupId>com.github.javafaker</groupId>
+            <artifactId>javafaker</artifactId>
+            <version>1.0.2</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
 
     </dependencies>
 
