@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.0</version>
+        <version>3.5.15</version>
         <relativePath/>
     </parent>
 
@@ -19,13 +19,22 @@
         <java.version>17</java.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <lombok.version>1.18.34</lombok.version>
-        <spring.ai.version>1.0.3</spring.ai.version>
+        <spring.ai.version>1.0.6</spring.ai.version>
         <springdoc.version>2.7.0</springdoc.version>
-        <tomcat.version>10.1.58</tomcat.version>
         <spring-framework.version>6.2.19</spring-framework.version>
         <spring-security.version>6.5.11</spring-security.version>
         <jackson-bom.version>2.18.9</jackson-bom.version>
         <postgresql.version>42.7.12</postgresql.version>
+        <snakeyaml.version>2.4</snakeyaml.version>
+        <assertj.version>3.27.7</assertj.version>
+        <commons-lang3.version>3.18.0</commons-lang3.version>
+        <micrometer.version>1.15.12</micrometer.version>
+        <json-smart.version>2.5.2</json-smart.version>
+        <spring-data-commons.version>3.5.12</spring-data-commons.version>
+        <spring-hateoas.version>2.5.3</spring-hateoas.version>
+        <spring-retry.version>2.0.13</spring-retry.version>
+        <logback.version>1.5.34</logback.version>
+        <log4j2.version>2.26.1</log4j2.version>
     </properties>
 
     <dependencyManagement>
@@ -82,7 +91,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>42.7.12</version>
+            <version>${postgresql.version}</version>
             <scope>runtime</scope>
         </dependency>
 
