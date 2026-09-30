@@ -24,7 +24,7 @@
         <tomcat.version>10.1.60</tomcat.version>
         <spring-framework.version>6.2.19</spring-framework.version>
         <spring-security.version>6.5.11</spring-security.version>
-        <jackson-bom.version>2.18.9</jackson-bom.version>
+        <jackson-bom.version>2.18.10</jackson-bom.version>
         <postgresql.version>42.7.12</postgresql.version>
         <snakeyaml.version>2.4</snakeyaml.version>
         <assertj.version>3.27.7</assertj.version>
