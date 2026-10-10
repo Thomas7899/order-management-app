@@ -1,6 +1,6 @@
 // order-management-frontend/src/app/inventory/inventory.component.ts
 import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { NgxEchartsModule } from 'ngx-echarts';
 import { 
@@ -20,7 +20,7 @@ import {
 @Component({
   selector: 'app-inventory',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgxEchartsModule],
+  imports: [FormsModule, NgxEchartsModule],
   templateUrl: './inventory.component.html',
   styleUrls: ['./inventory.component.css']
 })

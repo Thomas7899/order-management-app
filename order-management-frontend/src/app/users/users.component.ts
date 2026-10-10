@@ -1,11 +1,11 @@
 import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { UserService, User } from '../services/user.service';
 
 @Component({
     selector: 'app-users',
-    imports: [CommonModule, FormsModule],
+    imports: [FormsModule],
     templateUrl: './users.component.html',
     styleUrls: ['./users.component.css']
 })

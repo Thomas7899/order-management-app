@@ -1,6 +1,6 @@
 // src/app/products/products.component.ts
 import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { ProductService } from '../services/product.service';
 import {
@@ -18,12 +18,11 @@ import { ProductAnalyticsComponent } from './components/product-analytics/produc
   selector: 'app-products',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     ProductCardComponent,
     ProductFormComponent,
     ProductAnalyticsComponent
-  ],
+],
   templateUrl: './products.component.html',
   styleUrls: ['./products.component.css']
 })

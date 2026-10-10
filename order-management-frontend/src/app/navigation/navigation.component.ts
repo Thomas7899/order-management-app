@@ -1,11 +1,11 @@
 // order-management-frontend/src/app/navigation/navigation.component.ts
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { RouterModule } from '@angular/router';
 
 @Component({
     selector: 'app-navigation',
-    imports: [CommonModule, RouterModule],
+    imports: [RouterModule],
     templateUrl: './navigation.component.html',
     styleUrls: ['./navigation.component.css']
 })

@@ -7,9 +7,11 @@
         <label>Kunde *</label>
         <select [(ngModel)]="currentOrder.customerId" name="customerId" required class="form-control">
           <option value="">Kunde wählen</option>
-          <option *ngFor="let c of customers" [value]="c.id">
-            {{ c.firstName }} {{ c.lastName }} ({{ c.email }})
-          </option>
+          @for (c of customers; track c) {
+            <option [value]="c.id">
+              {{ c.firstName }} {{ c.lastName }} ({{ c.email }})
+            </option>
+          }
         </select>
       </div>
       <div class="form-group">
@@ -31,16 +33,20 @@
 
     <div class="order-items-section">
       <h4>Bestellpositionen</h4>
-      <div *ngFor="let item of currentOrder.orderItems; let i = index" class="item-row">
-        <select [(ngModel)]="item.productId" [name]="'productId_' + i" (change)="updateItemPrice(i)" class="form-control">
-          <option value="">Produkt wählen</option>
-          <option *ngFor="let p of products" [value]="p.id">{{ p.name }} ({{ p.price | currency:'EUR' }})</option>
-        </select>
-        <input type="number" [(ngModel)]="item.quantity" [name]="'quantity_' + i" min="1" class="form-control" />
-        <input type="number" [(ngModel)]="item.price" [name]="'price_' + i" readonly class="form-control" />
-        <span class="item-total">{{ item.quantity * item.price | currency:'EUR' }}</span>
-        <button type="button" (click)="removeOrderItem(i)" class="btn btn-sm btn-outline-danger">✕</button>
-      </div>
+      @for (item of currentOrder.orderItems; track item; let i = $index) {
+        <div class="item-row">
+          <select [(ngModel)]="item.productId" [name]="'productId_' + i" (change)="updateItemPrice(i)" class="form-control">
+            <option value="">Produkt wählen</option>
+            @for (p of products; track p) {
+              <option [value]="p.id">{{ p.name }} ({{ p.price | currency:'EUR' }})</option>
+            }
+          </select>
+          <input type="number" [(ngModel)]="item.quantity" [name]="'quantity_' + i" min="1" class="form-control" />
+          <input type="number" [(ngModel)]="item.price" [name]="'price_' + i" readonly class="form-control" />
+          <span class="item-total">{{ item.quantity * item.price | currency:'EUR' }}</span>
+          <button type="button" (click)="removeOrderItem(i)" class="btn btn-sm btn-outline-danger">✕</button>
+        </div>
+      }
       <button type="button" (click)="addOrderItem()" class="btn btn-sm btn-outline-primary">Position hinzufügen</button>
     </div>
 

@@ -20,7 +20,7 @@
   </div>
 
   <!-- Analytics (mit Filtern synchronisiert) -->
-<app-product-analytics [products]="products"></app-product-analytics>
+  <app-product-analytics [products]="products"></app-product-analytics>
 
 
   <!-- Filter -->
@@ -32,15 +32,17 @@
       (ngModelChange)="applyFilters()"
       placeholder="Produkte suchen..."
       class="form-control"
-    />
+      />
 
     <select
       [(ngModel)]="selectedCategory"
       (ngModelChange)="applyFilters()"
       class="form-control"
-    >
+      >
       <option [ngValue]="''">Alle Kategorien</option>
-      <option *ngFor="let c of categories" [ngValue]="c">{{ c }}</option>
+      @for (c of categories; track c) {
+        <option [ngValue]="c">{{ c }}</option>
+      }
     </select>
 
     <label class="checkbox">
@@ -48,35 +50,40 @@
         type="checkbox"
         [(ngModel)]="showOnlyActive"
         (ngModelChange)="applyFilters()"
-      />
+        />
       Nur aktive Produkte
     </label>
 
   </div>
 
   <!-- Produktformular -->
-  <div class="add-form" *ngIf="showForm">
-    <app-product-form
-      [product]="editingProduct"
-      (save)="saveProduct($event)"
-      (cancel)="toggleAddForm()"
-    ></app-product-form>
-  </div>
+  @if (showForm) {
+    <div class="add-form">
+      <app-product-form
+        [product]="editingProduct"
+        (save)="saveProduct($event)"
+        (cancel)="toggleAddForm()"
+      ></app-product-form>
+    </div>
+  }
 
   <!-- Produktliste -->
   <div class="products-list">
 
-    <div *ngIf="filteredProducts.length === 0" class="no-products">
-      Keine Produkte gefunden.
-    </div>
+    @if (filteredProducts.length === 0) {
+      <div class="no-products">
+        Keine Produkte gefunden.
+      </div>
+    }
 
     <div class="products-grid">
-      <app-product-card
-        *ngFor="let product of filteredProducts"
-        [product]="product"
-        (edit)="editProduct(product)"
-        (delete)="deleteProduct(product.id)"
-      ></app-product-card>
+      @for (product of filteredProducts; track product) {
+        <app-product-card
+          [product]="product"
+          (edit)="editProduct(product)"
+          (delete)="deleteProduct(product.id)"
+        ></app-product-card>
+      }
     </div>
 
   </div>

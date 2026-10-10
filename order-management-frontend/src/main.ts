@@ -1,8 +1,9 @@
+import { provideZoneChangeDetection } from "@angular/core";
 // order-management-frontend/src/main.ts
 import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './app/app.component';
 import { appConfig } from './app/app.config';
 
 bootstrapApplication(AppComponent, {
-  ...appConfig
+  ...appConfig, providers: [provideZoneChangeDetection(), ...appConfig.providers]
 }).catch(err => console.error(err));

@@ -1,13 +1,15 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ToastService } from './toast.service';
 
 @Component({
     selector: 'app-toast',
-    imports: [CommonModule],
+    imports: [],
     template: `
-    <div *ngIf="message" class="toast">{{ message }}</div>
-  `,
+    @if (message) {
+      <div class="toast">{{ message }}</div>
+    }
+    `,
     styles: [`
     .toast {
       position: fixed;

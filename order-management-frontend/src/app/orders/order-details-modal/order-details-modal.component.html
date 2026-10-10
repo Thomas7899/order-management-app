@@ -19,12 +19,14 @@
       </div>
       <div class="info-section">
         <h4>Positionen</h4>
-        <div *ngFor="let i of order.orderItems" class="item">
-          <span>{{ i.product.name }}</span>
-          <span>{{ i.quantity }}x</span>
-          <span>{{ i.unitPrice | currency:'EUR' }}</span>
-          <strong>{{ i.quantity * i.unitPrice | currency:'EUR' }}</strong>
-        </div>
+        @for (i of order.orderItems; track i) {
+          <div class="item">
+            <span>{{ i.product.name }}</span>
+            <span>{{ i.quantity }}x</span>
+            <span>{{ i.unitPrice | currency:'EUR' }}</span>
+            <strong>{{ i.quantity * i.unitPrice | currency:'EUR' }}</strong>
+          </div>
+        }
       </div>
     </div>
   </div>

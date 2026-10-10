@@ -1,14 +1,14 @@
 // src/app/products/components/product-form/product-form.component.ts
 // src/app/products/components/product-form/product-form.component.ts
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { CreateProductRequest, ProductCategory } from '../../../types';
 
 @Component({
   selector: 'app-product-form',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   templateUrl: './product-form.component.html',
   styleUrls: ['./product-form.component.css']
 })

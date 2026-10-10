@@ -1,43 +1,54 @@
-<div class="customer-detail-container" *ngIf="!isLoading">
-
-  <div class="header">
-  <h2>{{ customer.firstName }} {{ customer.lastName }}</h2>
-  <p class="email">{{ customer.email }}</p>
-
-  <div class="contact-info">
-    <p *ngIf="customer.phone"><strong>Telefon:</strong> {{ customer.phone }}</p>
-    <p *ngIf="customer.address"><strong>Adresse:</strong> {{ customer.address }}</p>
-    <p *ngIf="customer.zipCode || customer.city">
-      <strong>Ort:</strong> {{ customer.zipCode }} {{ customer.city }}
-    </p>
-    <p *ngIf="customer.country"><strong>Land:</strong> {{ customer.country }}</p>
-  </div>
-</div>
-
-  <div class="section">
-    <h3>Bestellungen ({{ orders.length }})</h3>
-
-    <div *ngIf="orders.length === 0" class="no-orders">
-      <p>Keine Bestellungen vorhanden.</p>
-    </div>
-
-    <div *ngIf="orders.length > 0" class="orders-grid">
-      <div class="order-card" *ngFor="let order of orders">
-        <h4>#{{ order.orderNumber }}</h4>
-        <p>Datum: {{ order.orderDate | date:'dd.MM.yyyy HH:mm' }}</p>
-        <p>Status: {{ order.status }}</p>
-        <p>Gesamtbetrag: {{ order.totalAmount | currency:'EUR' }}</p>
-
-        <details>
-          <summary>Artikel anzeigen</summary>
-          <ul>
-            <li *ngFor="let item of order.orderItems">
-              {{ item.product.name }} – {{ item.quantity }}× ({{ item.unitPrice | currency:'EUR' }})
-            </li>
-          </ul>
-        </details>
+@if (!isLoading) {
+  <div class="customer-detail-container">
+    <div class="header">
+      <h2>{{ customer.firstName }} {{ customer.lastName }}</h2>
+      <p class="email">{{ customer.email }}</p>
+      <div class="contact-info">
+        @if (customer.phone) {
+          <p><strong>Telefon:</strong> {{ customer.phone }}</p>
+        }
+        @if (customer.address) {
+          <p><strong>Adresse:</strong> {{ customer.address }}</p>
+        }
+        @if (customer.zipCode || customer.city) {
+          <p>
+            <strong>Ort:</strong> {{ customer.zipCode }} {{ customer.city }}
+          </p>
+        }
+        @if (customer.country) {
+          <p><strong>Land:</strong> {{ customer.country }}</p>
+        }
       </div>
     </div>
+    <div class="section">
+      <h3>Bestellungen ({{ orders.length }})</h3>
+      @if (orders.length === 0) {
+        <div class="no-orders">
+          <p>Keine Bestellungen vorhanden.</p>
+        </div>
+      }
+      @if (orders.length > 0) {
+        <div class="orders-grid">
+          @for (order of orders; track order) {
+            <div class="order-card">
+              <h4>#{{ order.orderNumber }}</h4>
+              <p>Datum: {{ order.orderDate | date:'dd.MM.yyyy HH:mm' }}</p>
+              <p>Status: {{ order.status }}</p>
+              <p>Gesamtbetrag: {{ order.totalAmount | currency:'EUR' }}</p>
+              <details>
+                <summary>Artikel anzeigen</summary>
+                <ul>
+                  @for (item of order.orderItems; track item) {
+                    <li>
+                      {{ item.product.name }} – {{ item.quantity }}× ({{ item.unitPrice | currency:'EUR' }})
+                    </li>
+                  }
+                </ul>
+              </details>
+            </div>
+          }
+        </div>
+      }
+    </div>
   </div>
-
-</div>
+}

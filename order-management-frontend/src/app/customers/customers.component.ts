@@ -1,6 +1,6 @@
 // order-management-frontend/src/app/customers/customers.component.ts
 import { Component, OnInit, DestroyRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup, FormControl } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 
@@ -19,11 +19,10 @@ import { CustomerAnalyticsComponent } from './customer-analytics/customer-analyt
   selector: 'app-customers',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     RouterModule,
-    CustomerAnalyticsComponent  // <-- WICHTIG für Analytics
-  ],
+    CustomerAnalyticsComponent
+],
   templateUrl: './customers.component.html',
   styleUrls: ['./customers.component.css']
 })
