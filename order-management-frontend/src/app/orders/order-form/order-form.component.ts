@@ -1,5 +1,5 @@
 // order-management-frontend/src/app/orders/order-form/order-form.component.ts
-import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Customer } from '../../services/customer.service';
@@ -25,6 +25,7 @@ interface OrderFormData {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './order-form.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./order-form.component.css']
 })
 export class OrderFormComponent implements OnInit {

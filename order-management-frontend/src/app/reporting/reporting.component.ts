@@ -1,5 +1,5 @@
 // order-management-frontend/src/app/reporting/reporting.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgxEchartsModule } from 'ngx-echarts';
@@ -15,6 +15,7 @@ import {
   standalone: true,
   imports: [CommonModule, FormsModule, NgxEchartsModule],
   templateUrl: './reporting.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./reporting.component.css']
 })
 export class ReportingComponent implements OnInit {

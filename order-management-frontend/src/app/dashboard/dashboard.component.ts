@@ -1,5 +1,5 @@
 // order-management-frontend/src/app/dashboard/dashboard.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DashboardService, DashboardStats, RecentActivity } from '../services/dashboard.service';
 import { environment } from '../../environments/environment';
@@ -9,6 +9,7 @@ import { map } from 'rxjs/operators';
     selector: 'app-dashboard',
     imports: [CommonModule],
     templateUrl: './dashboard.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./dashboard.component.css']
 })
 export class DashboardComponent implements OnInit {

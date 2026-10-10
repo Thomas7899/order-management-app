@@ -1,5 +1,5 @@
 // order-management-frontend/src/app/orders/orders.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgxEchartsModule } from 'ngx-echarts';
 
@@ -23,6 +23,7 @@ import { OrderDetailsModalComponent } from './order-details-modal/order-details-
     OrderDetailsModalComponent,
   ],
   templateUrl: './orders.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./orders.component.css'],
 })
 export class OrdersComponent implements OnInit {

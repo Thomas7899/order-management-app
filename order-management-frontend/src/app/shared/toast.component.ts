@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 import { ToastService } from './toast.service';
 
@@ -10,6 +10,7 @@ import { ToastService } from './toast.service';
       <div class="toast">{{ message }}</div>
     }
     `,
+    changeDetection: ChangeDetectionStrategy.Eager,
     styles: [`
     .toast {
       position: fixed;

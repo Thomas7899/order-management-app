@@ -1,5 +1,5 @@
 // order-management-frontend/src/app/customers/customers.component.ts
-import { Component, OnInit, DestroyRef } from '@angular/core';
+import { Component, OnInit, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
 
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup, FormControl } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -24,6 +24,7 @@ import { CustomerAnalyticsComponent } from './customer-analytics/customer-analyt
     CustomerAnalyticsComponent
 ],
   templateUrl: './customers.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./customers.component.css']
 })
 export class CustomersComponent implements OnInit {

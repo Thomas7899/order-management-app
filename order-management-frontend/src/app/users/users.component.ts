@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { UserService, User } from '../services/user.service';
@@ -7,6 +7,7 @@ import { UserService, User } from '../services/user.service';
     selector: 'app-users',
     imports: [FormsModule],
     templateUrl: './users.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./users.component.css']
 })
 export class UsersComponent implements OnInit {

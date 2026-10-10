@@ -1,5 +1,5 @@
 // order-management-frontend/src/app/inventory/inventory.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { NgxEchartsModule } from 'ngx-echarts';
@@ -22,6 +22,7 @@ import {
   standalone: true,
   imports: [FormsModule, NgxEchartsModule],
   templateUrl: './inventory.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./inventory.component.css']
 })
 export class InventoryComponent implements OnInit {

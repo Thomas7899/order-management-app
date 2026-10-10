@@ -1,5 +1,5 @@
 // order-management-frontend/src/app/reviews/reviews.component.ts
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ReviewsService, Review } from '../services/reviews.service';
@@ -8,6 +8,7 @@ import { ReviewsService, Review } from '../services/reviews.service';
     selector: 'app-reviews',
     imports: [CommonModule, FormsModule],
     templateUrl: './reviews.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./reviews.component.css']
 })
 export class ReviewsComponent {

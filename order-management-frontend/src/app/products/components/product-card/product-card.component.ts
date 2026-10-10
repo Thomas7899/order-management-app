@@ -1,5 +1,5 @@
 // src/app/products/components/product-card/product-card.component.ts
-import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core'; // OnInit importieren
+import { Component, EventEmitter, Input, Output, OnInit, ChangeDetectionStrategy } from '@angular/core'; // OnInit importieren
 import { CommonModule } from '@angular/common';
 import { Product } from '../../../types';
 import { environment } from '../../../../environments/environment';
@@ -9,6 +9,7 @@ import { environment } from '../../../../environments/environment';
   standalone: true, // standalone: true hinzufügen
   imports: [CommonModule],
   templateUrl: './product-card.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./product-card.component.css']
 })
 export class ProductCardComponent implements OnInit { // OnInit implementieren

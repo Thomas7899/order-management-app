@@ -1,5 +1,5 @@
 // src/app/products/components/product-analytics/product-analytics.component.ts
-import { Component, Input, OnChanges } from '@angular/core';
+import { Component, Input, OnChanges, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NgxEchartsModule } from 'ngx-echarts';
 import { Product, ProductCategory } from '../../../types';
@@ -9,6 +9,7 @@ import { Product, ProductCategory } from '../../../types';
   standalone: true,
   imports: [CommonModule, NgxEchartsModule],
   templateUrl: './product-analytics.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./product-analytics.component.css']
 })
 export class ProductAnalyticsComponent implements OnChanges {

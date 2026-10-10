@@ -1,5 +1,5 @@
 // order-management-frontend/src/app/review-trends/review-trends.component.ts
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgxEchartsModule } from 'ngx-echarts';
@@ -21,6 +21,7 @@ type TrendMode = 'global' | 'product' | 'category' | 'anomalies' | 'sentiment';
   standalone: true,
   imports: [CommonModule, FormsModule, NgxEchartsModule],
   templateUrl: './review-trends.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./review-trends.component.css']
 })
 export class ReviewTrendsComponent {

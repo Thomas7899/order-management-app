@@ -1,5 +1,5 @@
 // order-management-frontend/src/app/navigation/navigation.component.ts
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 import { RouterModule } from '@angular/router';
 
@@ -7,6 +7,7 @@ import { RouterModule } from '@angular/router';
     selector: 'app-navigation',
     imports: [RouterModule],
     templateUrl: './navigation.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./navigation.component.css']
 })
 export class NavigationComponent {

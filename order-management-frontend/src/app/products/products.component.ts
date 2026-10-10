@@ -1,5 +1,5 @@
 // src/app/products/products.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { ProductService } from '../services/product.service';
@@ -24,6 +24,7 @@ import { ProductAnalyticsComponent } from './components/product-analytics/produc
     ProductAnalyticsComponent
 ],
   templateUrl: './products.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./products.component.css']
 })
 export class ProductsComponent implements OnInit {

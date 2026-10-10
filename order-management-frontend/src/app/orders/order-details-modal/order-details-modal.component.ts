@@ -1,5 +1,5 @@
 // order-management-frontend/src/app/orders/order-details-modal/order-details-modal.component.ts
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Order } from '../../services/order.service';
 
@@ -8,6 +8,7 @@ import { Order } from '../../services/order.service';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './order-details-modal.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./order-details-modal.component.css']
 })
 export class OrderDetailsModalComponent {

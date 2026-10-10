@@ -1,5 +1,5 @@
 // order-management-frontend/src/app/customers/customer-detail/customer-detail.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 
@@ -10,6 +10,7 @@ import { OrderService, Order } from '../../services/order.service';
     selector: 'app-customer-detail',
     imports: [CommonModule],
     templateUrl: './customer-detail.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./customer-detail.component.css']
 })
 export class CustomerDetailComponent implements OnInit {

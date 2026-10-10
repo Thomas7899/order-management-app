@@ -1,5 +1,5 @@
 // order-management-frontend/src/app/customers/customer-analytics/customer-analytics.component.ts
-import { Component, Input, OnChanges } from '@angular/core';
+import { Component, Input, OnChanges, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Customer } from '../../services/customer.service';
 import { Order } from '../../services/order.service';
@@ -11,6 +11,7 @@ import { EChartsOption } from 'echarts';
   standalone: true,
   imports: [CommonModule, NgxEchartsModule],
   templateUrl: './customer-analytics.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./customer-analytics.component.css', './customer-analytics-kpi.css'] // KPI-CSS hinzugefügt
 })
 export class CustomerAnalyticsComponent implements OnChanges {
