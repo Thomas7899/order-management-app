@@ -251,7 +251,8 @@ class EmbeddingTextBuilderTest {
 
         Customer customer = new Customer();
         customer.setId(1L);
-        customer.setName("Test Kunde");
+        customer.setFirstName("Test");
+        customer.setLastName("Kunde");
 
         ProductReview review = new ProductReview();
         review.setId(1L);

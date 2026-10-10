@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "stock_movements")
@@ -88,7 +89,7 @@ public class StockMovement {
     }
 
     private String generateMovementNumber() {
-        return "MOV-" + System.currentTimeMillis();
+        return "MOV-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8);
     }
 
     @PrePersist
