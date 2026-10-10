@@ -1,29 +1,42 @@
 package com.thomas.order_management.dto;
 
+import com.thomas.order_management.dto.inventory.WarehouseStockDto;
+import com.thomas.order_management.dto.sales.OrderListItemDto;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
 /**
- * A comprehensive DTO for the main dashboard, combining stats and recent activity.
+ * Kennzahlen für das Launchpad. Umsätze sind fakturierte Nettoumsätze (nach Stornos).
  */
 public record DashboardDataDto(
         DashboardDataDto.Stats stats,
         DashboardDataDto.RecentActivity recentActivity
 ) {
-    /**
-     * DTO for the main dashboard statistics.
-     */
-    public record Stats(
-            long totalCustomers, long totalProducts, long totalOrders,
-            Map<String, Long> ordersByStatus,
-            BigDecimal totalRevenue, BigDecimal pendingRevenue,
-            BigDecimal todayRevenue, BigDecimal monthRevenue,
-            long lowStockProductsCount
-    ) {}
 
-    /**
-     * DTO for the recent activity feed on the dashboard.
-     */
-    public record RecentActivity(List<OrderDto> recentOrders, List<ProductDto> lowStockProducts) {}
+    public record Stats(
+            long totalCustomers,
+            long totalProducts,
+            long totalOrders,
+            Map<String, Long> ordersByStatus,
+            BigDecimal totalRevenue,
+            BigDecimal openOrderValue,
+            BigDecimal todayRevenue,
+            BigDecimal monthRevenue,
+            long lowStockProductsCount,
+            long openDeliveries,
+            long billingDueCount,
+            long openReceivablesCount,
+            BigDecimal openReceivables,
+            long overdueReceivablesCount,
+            BigDecimal overdueReceivables,
+            long creditBlockedOrders,
+            long backlogItems,
+            long ordersToday
+    ) {
+    }
+
+    public record RecentActivity(List<OrderListItemDto> recentOrders, List<WarehouseStockDto> lowStockItems) {
+    }
 }

@@ -36,8 +36,24 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Materialnummer aus dem Nummernkreis MATERIAL. */
+    @Column(name = "material_number", unique = true, length = 18)
+    private String materialNumber;
+
     @Column(nullable = false)
     private String name;
+
+    /** Basismengeneinheit, z. B. ST (Stück). */
+    @Column(name = "unit_of_measure", nullable = false, length = 3)
+    private String unitOfMeasure = "ST";
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tax_code", nullable = false, length = 10)
+    private TaxCode taxCode = TaxCode.FULL;
+
+    /** Gleitender Durchschnittspreis (Einstandspreis) für Bestandsbewertung und Marge. */
+    @Column(name = "cost_price", precision = 10, scale = 2)
+    private BigDecimal costPrice;
 
     @Column(length = 1000)
     private String description;
@@ -45,6 +61,7 @@ public class Product {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
+    /** Gesamtbestand über alle Lagerorte; wird nur durch Materialbelege fortgeschrieben. */
     @Column(nullable = false)
     private Integer stockQuantity;
 
@@ -80,6 +97,10 @@ public class Product {
 
     public boolean isInStock(int quantity) {
         return stockQuantity != null && stockQuantity >= quantity;
+    }
+
+    public BigDecimal getValuationPrice() {
+        return costPrice != null ? costPrice : price;
     }
 
     @PrePersist

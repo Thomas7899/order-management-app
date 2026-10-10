@@ -27,6 +27,8 @@ spring:
 
 # Deaktiviere Scheduling in Tests
 app:
+  demo:
+    seed-data: false
   dev:
     reset-on-start: false
     generate-embeddings: false

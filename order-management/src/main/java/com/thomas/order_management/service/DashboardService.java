@@ -1,18 +1,17 @@
 package com.thomas.order_management.service;
 
 import com.thomas.order_management.dto.DashboardDataDto;
-import com.thomas.order_management.mapper.OrderMapper;
-import com.thomas.order_management.mapper.ProductMapper;
-import com.thomas.order_management.model.OrderStatus;
-import com.thomas.order_management.repository.CustomerRepository;
-import com.thomas.order_management.repository.OrderRepository;
-import com.thomas.order_management.repository.ProductRepository;
+import com.thomas.order_management.mapper.SalesDocumentMapper;
+import com.thomas.order_management.model.*;
+import com.thomas.order_management.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -23,72 +22,87 @@ public class DashboardService {
     private final CustomerRepository customerRepository;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
-    private final OrderMapper orderMapper;
-    private final ProductMapper productMapper;
+    private final OrderItemRepository orderItemRepository;
+    private final DeliveryRepository deliveryRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final WarehouseStockRepository stockRepository;
+    private final InventoryService inventoryService;
+    private final SalesDocumentMapper salesMapper;
 
     public DashboardService(CustomerRepository customerRepository,
                             ProductRepository productRepository,
                             OrderRepository orderRepository,
-                            OrderMapper orderMapper,
-                            ProductMapper productMapper) {
+                            OrderItemRepository orderItemRepository,
+                            DeliveryRepository deliveryRepository,
+                            InvoiceRepository invoiceRepository,
+                            WarehouseStockRepository stockRepository,
+                            InventoryService inventoryService,
+                            SalesDocumentMapper salesMapper) {
         this.customerRepository = customerRepository;
         this.productRepository = productRepository;
         this.orderRepository = orderRepository;
-        this.orderMapper = orderMapper;
-        this.productMapper = productMapper;
-    }
-
-    public DashboardDataDto getCombinedDashboardData() {
-        DashboardDataDto.Stats stats = getDashboardStats();
-        DashboardDataDto.RecentActivity activity = getRecentActivity();
-        return new DashboardDataDto(stats, activity);
+        this.orderItemRepository = orderItemRepository;
+        this.deliveryRepository = deliveryRepository;
+        this.invoiceRepository = invoiceRepository;
+        this.stockRepository = stockRepository;
+        this.inventoryService = inventoryService;
+        this.salesMapper = salesMapper;
     }
 
     public DashboardDataDto.Stats getDashboardStats() {
-        long totalCustomers = customerRepository.count();
-        long totalProducts = productRepository.countActiveProducts();
-        long totalOrders = orderRepository.count();
+        LocalDate today = LocalDate.now();
 
         Map<String, Long> ordersByStatus = Arrays.stream(OrderStatus.values())
-                .collect(Collectors.toMap(
-                        OrderStatus::name,
-                        orderRepository::countByStatus
-                ));
+                .collect(Collectors.toMap(OrderStatus::name, orderRepository::countByStatus));
 
-        BigDecimal totalRevenue = orderRepository.getTotalAmountByStatus(OrderStatus.DELIVERED);
-        BigDecimal pendingRevenue = orderRepository.getTotalAmountByStatus(OrderStatus.PENDING);
+        List<Invoice> openItems = invoiceRepository.findOpenItems();
+        List<Invoice> overdue = openItems.stream().filter(i -> i.isOverdue(today)).toList();
 
-        LocalDateTime startOfDay = LocalDateTime.now().toLocalDate().atStartOfDay();
-        LocalDateTime endOfDay = startOfDay.plusDays(1).minusNanos(1);
-        BigDecimal todayRevenue = orderRepository.getTotalRevenueInPeriod(startOfDay, endOfDay);
-
-        LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).toLocalDate().atStartOfDay();
-        BigDecimal monthRevenue = orderRepository.getTotalRevenueInPeriod(startOfMonth, LocalDateTime.now());
-
-        long lowStockCount = productRepository.countLowStockProducts();
+        long creditBlocked = orderRepository.findByStatusIn(List.of(OrderStatus.OPEN, OrderStatus.IN_PROCESS)).stream()
+                .filter(o -> o.getCreditStatus() == CreditStatus.BLOCKED)
+                .count();
 
         return new DashboardDataDto.Stats(
-                totalCustomers,
-                totalProducts,
-                totalOrders,
+                customerRepository.count(),
+                productRepository.countActiveProducts(),
+                orderRepository.count(),
                 ordersByStatus,
-                totalRevenue != null ? totalRevenue : BigDecimal.ZERO,
-                pendingRevenue != null ? pendingRevenue : BigDecimal.ZERO,
-                todayRevenue != null ? todayRevenue : BigDecimal.ZERO,
-                monthRevenue != null ? monthRevenue : BigDecimal.ZERO,
-                lowStockCount
+                invoiceRepository.sumNetRevenueTotal(),
+                openOrderValue(),
+                invoiceRepository.sumNetRevenue(today, today),
+                invoiceRepository.sumNetRevenue(today.withDayOfMonth(1), today),
+                stockRepository.findLowStockItems().size(),
+                deliveryRepository.countByStatus(Delivery.Status.CREATED),
+                deliveryRepository.findBillingDueList(ProcessingStatus.NOT_PROCESSED).size(),
+                openItems.size(),
+                sum(openItems),
+                overdue.size(),
+                sum(overdue),
+                creditBlocked,
+                orderItemRepository.findBacklogItems().size(),
+                orderRepository.countByOrderDateBetween(today.atStartOfDay(), today.plusDays(1).atStartOfDay())
         );
     }
 
     public DashboardDataDto.RecentActivity getRecentActivity() {
-        var recentOrders = orderRepository.findAllOrderByOrderDateDesc().stream()
-                .limit(10)
-                .toList();
-        var lowStockProducts = productRepository.findLowStockProducts();
-
         return new DashboardDataDto.RecentActivity(
-                orderMapper.toDtoList(recentOrders),
-                productMapper.toDtoList(lowStockProducts)
-        );
+                orderRepository.findTop10ByOrderByOrderDateDesc().stream().map(salesMapper::toListItem).toList(),
+                inventoryService.getLowStockItems().stream().limit(10).toList());
+    }
+
+    /** Auftragsbestand: Nettowert der noch nicht fakturierten Mengen offener Aufträge. */
+    private BigDecimal openOrderValue() {
+        BigDecimal value = BigDecimal.ZERO;
+        for (OrderItem item : orderItemRepository.findItemsOfOpenOrders()) {
+            int unbilled = Math.max(0, item.getQuantity() - item.getBilledQuantity());
+            if (unbilled == 0 || item.getQuantity() == 0) continue;
+            value = value.add(item.getNetAmount().multiply(BigDecimal.valueOf(unbilled))
+                    .divide(BigDecimal.valueOf(item.getQuantity()), 2, RoundingMode.HALF_UP));
+        }
+        return value;
+    }
+
+    private static BigDecimal sum(List<Invoice> invoices) {
+        return invoices.stream().map(Invoice::getGrossAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

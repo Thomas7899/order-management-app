@@ -21,6 +21,7 @@ public class AbcAnalysisDto {
     @AllArgsConstructor
     public static class AbcItem {
         private Long id;
+        private String number;
         private String name;
         private String category;
         private BigDecimal revenue;

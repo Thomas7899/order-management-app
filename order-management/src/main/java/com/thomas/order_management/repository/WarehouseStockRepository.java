@@ -36,11 +36,11 @@ public interface WarehouseStockRepository extends JpaRepository<WarehouseStock, 
         SELECT p.id, p.name, p.category,
                COALESCE(SUM(ws.quantity), 0) as total_stock,
                COUNT(DISTINCT ws.warehouse_id) as warehouse_count,
-               p.price * COALESCE(SUM(ws.quantity), 0) as stock_value
+               COALESCE(p.cost_price, p.price) * COALESCE(SUM(ws.quantity), 0) as stock_value
         FROM products p
         LEFT JOIN warehouse_stocks ws ON p.id = ws.product_id
         WHERE p.active = true
-        GROUP BY p.id, p.name, p.category, p.price
+        GROUP BY p.id, p.name, p.category, p.price, p.cost_price
         ORDER BY stock_value DESC
         """, nativeQuery = true)
     List<Object[]> getStockOverviewByProduct();

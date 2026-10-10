@@ -4,7 +4,13 @@ package com.thomas.order_management.controller;
 import com.thomas.order_management.controller.assembler.ProductModelAssembler;
 import com.thomas.order_management.dto.ProductDto;
 import com.thomas.order_management.mapper.ProductMapper;
+import com.thomas.order_management.dto.ChangeDocumentDto;
+import com.thomas.order_management.dto.ProductRequest;
+import com.thomas.order_management.model.ChangeDocument;
 import com.thomas.order_management.model.Product;
+import com.thomas.order_management.service.ChangeDocumentService;
+import com.thomas.order_management.service.ProductService;
+import jakarta.validation.Valid;
 import com.thomas.order_management.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.hateoas.CollectionModel;
@@ -28,6 +34,8 @@ public class ProductController {
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
     private final ProductModelAssembler assembler;
+    private final ProductService productService;
+    private final ChangeDocumentService changeDocumentService;
 
     @GetMapping
     @SuppressWarnings("null")
@@ -76,45 +84,29 @@ public class ProductController {
 
     @PostMapping
     @SuppressWarnings("null")
-    public ResponseEntity<EntityModel<ProductDto>> createProduct(@RequestBody Product product) {
-        Product savedProduct = productRepository.save(product);
-        ProductDto productDto = Objects.requireNonNull(productMapper.toDto(savedProduct), "productDto");
-        EntityModel<ProductDto> model = assembler.toModel(productDto);
-
+    public ResponseEntity<EntityModel<ProductDto>> createProduct(@Valid @RequestBody ProductRequest request) {
+        EntityModel<ProductDto> model = assembler.toModel(productService.create(request));
         return ResponseEntity
                 .created(model.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(model);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<EntityModel<ProductDto>> updateProduct(@PathVariable Long id, @RequestBody Product productDetails) {
-        return productRepository.findById(Objects.requireNonNull(id, "id"))
-                .map(product -> {
-                    product.setName(productDetails.getName());
-                    product.setDescription(productDetails.getDescription());
-                    product.setPrice(productDetails.getPrice());
-                    product.setStockQuantity(productDetails.getStockQuantity());
-                    product.setCategory(productDetails.getCategory());
-                    product.setImageUrl(productDetails.getImageUrl());
-                    product.setActive(productDetails.getActive());
-                    
-                    Product savedProduct = productRepository.save(product);
-                    ProductDto productDto = Objects.requireNonNull(productMapper.toDto(savedProduct), "productDto");
-                    return assembler.toModel(productDto);
-                })
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    @SuppressWarnings("null")
+    public EntityModel<ProductDto> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductRequest request) {
+        return assembler.toModel(productService.update(id, request));
     }
 
+    /** Setzt die Vertriebssperre; das Material bleibt wegen vorhandener Belege erhalten. */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
-        return productRepository.findById(Objects.requireNonNull(id, "id"))
-                .map(product -> {
-                    product.setActive(false);
-                    productRepository.save(product);
-                    return ResponseEntity.noContent().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
+        productService.block(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/changes")
+    public List<ChangeDocumentDto> getChanges(@PathVariable Long id) {
+        return changeDocumentService.getChanges(ChangeDocument.ObjectClass.MATERIAL, id);
     }
 
     @GetMapping("/category/{category}")
@@ -187,8 +179,9 @@ public class ProductController {
 
         if (search != null && !search.trim().isEmpty()) {
             products = products.stream()
-                    .filter(p -> p.getName().toLowerCase().contains(search.toLowerCase()) || 
-                                 p.getDescription().toLowerCase().contains(search.toLowerCase()))
+                    .filter(p -> containsIgnoreCase(p.getName(), search)
+                            || containsIgnoreCase(p.getDescription(), search)
+                            || containsIgnoreCase(p.getMaterialNumber(), search))
                     .toList();
         }
 
@@ -228,5 +221,9 @@ public class ProductController {
                 .toList();
 
         return ResponseEntity.ok(CollectionModel.of(resultModels));
+    }
+
+    private static boolean containsIgnoreCase(String value, String search) {
+        return value != null && value.toLowerCase().contains(search.trim().toLowerCase());
     }
 }

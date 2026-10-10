@@ -7,10 +7,16 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
+/**
+ * Materialbeleg mit SAP-Bewegungsart. Bestände werden nur über Materialbelege verändert;
+ * eine Stornierung erzeugt einen Gegenbeleg mit der Storno-Bewegungsart.
+ */
 @Entity
-@Table(name = "stock_movements")
+@Table(name = "stock_movements", indexes = {
+        @Index(name = "idx_stock_movements_product", columnList = "product_id"),
+        @Index(name = "idx_stock_movements_posting_date", columnList = "posting_date")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,12 +26,17 @@ public class StockMovement {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    /** Materialbelegnummer (49xxxxxxxx). */
+    @Column(nullable = false, unique = true, length = 10)
     private String movementNumber;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 30)
     private MovementType movementType;
+
+    /** SAP-Bewegungsart, z. B. 101, 601, 311, 701. */
+    @Column(name = "movement_code", nullable = false, length = 3)
+    private String movementCode;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
@@ -51,52 +62,84 @@ public class StockMovement {
     @Column
     private String reason;
 
-    @Column
-    private String referenceNumber; // z.B. Bestellnummer, Lieferscheinnummer
+    @Column(length = 35)
+    private String referenceNumber; // z. B. Lieferung, Bestellung, Inventurbeleg
 
     @Enumerated(EnumType.STRING)
-    @Column
+    @Column(length = 20)
     private ReferenceType referenceType;
 
-    @Column(name = "created_by")
+    /** Bei Stornobelegen: der stornierte Materialbeleg. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reversed_movement_id")
+    private StockMovement reversedMovement;
+
+    /** Wurde dieser Beleg bereits storniert? */
+    @Column(nullable = false)
+    private boolean reversed;
+
+    @Column(name = "posting_date", nullable = false)
+    private LocalDateTime postingDate;
+
+    @Column(name = "created_by", length = 100)
     private String createdBy;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     public enum MovementType {
-        GOODS_RECEIPT,      // Wareneingang
-        GOODS_ISSUE,        // Warenausgang
-        TRANSFER,           // Umbuchung zwischen Lagern
-        INVENTORY_ADJUSTMENT, // Inventur-Korrektur
-        RETURN,             // Retoure
-        SCRAP               // Verschrottung/Entsorgung
+        INITIAL_ENTRY("561", "562", "Initialer Bestandsaufbau"),
+        GOODS_RECEIPT("101", "102", "Wareneingang"),
+        GOODS_ISSUE("201", "202", "Warenausgang Kostenstelle"),
+        DELIVERY_ISSUE("601", "602", "Warenausgang Lieferung"),
+        TRANSFER("311", "312", "Umlagerung Lagerort an Lagerort"),
+        INVENTORY_ADJUSTMENT("701", "702", "Inventurdifferenz"),
+        RETURN("651", "652", "Retoure vom Kunden"),
+        SCRAP("551", "552", "Verschrottung");
+
+        private final String code;
+        private final String reversalCode;
+        private final String description;
+
+        MovementType(String code, String reversalCode, String description) {
+            this.code = code;
+            this.reversalCode = reversalCode;
+            this.description = description;
+        }
+
+        public String getCode() {
+            return code;
+        }
+
+        public String getReversalCode() {
+            return reversalCode;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public boolean increasesStock() {
+            return this == INITIAL_ENTRY || this == GOODS_RECEIPT || this == RETURN;
+        }
     }
 
     public enum ReferenceType {
-        ORDER,              // Bestellung
-        PURCHASE_ORDER,     // Einkaufsbestellung
-        RETURN_ORDER,       // Retoure
-        INVENTORY,          // Inventur
-        MANUAL              // Manuelle Buchung
-    }
-
-    public StockMovement(MovementType movementType, Product product, Integer quantity) {
-        this.movementType = movementType;
-        this.product = product;
-        this.quantity = quantity;
-        this.movementNumber = generateMovementNumber();
-    }
-
-    private String generateMovementNumber() {
-        return "MOV-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8);
+        ORDER,
+        DELIVERY,
+        PURCHASE_ORDER,
+        RETURN_ORDER,
+        INVENTORY,
+        MANUAL
     }
 
     @PrePersist
     public void onPersist() {
-        this.createdAt = LocalDateTime.now();
-        if (this.movementNumber == null) {
-            this.movementNumber = generateMovementNumber();
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.postingDate == null) {
+            this.postingDate = this.createdAt;
         }
     }
 }

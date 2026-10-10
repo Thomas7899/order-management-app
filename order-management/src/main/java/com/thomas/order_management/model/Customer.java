@@ -3,6 +3,7 @@ package com.thomas.order_management.model;
 
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,8 +30,27 @@ public class Customer {
     @Column(nullable = false)
     private String lastName;
 
+    /** Debitorennummer aus dem Nummernkreis CUSTOMER. */
+    @Column(name = "customer_number", unique = true, length = 10)
+    private String customerNumber;
+
     @Column(nullable = false, unique = true)
     private String email;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_terms", length = 4)
+    private PaymentTerms paymentTerms = PaymentTerms.ZB30;
+
+    /** Kreditlimit in EUR; null bedeutet keine Kreditprüfung. */
+    @Column(name = "credit_limit", precision = 12, scale = 2)
+    private BigDecimal creditLimit;
+
+    /** Kundenrabatt in Prozent (Konditionsart K007). */
+    @Column(name = "discount_percent", precision = 5, scale = 2)
+    private BigDecimal discountPercent = BigDecimal.ZERO;
+
+    @Column(nullable = false)
+    private Boolean active = true;
 
     @Column
     private String phone;
@@ -65,6 +85,15 @@ public class Customer {
 
     public String getFullName() {
         return firstName + " " + lastName;
+    }
+
+    public String getFormattedAddress() {
+        StringBuilder sb = new StringBuilder(getFullName());
+        if (address != null && !address.isBlank()) sb.append(", ").append(address);
+        String cityLine = ((zipCode != null ? zipCode + " " : "") + (city != null ? city : "")).trim();
+        if (!cityLine.isEmpty()) sb.append(", ").append(cityLine);
+        if (country != null && !country.isBlank()) sb.append(", ").append(country);
+        return sb.toString();
     }
 
     @PrePersist

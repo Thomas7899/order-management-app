@@ -1,182 +1,162 @@
 // src/main/java/com/thomas/order_management/controller/OrderController.java
 package com.thomas.order_management.controller;
 
-import com.thomas.order_management.controller.assembler.OrderModelAssembler;
-import com.thomas.order_management.dto.OrderDto;
-import com.thomas.order_management.model.Order;
+import com.thomas.order_management.dto.ChangeDocumentDto;
+import com.thomas.order_management.dto.PageResponse;
+import com.thomas.order_management.dto.sales.*;
+import com.thomas.order_management.model.CreditStatus;
 import com.thomas.order_management.model.OrderStatus;
-import com.thomas.order_management.service.OrderService;
+import com.thomas.order_management.model.ProcessingStatus;
+import com.thomas.order_management.service.sales.DeliveryService;
+import com.thomas.order_management.service.sales.BillingService;
+import com.thomas.order_management.service.sales.DocumentFlowService;
+import com.thomas.order_management.service.sales.SalesOrderService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.hateoas.CollectionModel;
-import org.springframework.hateoas.EntityModel;
-import org.springframework.hateoas.IanaLinkRelations;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Objects;
-
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
-@RequiredArgsConstructor
-@Tag(name = "Orders", description = "Bestellungsverwaltung - CRUD-Operationen für Bestellungen")
+@Tag(name = "Kundenaufträge", description = "Kundenauftragsbearbeitung (VA01/VA02/VA03) mit Preisfindung, Verfügbarkeits- und Kreditprüfung")
 public class OrderController {
 
-    private final OrderService orderService;
-    private final OrderModelAssembler assembler;
+    private final SalesOrderService orderService;
+    private final DocumentFlowService documentFlowService;
+    private final DeliveryService deliveryService;
+    private final BillingService billingService;
 
-    @Operation(summary = "Alle Bestellungen abrufen", description = "Gibt eine Liste aller Bestellungen zurück, sortiert nach Bestelldatum (absteigend)")
-    @ApiResponse(responseCode = "200", description = "Erfolgreich - Liste der Bestellungen")
+    public OrderController(SalesOrderService orderService, DocumentFlowService documentFlowService,
+                           DeliveryService deliveryService, BillingService billingService) {
+        this.orderService = orderService;
+        this.documentFlowService = documentFlowService;
+        this.deliveryService = deliveryService;
+        this.billingService = billingService;
+    }
+
+    @Operation(summary = "Aufträge suchen", description = "Seitenweise Liste mit Filtern; Sortierung z. B. sort=orderDate,desc")
     @GetMapping
-    @SuppressWarnings("null")
-    public ResponseEntity<CollectionModel<EntityModel<OrderDto>>> getAllOrders() {
-        List<EntityModel<OrderDto>> orders = orderService.getAllOrders().stream()
-                .map(orderDto -> assembler.toModel(Objects.requireNonNull(orderDto, "orderDto")))
-                .toList();
-
-        return ResponseEntity.ok(CollectionModel.of(orders,
-                linkTo(methodOn(OrderController.class).getAllOrders()).withSelfRel()));
+    public PageResponse<OrderListItemDto> search(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) List<OrderStatus> status,
+            @RequestParam(required = false) Long customerId,
+            @RequestParam(required = false) CreditStatus creditStatus,
+            @RequestParam(required = false) ProcessingStatus deliveryStatus,
+            @RequestParam(required = false) ProcessingStatus billingStatus,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @PageableDefault(size = 20, sort = "orderDate", direction = Sort.Direction.DESC) Pageable pageable) {
+        return orderService.search(new SalesOrderService.OrderSearch(search, status, customerId, creditStatus,
+                deliveryStatus, billingStatus, dateFrom, dateTo), pageable);
     }
 
-    @Operation(summary = "Bestellung nach ID abrufen", description = "Gibt eine einzelne Bestellung anhand ihrer ID zurück")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Bestellung gefunden"),
-        @ApiResponse(responseCode = "404", description = "Bestellung nicht gefunden", content = @Content)
-    })
+    @Operation(summary = "Auftrag anzeigen")
     @GetMapping("/{id}")
-    public ResponseEntity<EntityModel<OrderDto>> getOrderById(
-            @Parameter(description = "ID der Bestellung") @PathVariable Long id) {
-        return orderService.getOrderById(id)
-                .map(orderDto -> assembler.toModel(Objects.requireNonNull(orderDto, "orderDto")))
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public OrderDto get(@PathVariable Long id) {
+        return orderService.get(id);
     }
 
-    @Operation(summary = "Bestellung nach Bestellnummer abrufen")
+    @Operation(summary = "Auftrag über Belegnummer anzeigen")
     @GetMapping("/number/{orderNumber}")
-    public ResponseEntity<EntityModel<OrderDto>> getOrderByOrderNumber(
-            @Parameter(description = "Bestellnummer (z.B. ORD-123456)") @PathVariable String orderNumber) {
-        return orderService.getOrderByOrderNumber(orderNumber)
-                .map(orderDto -> assembler.toModel(Objects.requireNonNull(orderDto, "orderDto")))
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public OrderDto getByNumber(@PathVariable String orderNumber) {
+        return orderService.getByNumber(orderNumber);
     }
 
-    @Operation(summary = "Neue Bestellung erstellen", description = "Erstellt eine neue Bestellung. Die Bestellnummer wird automatisch generiert falls nicht angegeben.")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Bestellung erfolgreich erstellt"),
-        @ApiResponse(responseCode = "400", description = "Ungültige Eingabedaten", content = @Content)
-    })
-    @PostMapping
-    @SuppressWarnings("null")
-    public ResponseEntity<EntityModel<OrderDto>> createOrder(@RequestBody Order order) {
-        OrderDto createdOrder = Objects.requireNonNull(orderService.createOrder(order), "createdOrder");
-        EntityModel<OrderDto> entityModel = assembler.toModel(createdOrder);
-
-        return ResponseEntity
-                .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
-                .body(entityModel);
-    }
-
-    @Operation(summary = "Bestellung aktualisieren")
-    @PutMapping("/{id}")
-    public ResponseEntity<EntityModel<OrderDto>> updateOrder(@PathVariable Long id, @RequestBody Order orderDetails) {
-        return orderService.updateOrder(id, orderDetails)
-                .map(orderDto -> assembler.toModel(Objects.requireNonNull(orderDto, "orderDto")))
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @Operation(summary = "Bestellstatus aktualisieren", description = "Ändert nur den Status einer Bestellung (z.B. PENDING → SHIPPED)")
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<EntityModel<OrderDto>> updateOrderStatus(
-            @PathVariable Long id, 
-            @Parameter(description = "Neuer Status", schema = @Schema(implementation = OrderStatus.class)) 
-            @RequestParam OrderStatus status) {
-        return orderService.updateOrderStatus(id, status)
-                .map(orderDto -> assembler.toModel(Objects.requireNonNull(orderDto, "orderDto")))
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @Operation(summary = "Bestellung löschen")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "Bestellung erfolgreich gelöscht"),
-        @ApiResponse(responseCode = "404", description = "Bestellung nicht gefunden")
-    })
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
-        if (orderService.deleteOrder(id)) {
-            return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    @Operation(summary = "Bestellungen eines Kunden abrufen")
+    @Operation(summary = "Aufträge eines Debitors")
     @GetMapping("/customer/{customerId}")
-    @SuppressWarnings("null")
-    public ResponseEntity<CollectionModel<EntityModel<OrderDto>>> getOrdersByCustomer(@PathVariable Long customerId) {
-        List<EntityModel<OrderDto>> orders = orderService.getOrdersByCustomer(customerId).stream()
-                .map(orderDto -> assembler.toModel(Objects.requireNonNull(orderDto, "orderDto")))
-                .toList();
-        return ResponseEntity.ok(CollectionModel.of(orders));
+    public List<OrderListItemDto> getOrdersByCustomer(@PathVariable Long customerId) {
+        return orderService.getByCustomer(customerId);
     }
 
-    @Operation(summary = "Bestellungen nach Status filtern")
-    @GetMapping("/status/{status}")
-    @SuppressWarnings("null")
-    public ResponseEntity<CollectionModel<EntityModel<OrderDto>>> getOrdersByStatus(@PathVariable OrderStatus status) {
-        List<EntityModel<OrderDto>> orders = orderService.getOrdersByStatus(status).stream()
-                .map(orderDto -> assembler.toModel(Objects.requireNonNull(orderDto, "orderDto")))
-                .toList();
-        return ResponseEntity.ok(CollectionModel.of(orders));
+    @Operation(summary = "Auftrag simulieren", description = "Preisfindung, Verfügbarkeit und Kreditprüfung ohne zu sichern")
+    @PostMapping("/simulate")
+    public OrderSimulationDto simulate(@Valid @RequestBody OrderRequests.Create request) {
+        return orderService.simulate(request);
     }
 
-    @Operation(summary = "Bestellungen in Zeitraum filtern")
-    @GetMapping("/filter")
-    @SuppressWarnings("null")
-    public ResponseEntity<CollectionModel<EntityModel<OrderDto>>> getOrdersInPeriod(
-            @Parameter(description = "Startdatum (ISO 8601)", example = "2024-01-01T00:00:00")
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @Parameter(description = "Enddatum (ISO 8601)", example = "2024-12-31T23:59:59")
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
-        List<EntityModel<OrderDto>> orders = orderService.getOrdersInPeriod(startDate, endDate).stream()
-            .map(orderDto -> assembler.toModel(Objects.requireNonNull(orderDto, "orderDto")))
-                .toList();
-        return ResponseEntity.ok(CollectionModel.of(orders));
+    @Operation(summary = "Auftrag anlegen")
+    @PostMapping
+    public ResponseEntity<OrderDto> create(@Valid @RequestBody OrderRequests.Create request) {
+        OrderDto created = orderService.create(request);
+        return ResponseEntity
+                .created(ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(created.id()).toUri())
+                .body(created);
     }
 
-    @Operation(summary = "Umsatz nach Bestellstatus", description = "Berechnet den Gesamtumsatz aller Bestellungen mit dem angegebenen Status")
-    @GetMapping("/revenue/status/{status}")
-    public BigDecimal getRevenueByStatus(@PathVariable OrderStatus status) {
-        return orderService.getRevenueByStatus(status);
+    @Operation(summary = "Auftragskopf ändern")
+    @PatchMapping("/{id}")
+    public OrderDto updateHeader(@PathVariable Long id, @Valid @RequestBody OrderRequests.UpdateHeader request) {
+        return orderService.updateHeader(id, request);
     }
 
-    @Operation(summary = "Umsatz in Zeitraum", description = "Berechnet den Gesamtumsatz im angegebenen Zeitraum")
-    @GetMapping("/revenue/period")
-    public BigDecimal getRevenueInPeriod(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
-        return orderService.getRevenueInPeriod(startDate, endDate);
+    @Operation(summary = "Position hinzufügen")
+    @PostMapping("/{id}/items")
+    public OrderDto addItem(@PathVariable Long id, @Valid @RequestBody OrderRequests.Item request) {
+        return orderService.addItem(id, request);
     }
 
-    @Operation(summary = "Anzahl Bestellungen nach Status")
-    @GetMapping("/count/status/{status}")
-    public long getOrderCountByStatus(@PathVariable OrderStatus status) {
-        return orderService.getOrderCountByStatus(status);
+    @Operation(summary = "Position ändern (Menge, Rabatt)")
+    @PatchMapping("/{id}/items/{itemNumber}")
+    public OrderDto changeItem(@PathVariable Long id, @PathVariable int itemNumber,
+                               @Valid @RequestBody OrderRequests.ChangeItem request) {
+        return orderService.changeItem(id, itemNumber, request);
+    }
+
+    @Operation(summary = "Positionen absagen", description = "Setzt einen Absagegrund; ohne Positionsnummern werden alle offenen Positionen abgesagt")
+    @PostMapping("/{id}/reject")
+    public OrderDto reject(@PathVariable Long id, @Valid @RequestBody OrderRequests.Reject request) {
+        return orderService.reject(id, request);
+    }
+
+    @Operation(summary = "Kreditsperre freigeben")
+    @PostMapping("/{id}/release-credit")
+    public OrderDto releaseCreditBlock(@PathVariable Long id) {
+        return orderService.releaseCreditBlock(id);
+    }
+
+    @Operation(summary = "Verfügbarkeit neu prüfen")
+    @PostMapping("/{id}/reconfirm")
+    public OrderDto reconfirm(@PathVariable Long id) {
+        return orderService.reconfirm(id);
+    }
+
+    @Operation(summary = "Rückstandsbearbeitung", description = "Prüft alle nicht vollständig bestätigten Positionen erneut (V_RA)")
+    @PostMapping("/backlog/process")
+    public Map<String, Integer> processBacklog() {
+        return Map.of("improvedItems", orderService.processBacklog());
+    }
+
+    @Operation(summary = "Belegfluss")
+    @GetMapping("/{id}/document-flow")
+    public DocumentFlowDto documentFlow(@PathVariable Long id) {
+        return documentFlowService.forOrder(id);
+    }
+
+    @Operation(summary = "Lieferungen zum Auftrag")
+    @GetMapping("/{id}/deliveries")
+    public List<DeliveryDto> deliveries(@PathVariable Long id) {
+        return deliveryService.getByOrder(id);
+    }
+
+    @Operation(summary = "Fakturen zum Auftrag")
+    @GetMapping("/{id}/invoices")
+    public List<InvoiceDto> invoices(@PathVariable Long id) {
+        return billingService.getByOrder(id);
+    }
+
+    @Operation(summary = "Änderungsbelege")
+    @GetMapping("/{id}/changes")
+    public List<ChangeDocumentDto> changes(@PathVariable Long id) {
+        return orderService.getChanges(id);
     }
 }

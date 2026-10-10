@@ -1,98 +1,84 @@
 // order-management/src/main/java/com/thomas/order_management/dto/reporting/KpiDashboardDto.java
 package com.thomas.order_management.dto.reporting;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class KpiDashboardDto {
-    
-    // Finanz-KPIs
-    private FinancialKpis financial;
-    
-    // Operations-KPIs
-    private OperationalKpis operational;
-    
-    // Kunden-KPIs
-    private CustomerKpis customer;
-    
-    // Lager-KPIs
-    private InventoryKpis inventory;
-    
-    // Trends
-    private List<TrendData> revenueTrend;
-    private List<TrendData> orderTrend;
+/**
+ * Kennzahlen aus Auftrags-, Liefer-, Faktura- und Bestandsdaten. Umsätze sind fakturierte
+ * Nettoumsätze nach Stornos, Kosten stammen aus der statistischen Kondition VPRS.
+ */
+public record KpiDashboardDto(
+        FinancialKpis financial,
+        OperationalKpis operational,
+        CustomerKpis customer,
+        InventoryKpis inventory,
+        List<TrendData> revenueTrend,
+        List<TrendData> orderTrend
+) {
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class FinancialKpis {
-        private BigDecimal totalRevenue;
-        private BigDecimal revenueThisMonth;
-        private BigDecimal revenueLastMonth;
-        private BigDecimal revenueGrowth;
-        private BigDecimal averageOrderValue;
-        private BigDecimal grossMargin;
-        private BigDecimal revenuePerCustomer;
+    public record FinancialKpis(
+            BigDecimal revenueLast12Months,
+            BigDecimal revenueThisMonth,
+            BigDecimal revenueLastMonth,
+            BigDecimal revenueGrowth,
+            BigDecimal revenueYearToDate,
+            BigDecimal averageOrderValue,
+            BigDecimal grossMarginAmount,
+            BigDecimal grossMarginPercent,
+            BigDecimal revenuePerCustomer,
+            BigDecimal openReceivables,
+            BigDecimal overdueReceivables,
+            BigDecimal daysSalesOutstanding
+    ) {
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class OperationalKpis {
-        private long totalOrders;
-        private long ordersThisMonth;
-        private long pendingOrders;
-        private long processingOrders;
-        private long shippedOrders;
-        private long deliveredOrders;
-        private long cancelledOrders;
-        private BigDecimal fulfillmentRate;
-        private BigDecimal cancellationRate;
-        private BigDecimal averageOrdersPerDay;
+    public record OperationalKpis(
+            long totalOrders,
+            long ordersThisMonth,
+            BigDecimal orderIntakeThisMonth,
+            long openOrders,
+            long inProcessOrders,
+            long completedOrders,
+            long cancelledOrders,
+            long creditBlockedOrders,
+            BigDecimal onTimeDeliveryRate,
+            BigDecimal averageLeadTimeDays,
+            BigDecimal cancellationRate,
+            BigDecimal averageOrdersPerDay
+    ) {
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class CustomerKpis {
-        private long totalCustomers;
-        private long newCustomersThisMonth;
-        private long activeCustomers;
-        private BigDecimal customerRetentionRate;
-        private BigDecimal averagePurchaseFrequency;
-        private BigDecimal customerLifetimeValue;
-        private Map<String, Long> customersByCountry;
+    public record CustomerKpis(
+            long totalCustomers,
+            long newCustomersThisMonth,
+            long activeCustomers,
+            BigDecimal activeCustomerRate,
+            BigDecimal averagePurchaseFrequency,
+            BigDecimal customerLifetimeValue,
+            Map<String, Long> customersByCountry
+    ) {
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class InventoryKpis {
-        private long totalProducts;
-        private long activeProducts;
-        private BigDecimal totalInventoryValue;
-        private long lowStockItems;
-        private long outOfStockItems;
-        private BigDecimal stockTurnoverRate;
-        private BigDecimal averageStockLevel;
-        private Map<String, BigDecimal> inventoryByCategory;
+    public record InventoryKpis(
+            long totalProducts,
+            long activeProducts,
+            BigDecimal totalInventoryValue,
+            long lowStockItems,
+            long outOfStockItems,
+            BigDecimal stockTurnoverRate,
+            BigDecimal daysOfSupply,
+            long backlogItems,
+            Map<String, BigDecimal> inventoryByCategory
+    ) {
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class TrendData {
-        private String period;
-        private BigDecimal value;
-        private BigDecimal previousValue;
-        private BigDecimal changePercentage;
+    public record TrendData(
+            String period,
+            BigDecimal value,
+            BigDecimal previousValue,
+            BigDecimal changePercentage
+    ) {
     }
 }
