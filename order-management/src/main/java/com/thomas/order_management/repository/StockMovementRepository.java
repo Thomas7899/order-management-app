@@ -12,12 +12,11 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface StockMovementRepository extends JpaRepository<StockMovement, Long>, JpaSpecificationExecutor<StockMovement> {
 
-    Optional<StockMovement> findByMovementNumber(String movementNumber);
+    List<StockMovement> findByMovementNumberOrderByDocumentItemAsc(String movementNumber);
 
     List<StockMovement> findByProductIdOrderByPostingDateDescIdDesc(Long productId);
 

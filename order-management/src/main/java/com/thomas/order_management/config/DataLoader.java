@@ -30,7 +30,6 @@ public class DataLoader implements CommandLineRunner {
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-    private final UserRepository userRepository;
     private final ProductReviewRepository reviewRepository;
     private final ReviewEmbeddingService embeddingService;
     private final NumberRangeService numberRangeService;
@@ -58,7 +57,6 @@ public class DataLoader implements CommandLineRunner {
             ProductRepository productRepository,
             OrderRepository orderRepository,
             OrderItemRepository orderItemRepository,
-            UserRepository userRepository,
             ProductReviewRepository reviewRepository,
             ReviewEmbeddingService embeddingService,
             NumberRangeService numberRangeService,
@@ -69,7 +67,6 @@ public class DataLoader implements CommandLineRunner {
         this.productRepository = productRepository;
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
-        this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.embeddingService = embeddingService;
         this.numberRangeService = numberRangeService;
@@ -116,7 +113,6 @@ public class DataLoader implements CommandLineRunner {
                 "DELETE FROM orders",
                 "DELETE FROM products",
                 "DELETE FROM customers",
-                "DELETE FROM users",
                 "DELETE FROM number_ranges")) {
             jdbcTemplate.update(sql);
         }
@@ -125,7 +121,6 @@ public class DataLoader implements CommandLineRunner {
     private void loadSampleData() {
         long started = System.currentTimeMillis();
         List<Customer> customers = seedCustomers();
-        seedUsers();
         List<Product> products = seedProducts();
         simulator.simulate(customers, products, trendingUpProducts, trendingDownProducts, random);
         seedReviews(products, customers);
@@ -173,10 +168,10 @@ public class DataLoader implements CommandLineRunner {
                     : (terms < 0.25 ? PaymentTerms.ZB01 : terms < 0.75 ? PaymentTerms.ZB30 : terms < 0.95 ? PaymentTerms.ZB14 : PaymentTerms.ZB00));
             c.setDiscountPercent(business ? BigDecimal.valueOf(2 + random.nextInt(9)) : BigDecimal.ZERO);
             if (business) {
-                c.setCreditLimit(BigDecimal.valueOf((10 + random.nextInt(41)) * 1000L));
-            } else if (random.nextDouble() < 0.6) {
-                // Einige Privatkunden mit knappem Limit erzeugen gelegentlich Kreditsperren
-                c.setCreditLimit(BigDecimal.valueOf(random.nextDouble() < 0.15 ? 1500 : (3 + random.nextInt(8)) * 1000L));
+                c.setCreditLimit(BigDecimal.valueOf((20 + random.nextInt(61)) * 1000L));
+            } else if (random.nextDouble() < 0.7) {
+                // Wenige Privatkunden mit knappem Limit erzeugen gelegentlich Kreditsperren
+                c.setCreditLimit(BigDecimal.valueOf(random.nextDouble() < 0.07 ? 1000 : (5 + random.nextInt(11)) * 1000L));
             }
             c.setActive(true);
 
@@ -190,17 +185,6 @@ public class DataLoader implements CommandLineRunner {
             customers.add(c);
         }
         return customerRepository.saveAll(customers);
-    }
-
-    private List<User> seedUsers() {
-        List<User> list = new ArrayList<>();
-
-        list.add(new User("Admin", "admin@example.com", "Admin"));
-        list.add(new User("Marie Reuter", "marie@example.com", "User"));
-        list.add(new User("Jonas Meier", "jonas@example.com", "User"));
-        list.add(new User("Paul Richter", "paul@example.com", "User"));
-
-        return userRepository.saveAll(list);
     }
 
     // *** KOMPLETT NEUE LOGIK FÜR PRODUKTE ***

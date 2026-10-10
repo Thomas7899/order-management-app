@@ -37,6 +37,20 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
         """)
     List<OrderItem> findBacklogItems();
 
+    /** Nicht bestätigte Restmengen offener Aufträge je Material: Material-ID, Menge. */
+    @Query("""
+        SELECT oi.product.id, SUM(oi.quantity - oi.confirmedQuantity) FROM OrderItem oi
+        WHERE oi.rejectionReason IS NULL
+          AND oi.confirmedQuantity < oi.quantity
+          AND oi.order.status IN (com.thomas.order_management.model.OrderStatus.OPEN,
+                                  com.thomas.order_management.model.OrderStatus.IN_PROCESS)
+        GROUP BY oi.product.id
+        """)
+    List<Object[]> sumBacklogQuantityByProduct();
+
+    @Query("SELECT COUNT(oi) FROM OrderItem oi WHERE oi.order.id = :orderId AND oi.rejectionReason IS NULL AND oi.confirmedQuantity > oi.deliveredQuantity")
+    long countDeliverable(@Param("orderId") Long orderId);
+
     /** Fakturierte Käufe: Material-ID, Debitor-ID, Positions-ID, Auftragsdatum. */
     @Query("SELECT oi.product.id, oi.order.customer.id, oi.id, oi.order.orderDate FROM OrderItem oi WHERE oi.billedQuantity > 0")
     List<Object[]> findBilledPurchases();

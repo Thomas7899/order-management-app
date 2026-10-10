@@ -20,13 +20,13 @@ public interface WarehouseStockRepository extends JpaRepository<WarehouseStock, 
 
     List<WarehouseStock> findByProductId(Long productId);
 
-    @Query("SELECT ws FROM WarehouseStock ws WHERE ws.quantity <= ws.minStock")
+    @Query("SELECT ws FROM WarehouseStock ws WHERE ws.minStock > 0 AND ws.quantity <= ws.minStock")
     List<WarehouseStock> findLowStockItems();
 
-    @Query("SELECT ws FROM WarehouseStock ws WHERE ws.quantity > ws.maxStock")
+    @Query("SELECT ws FROM WarehouseStock ws WHERE ws.maxStock > 0 AND ws.quantity > ws.maxStock")
     List<WarehouseStock> findOverStockItems();
 
-    @Query("SELECT ws FROM WarehouseStock ws WHERE ws.warehouse.id = :warehouseId AND ws.quantity <= ws.minStock")
+    @Query("SELECT ws FROM WarehouseStock ws WHERE ws.warehouse.id = :warehouseId AND ws.minStock > 0 AND ws.quantity <= ws.minStock")
     List<WarehouseStock> findLowStockItemsByWarehouse(@Param("warehouseId") Long warehouseId);
 
     @Query("SELECT SUM(ws.quantity) FROM WarehouseStock ws WHERE ws.product.id = :productId")

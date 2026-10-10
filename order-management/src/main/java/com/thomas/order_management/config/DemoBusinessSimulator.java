@@ -50,6 +50,7 @@ public class DemoBusinessSimulator {
     private final OrderRepository orderRepository;
     private final DeliveryRepository deliveryRepository;
     private final InvoiceRepository invoiceRepository;
+    private final OrderItemRepository orderItemRepository;
 
     public DemoBusinessSimulator(SalesOrderService orderService,
                                  DeliveryService deliveryService,
@@ -59,7 +60,8 @@ public class DemoBusinessSimulator {
                                  WarehouseStockRepository stockRepository,
                                  OrderRepository orderRepository,
                                  DeliveryRepository deliveryRepository,
-                                 InvoiceRepository invoiceRepository) {
+                                 InvoiceRepository invoiceRepository,
+                                 OrderItemRepository orderItemRepository) {
         this.orderService = orderService;
         this.deliveryService = deliveryService;
         this.billingService = billingService;
@@ -69,13 +71,11 @@ public class DemoBusinessSimulator {
         this.orderRepository = orderRepository;
         this.deliveryRepository = deliveryRepository;
         this.invoiceRepository = invoiceRepository;
+        this.orderItemRepository = orderItemRepository;
     }
 
     /** Zahlungsverhalten eines Debitors. */
     private enum PaymentBehaviour { DISCOUNT, ON_TIME, LATE, NON_PAYER }
-
-    private record PlannedDelivery(Long orderId, LocalDate date) {
-    }
 
     private record PlannedPayment(Long invoiceId, LocalDate date) {
     }
@@ -90,7 +90,8 @@ public class DemoBusinessSimulator {
         List<Customer> weightedCustomers = weightCustomers(customers, random);
         Set<Long> supplierProblems = pickSupplierProblems(products, trendingUp, random);
 
-        List<PlannedDelivery> plannedDeliveries = new ArrayList<>();
+        // Lieferfälligkeitsvorrat (VL10): Auftrag → frühestes Lieferdatum; bleibt bis zur Volllieferung erhalten
+        Map<Long, LocalDate> deliveryDue = new LinkedHashMap<>();
         List<PlannedPayment> plannedPayments = new ArrayList<>();
         Deque<Long> creditBlocked = new ArrayDeque<>();
         int orders = 0;
@@ -110,13 +111,14 @@ public class DemoBusinessSimulator {
                 asUser(USER_CREDIT, () -> releaseCreditBlocks(creditBlocked, random));
             }
 
-            // 3. Auslieferungen inkl. Warenausgang
-            Iterator<PlannedDelivery> it = plannedDeliveries.iterator();
+            // 3. Offene Warenausgänge nachbuchen, dann neue Lieferungen aus dem Lieferfälligkeitsvorrat
+            asUser(USER_WAREHOUSE, () -> retryGoodsIssues(d));
+            Iterator<Map.Entry<Long, LocalDate>> it = deliveryDue.entrySet().iterator();
             while (it.hasNext()) {
-                PlannedDelivery planned = it.next();
-                if (planned.date().isAfter(d)) continue;
-                it.remove();
-                asUser(USER_WAREHOUSE, () -> deliver(planned.orderId(), d, today, random));
+                Map.Entry<Long, LocalDate> due = it.next();
+                if (due.getValue().isAfter(d)) continue;
+                boolean finished = asUser(USER_WAREHOUSE, () -> deliver(due.getKey(), d, today, random));
+                if (finished) it.remove();
             }
 
             // 4. Fakturalauf (VF04) für gestern ausgelieferte Lieferungen
@@ -143,7 +145,7 @@ public class DemoBusinessSimulator {
                     creditBlocked.add(order.getId());
                 }
                 int leadDays = random.nextDouble() < 0.12 ? 3 + random.nextInt(5) : 1 + random.nextInt(2);
-                plannedDeliveries.add(new PlannedDelivery(order.getId(), d.plusDays(leadDays)));
+                deliveryDue.put(order.getId(), d.plusDays(leadDays));
 
                 if (random.nextDouble() < 0.035) {
                     asUser(USER_SALES, () -> rejectOrder(order.getId(), random));
@@ -170,22 +172,26 @@ public class DemoBusinessSimulator {
         List<Warehouse> warehouses = warehouseRepository.saveAll(List.of(main, north, east, south));
 
         LocalDateTime postingDate = date.atTime(7, 0);
-        for (Product product : products) {
+        int n = products.size();
+        for (int index = 0; index < n; index++) {
+            Product product = products.get(index);
+            // Erwarteter Jahresabsatz gemäß der Nachfrageverteilung in selectProduct (beliebte Materialien vorn)
+            double expectedYearlyDemand = 24 * 0.625 * Math.pow((index + 0.5) / n, -0.375);
+            int min = Math.max(2, (int) Math.ceil(expectedYearlyDemand * 2 / 52));
+            int max = Math.max(min + 4, (int) Math.round(expectedYearlyDemand * 10 / 52));
             boolean slowMover = random.nextDouble() < 0.08;
-            int min = 8 + random.nextInt(8);
-            int max = slowMover ? 40 + random.nextInt(20) : 50 + random.nextInt(40);
             String bin = String.format("%c-%02d-%d", (char) ('A' + random.nextInt(8)), 1 + random.nextInt(20), 1 + random.nextInt(5));
 
             stockRepository.save(stockSettings(warehouses.get(0), product, min, max, bin));
-            int initial = slowMover ? max + 80 + random.nextInt(120) : max;
+            int initial = slowMover ? max * 4 : max;
             post(MovementType.INITIAL_ENTRY, product, null, warehouses.get(0), initial, postingDate,
                     "Datenübernahme Anfangsbestand", ReferenceType.MANUAL, "MIGRATION");
 
             for (int w = 1; w < warehouses.size(); w++) {
                 if (random.nextDouble() < (w == 1 ? 0.55 : 0.3)) {
                     String binW = String.format("%c-%02d-%d", (char) ('A' + random.nextInt(8)), 1 + random.nextInt(20), 1 + random.nextInt(5));
-                    stockRepository.save(stockSettings(warehouses.get(w), product, 3, 25, binW));
-                    post(MovementType.INITIAL_ENTRY, product, null, warehouses.get(w), 8 + random.nextInt(15),
+                    stockRepository.save(stockSettings(warehouses.get(w), product, 1, 4, binW));
+                    post(MovementType.INITIAL_ENTRY, product, null, warehouses.get(w), 2 + random.nextInt(3),
                             postingDate, "Datenübernahme Anfangsbestand", ReferenceType.MANUAL, "MIGRATION");
                 }
             }
@@ -219,9 +225,19 @@ public class DemoBusinessSimulator {
         boolean supplierProblemPhase = !day.isBefore(today.minusDays(35));
         LocalDateTime postingDate = day.atTime(9, 30);
         int purchaseOrder = 4500000 + day.getDayOfYear() * 10;
-        for (WarehouseStock stock : stockRepository.findLowStockItems()) {
-            if (supplierProblemPhase && supplierProblems.contains(stock.getProduct().getId())) continue;
-            int quantity = stock.getMaxStock() - stock.getQuantity();
+        Map<Long, Integer> backlog = new HashMap<>();
+        for (Object[] row : orderItemRepository.sumBacklogQuantityByProduct()) {
+            backlog.put((Long) row[0], ((Number) row[1]).intValue());
+        }
+        for (WarehouseStock stock : stockRepository.findAll()) {
+            if (!stock.isPlanned()) continue;
+            Long productId = stock.getProduct().getId();
+            if (supplierProblemPhase && supplierProblems.contains(productId)) continue;
+            // Hauptlager: zusätzlich den Rückstand aus nicht bestätigten Auftragsmengen decken
+            boolean mainWarehouse = stock.getWarehouse().getId().equals(warehouses.get(0).getId());
+            int backlogDemand = mainWarehouse ? backlog.getOrDefault(productId, 0) : 0;
+            if (!stock.isLowStock() && backlogDemand == 0) continue;
+            int quantity = Math.max(0, stock.getMaxStock() - stock.getQuantity()) + backlogDemand;
             if (quantity <= 0) continue;
             post(MovementType.GOODS_RECEIPT, stock.getProduct(), null, stock.getWarehouse(), quantity, postingDate,
                     "Wareneingang zur Bestellung", ReferenceType.PURCHASE_ORDER, "45" + (purchaseOrder + random.nextInt(10)));
@@ -293,7 +309,10 @@ public class DemoBusinessSimulator {
         for (int i = 0; i < itemCount; i++) {
             Product product = selectProduct(products, day, today, trendingUp, trendingDown, random);
             if (!used.add(product.getId())) continue;
-            int quantity = business && random.nextDouble() < 0.25 ? 10 + random.nextInt(20) : 1 + random.nextInt(3);
+            boolean bulk = business && random.nextDouble() < 0.15;
+            int quantity = !bulk ? 1 + random.nextInt(3)
+                    : product.getPrice().compareTo(BigDecimal.valueOf(500)) > 0 ? 3 + random.nextInt(3)
+                    : 10 + random.nextInt(6);
             BigDecimal discount = business && random.nextDouble() < 0.1 ? BigDecimal.valueOf(2 + random.nextInt(4)) : null;
             items.add(new OrderRequests.Item(product.getId(), quantity, discount));
         }
@@ -325,19 +344,42 @@ public class DemoBusinessSimulator {
         return products.get(index);
     }
 
-    private void deliver(Long orderId, LocalDate day, LocalDate today, Random random) {
+    /** Liefert den Auftrag aus; true, wenn er nicht mehr im Lieferfälligkeitsvorrat bleiben muss. */
+    private boolean deliver(Long orderId, LocalDate day, LocalDate today, Random random) {
         Order order = orderRepository.findById(orderId).orElse(null);
-        if (order == null || order.getStatus() == OrderStatus.CANCELLED || !order.getCreditStatus().allowsDelivery()) {
-            return;
+        if (order == null || isFinished(order)) {
+            return true;
+        }
+        if (!order.getCreditStatus().allowsDelivery() || orderItemRepository.countDeliverable(orderId) == 0) {
+            return false;
         }
         try {
             Delivery delivery = deliveryService.createDelivery(
                     new LogisticsRequests.CreateDelivery(orderId, null, day, null), day.atTime(10, 0));
             // Am heutigen Tag bleiben einige Lieferungen ohne Warenausgang (Kommissionierung läuft noch)
-            if (day.equals(today) && random.nextDouble() < 0.6) return;
-            deliveryService.postGoodsIssueAt(delivery.getId(), day.atTime(15, random.nextInt(60)));
+            if (!(day.equals(today) && random.nextDouble() < 0.6)) {
+                deliveryService.postGoodsIssueAt(delivery.getId(), day.atTime(15, random.nextInt(60)));
+            }
         } catch (BusinessException ignored) {
-            // Lagerortbestand reicht nicht – Lieferung bleibt offen und erscheint im Arbeitsvorrat
+            // nichts Lieferbares bestätigt oder Lagerortbestand reicht nicht – bleibt im Vorrat
+        }
+        return orderRepository.findById(orderId).map(this::isFinished).orElse(true);
+    }
+
+    private boolean isFinished(Order order) {
+        return order.getStatus() == OrderStatus.CANCELLED || order.getStatus() == OrderStatus.COMPLETED
+                || order.getDeliveryStatus() == ProcessingStatus.FULLY_PROCESSED;
+    }
+
+    /** Bucht Warenausgänge für Lieferungen nach, die wegen fehlenden Lagerortbestands offen geblieben sind. */
+    private void retryGoodsIssues(LocalDate day) {
+        for (Delivery delivery : deliveryRepository.findByStatusOrderByCreatedAtAsc(Delivery.Status.CREATED)) {
+            if (!delivery.getCreatedAt().toLocalDate().isBefore(day)) continue;
+            try {
+                deliveryService.postGoodsIssueAt(delivery.getId(), day.atTime(11, 0));
+            } catch (BusinessException ignored) {
+                // Bestand weiterhin nicht ausreichend
+            }
         }
     }
 

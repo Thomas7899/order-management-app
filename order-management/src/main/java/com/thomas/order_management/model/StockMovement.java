@@ -13,7 +13,9 @@ import java.time.LocalDateTime;
  * eine Stornierung erzeugt einen Gegenbeleg mit der Storno-Bewegungsart.
  */
 @Entity
-@Table(name = "stock_movements", indexes = {
+@Table(name = "stock_movements", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_stock_movements_document_item", columnNames = {"movement_number", "document_item"})
+}, indexes = {
         @Index(name = "idx_stock_movements_product", columnList = "product_id"),
         @Index(name = "idx_stock_movements_posting_date", columnList = "posting_date")
 })
@@ -26,9 +28,13 @@ public class StockMovement {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Materialbelegnummer (49xxxxxxxx). */
-    @Column(nullable = false, unique = true, length = 10)
+    /** Materialbelegnummer (49xxxxxxxx); mehrere Positionen teilen sich eine Nummer. */
+    @Column(name = "movement_number", nullable = false, length = 10)
     private String movementNumber;
+
+    /** Position im Materialbeleg (1, 2, 3, ...). */
+    @Column(name = "document_item", nullable = false)
+    private Integer documentItem = 1;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)

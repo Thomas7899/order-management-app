@@ -57,13 +57,28 @@ public class StockPostingService {
     ) {
     }
 
+    /** Bucht einen Materialbeleg mit einer Position. */
     public StockMovement post(Posting posting) {
+        return postItem(posting, null, 1);
+    }
+
+    /** Bucht einen Materialbeleg mit mehreren Positionen unter einer gemeinsamen Belegnummer. */
+    public java.util.List<StockMovement> postDocument(java.util.List<Posting> postings) {
+        String number = numberRangeService.next(NumberRangeObject.MATERIAL_DOCUMENT);
+        java.util.List<StockMovement> result = new java.util.ArrayList<>();
+        for (int i = 0; i < postings.size(); i++) {
+            result.add(postItem(postings.get(i), number, i + 1));
+        }
+        return result;
+    }
+
+    private StockMovement postItem(Posting posting, String documentNumber, int documentItem) {
         Posting p = attach(posting);
         if (p.quantity() < 0 || (p.quantity() == 0 && p.type() != MovementType.INVENTORY_ADJUSTMENT)) {
             throw new BusinessException("M7", "002", "Bitte eine Menge größer 0 erfassen");
         }
 
-        StockMovement movement = newMovement(p);
+        StockMovement movement = newMovement(p, documentNumber, documentItem);
 
         switch (p.type()) {
             case INITIAL_ENTRY, GOODS_RECEIPT, RETURN -> {
@@ -136,7 +151,8 @@ public class StockPostingService {
         StockMovement original = movementRepository.findById(movementId)
                 .orElseThrow(() -> new ResourceNotFoundException("Materialbeleg " + movementId + " nicht gefunden"));
         if (original.isReversed()) {
-            throw new BusinessException("M7", "089", "Materialbeleg " + original.getMovementNumber() + " ist bereits storniert", HttpStatus.CONFLICT);
+            throw new BusinessException("M7", "089", "Materialbeleg " + original.getMovementNumber() + "/" + original.getDocumentItem()
+                    + " ist bereits storniert", HttpStatus.CONFLICT);
         }
         if (original.getReversedMovement() != null) {
             throw new BusinessException("M7", "090", "Ein Stornobeleg kann nicht storniert werden", HttpStatus.CONFLICT);
@@ -149,18 +165,33 @@ public class StockPostingService {
         return reverseForDocument(original, postingDate, reason);
     }
 
-    /** Storno ohne Prüfung der Referenzart; wird vom Lieferungsstorno verwendet. */
-    public StockMovement reverseForDocument(StockMovement original, LocalDateTime postingDate, String reason) {
+    /** Storniert mehrere Belegpositionen (z. B. einen Warenausgang) mit einem gemeinsamen Stornobeleg. */
+    public java.util.List<StockMovement> reverseDocument(java.util.List<StockMovement> originals, LocalDateTime postingDate, String reason) {
+        String number = numberRangeService.next(NumberRangeObject.MATERIAL_DOCUMENT);
+        java.util.List<StockMovement> result = new java.util.ArrayList<>();
+        for (int i = 0; i < originals.size(); i++) {
+            result.add(reverseItem(originals.get(i), postingDate, reason, number, i + 1));
+        }
+        return result;
+    }
+
+    private StockMovement reverseForDocument(StockMovement original, LocalDateTime postingDate, String reason) {
+        return reverseItem(original, postingDate, reason, numberRangeService.next(NumberRangeObject.MATERIAL_DOCUMENT), 1);
+    }
+
+    private StockMovement reverseItem(StockMovement original, LocalDateTime postingDate, String reason,
+                                      String documentNumber, int documentItem) {
         Product product = original.getProduct();
         LocalDateTime date = postingDate != null ? postingDate : LocalDateTime.now();
 
         StockMovement reversal = new StockMovement();
-        reversal.setMovementNumber(numberRangeService.next(NumberRangeObject.MATERIAL_DOCUMENT));
+        reversal.setMovementNumber(documentNumber);
+        reversal.setDocumentItem(documentItem);
         reversal.setMovementType(original.getMovementType());
         reversal.setMovementCode(reversalCode(original));
         reversal.setProduct(product);
         reversal.setQuantity(original.getQuantity());
-        reversal.setReason(reason != null ? reason : "Storno zu Materialbeleg " + original.getMovementNumber());
+        reversal.setReason(reason != null ? reason : "Storno zu Materialbeleg " + original.getMovementNumber() + "/" + original.getDocumentItem());
         reversal.setReferenceType(original.getReferenceType());
         reversal.setReferenceNumber(original.getReferenceNumber());
         reversal.setReversedMovement(original);
@@ -223,9 +254,11 @@ public class StockPostingService {
         };
     }
 
-    private StockMovement newMovement(Posting p) {
+    private StockMovement newMovement(Posting p, String documentNumber, int documentItem) {
         StockMovement movement = new StockMovement();
-        movement.setMovementNumber(numberRangeService.next(NumberRangeObject.MATERIAL_DOCUMENT));
+        movement.setMovementNumber(documentNumber != null ? documentNumber
+                : numberRangeService.next(NumberRangeObject.MATERIAL_DOCUMENT));
+        movement.setDocumentItem(documentItem);
         movement.setMovementType(p.type());
         movement.setMovementCode(p.type().getCode());
         movement.setProduct(p.product());

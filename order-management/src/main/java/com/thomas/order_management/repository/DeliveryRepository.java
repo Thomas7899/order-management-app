@@ -18,6 +18,8 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long>, JpaSp
 
     long countByStatus(Delivery.Status status);
 
+    List<Delivery> findByStatusOrderByCreatedAtAsc(Delivery.Status status);
+
     List<Delivery> findByStatusAndGoodsIssueDateGreaterThanEqual(Delivery.Status status, java.time.LocalDateTime since);
 
     @Query("SELECT d FROM Delivery d WHERE d.status = com.thomas.order_management.model.Delivery.Status.GOODS_ISSUED AND d.billingStatus = :billingStatus ORDER BY d.goodsIssueDate ASC")

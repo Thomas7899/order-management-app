@@ -32,11 +32,13 @@ public class WarehouseStock {
     @Column(nullable = false)
     private Integer quantity = 0;
 
+    /** Meldebestand; 0 = keine Disposition für diesen Lagerort. */
     @Column(nullable = false)
-    private Integer minStock = 5;
+    private Integer minStock = 0;
 
+    /** Höchstbestand für die Auffüllung; 0 = keine Disposition. */
     @Column(nullable = false)
-    private Integer maxStock = 1000;
+    private Integer maxStock = 0;
 
     @Column
     private String binLocation; // z.B. "A-12-3" (Gang-Regal-Fach)
@@ -56,12 +58,16 @@ public class WarehouseStock {
         this.quantity = quantity;
     }
 
+    public boolean isPlanned() {
+        return minStock > 0 || maxStock > 0;
+    }
+
     public boolean isLowStock() {
-        return quantity <= minStock;
+        return minStock > 0 && quantity <= minStock;
     }
 
     public boolean isOverStock() {
-        return quantity > maxStock;
+        return maxStock > 0 && quantity > maxStock;
     }
 
     @PrePersist

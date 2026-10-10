@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 public class StockMovementDto {
     private Long id;
     private String movementNumber;
+    private Integer documentItem;
     private StockMovement.MovementType movementType;
     private String movementCode;
     private String movementTypeDisplay;

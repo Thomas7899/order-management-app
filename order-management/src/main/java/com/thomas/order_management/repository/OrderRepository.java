@@ -21,7 +21,8 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
     List<Order> findByCustomerIdOrderByOrderDateDesc(Long customerId);
 
-    List<Order> findByCustomerIdAndStatusIn(Long customerId, Collection<OrderStatus> statuses);
+    @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems WHERE o.customer.id = :customerId AND o.status IN :statuses")
+    List<Order> findByCustomerIdAndStatusIn(@Param("customerId") Long customerId, @Param("statuses") Collection<OrderStatus> statuses);
 
     List<Order> findByStatusIn(Collection<OrderStatus> statuses);
 

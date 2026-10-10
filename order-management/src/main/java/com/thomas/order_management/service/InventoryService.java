@@ -283,15 +283,15 @@ public class InventoryService {
 
         if (stock.getQuantity() == 0) {
             dto.setStockStatus("OUT");
-        } else if (stock.getQuantity() <= stock.getMinStock()) {
+        } else if (stock.isLowStock()) {
             dto.setStockStatus("LOW");
-        } else if (stock.getQuantity() > stock.getMaxStock()) {
+        } else if (stock.isOverStock()) {
             dto.setStockStatus("OVER");
         } else {
             dto.setStockStatus("OK");
         }
-        if (stock.getQuantity() <= stock.getMinStock()) {
-            dto.setReorderQuantity(stock.getMaxStock() - stock.getQuantity());
+        if (stock.isLowStock() || (stock.isPlanned() && stock.getQuantity() == 0)) {
+            dto.setReorderQuantity(Math.max(0, stock.getMaxStock() - stock.getQuantity()));
         }
         return dto;
     }
@@ -300,6 +300,7 @@ public class InventoryService {
         StockMovementDto dto = new StockMovementDto();
         dto.setId(movement.getId());
         dto.setMovementNumber(movement.getMovementNumber());
+        dto.setDocumentItem(movement.getDocumentItem());
         dto.setMovementType(movement.getMovementType());
         dto.setMovementCode(movement.getMovementCode());
         dto.setMovementTypeDisplay(movementText(movement));
@@ -327,7 +328,7 @@ public class InventoryService {
         dto.setReferenceType(movement.getReferenceType());
         dto.setReversed(movement.isReversed());
         dto.setReversedMovementNumber(movement.getReversedMovement() != null
-                ? movement.getReversedMovement().getMovementNumber() : null);
+                ? movement.getReversedMovement().getMovementNumber() + "/" + movement.getReversedMovement().getDocumentItem() : null);
         dto.setPostingDate(movement.getPostingDate());
         dto.setCreatedBy(movement.getCreatedBy());
         dto.setCreatedAt(movement.getCreatedAt());

@@ -131,6 +131,27 @@ public class DeliveryService {
             throw new BusinessException("VL", "251", "Lagerort " + warehouse.getCode() + " ist nicht aktiv");
         }
 
+        // Liefermengen auf den freien Bestand des Lagerorts begrenzen; der Rest bleibt für Folgelieferungen offen
+        boolean explicitItems = request.items() != null && !request.items().isEmpty();
+        Map<OrderItem, Integer> deliverable = new LinkedHashMap<>();
+        for (Map.Entry<OrderItem, Integer> entry : quantities.entrySet()) {
+            int free = freeStock(warehouse, entry.getKey().getProduct());
+            if (explicitItems && entry.getValue() > free) {
+                throw new BusinessException("M7", "021", "Position " + entry.getKey().getItemNumber()
+                        + ": im Lagerort " + warehouse.getCode() + " sind nur " + free + " "
+                        + entry.getKey().getProduct().getUnitOfMeasure() + " frei");
+            }
+            int quantity = Math.min(entry.getValue(), free);
+            if (quantity > 0) {
+                deliverable.put(entry.getKey(), quantity);
+            }
+        }
+        if (deliverable.isEmpty()) {
+            throw new BusinessException("VL", "248", "Kein freier Bestand im Lagerort " + warehouse.getCode()
+                    + " für die offenen Positionen von Auftrag " + order.getOrderNumber());
+        }
+        quantities = deliverable;
+
         LocalDateTime createdAt = createdAtOverride != null ? createdAtOverride : LocalDateTime.now();
         Delivery delivery = new Delivery();
         delivery.setDeliveryNumber(numberRangeService.next(NumberRangeObject.DELIVERY));
@@ -179,17 +200,14 @@ public class DeliveryService {
                     HttpStatus.CONFLICT);
         }
 
-        String firstDocument = null;
-        for (DeliveryItem item : delivery.getItems()) {
-            StockMovement movement = stockPostingService.post(new StockPostingService.Posting(
-                    MovementType.DELIVERY_ISSUE, item.getProduct(), delivery.getWarehouse(), null,
-                    item.getQuantity(), postingDate,
-                    "Warenausgang zu Auftrag " + delivery.getOrder().getOrderNumber(),
-                    ReferenceType.DELIVERY, delivery.getDeliveryNumber()));
-            if (firstDocument == null) {
-                firstDocument = movement.getMovementNumber();
-            }
-        }
+        List<StockPostingService.Posting> postings = delivery.getItems().stream()
+                .map(item -> new StockPostingService.Posting(
+                        MovementType.DELIVERY_ISSUE, item.getProduct(), delivery.getWarehouse(), null,
+                        item.getQuantity(), postingDate,
+                        "Warenausgang zu Auftrag " + delivery.getOrder().getOrderNumber(),
+                        ReferenceType.DELIVERY, delivery.getDeliveryNumber()))
+                .toList();
+        String firstDocument = stockPostingService.postDocument(postings).get(0).getMovementNumber();
 
         delivery.setStatus(Delivery.Status.GOODS_ISSUED);
         delivery.setGoodsIssueDate(postingDate);
@@ -211,11 +229,12 @@ public class DeliveryService {
         }
 
         LocalDateTime date = request != null && request.date() != null ? request.date().atTime(LocalTime.now()) : LocalDateTime.now();
-        movementRepository.findByReferenceTypeAndReferenceNumber(ReferenceType.DELIVERY, delivery.getDeliveryNumber())
-                .stream()
+        List<StockMovement> issued = movementRepository
+                .findByReferenceTypeAndReferenceNumber(ReferenceType.DELIVERY, delivery.getDeliveryNumber()).stream()
                 .filter(m -> "601".equals(m.getMovementCode()) && !m.isReversed())
-                .forEach(m -> stockPostingService.reverseForDocument(m, date,
-                        "Storno Warenausgang Lieferung " + delivery.getDeliveryNumber()));
+                .sorted(Comparator.comparing(StockMovement::getDocumentItem))
+                .toList();
+        stockPostingService.reverseDocument(issued, date, "Storno Warenausgang Lieferung " + delivery.getDeliveryNumber());
 
         delivery.setStatus(Delivery.Status.CREATED);
         delivery.setGoodsIssueDate(null);
@@ -286,11 +305,7 @@ public class DeliveryService {
         for (Warehouse warehouse : candidates) {
             long coverage = 0;
             for (Map.Entry<OrderItem, Integer> entry : quantities.entrySet()) {
-                Long productId = entry.getKey().getProduct().getId();
-                int stock = stockRepository.findByWarehouseIdAndProductId(warehouse.getId(), productId)
-                        .map(WarehouseStock::getQuantity).orElse(0);
-                long free = stock - deliveryRepository.sumOpenDeliveryQuantity(productId, warehouse.getId());
-                coverage += Math.min(entry.getValue(), Math.max(0, free));
+                coverage += Math.min(entry.getValue(), freeStock(warehouse, entry.getKey().getProduct()));
             }
             if (coverage > bestCoverage) {
                 best = warehouse;
@@ -298,6 +313,14 @@ public class DeliveryService {
             }
         }
         return best;
+    }
+
+    /** Lagerortbestand abzüglich der Mengen in Lieferungen ohne Warenausgang. */
+    private int freeStock(Warehouse warehouse, Product product) {
+        int stock = stockRepository.findByWarehouseIdAndProductId(warehouse.getId(), product.getId())
+                .map(WarehouseStock::getQuantity).orElse(0);
+        long reserved = deliveryRepository.sumOpenDeliveryQuantity(product.getId(), warehouse.getId());
+        return (int) Math.max(0, stock - reserved);
     }
 
     private Delivery load(Long id) {

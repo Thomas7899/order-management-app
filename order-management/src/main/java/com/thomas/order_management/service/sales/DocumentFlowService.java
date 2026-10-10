@@ -14,9 +14,7 @@ import com.thomas.order_management.repository.StockMovementRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 @Service
 @Transactional(readOnly = true)
@@ -50,17 +48,21 @@ public class DocumentFlowService {
                     order.getOrderNumber(), 1, delivery.getCreatedAt(),
                     CodeText.of(delivery.getStatus().name(), delivery.getStatus().getDisplayName()), null));
 
+            Map<String, List<StockMovement>> documents = new LinkedHashMap<>();
             movementRepository.findByReferenceTypeAndReferenceNumber(StockMovement.ReferenceType.DELIVERY,
                             delivery.getDeliveryNumber()).stream()
                     .sorted(Comparator.comparing(StockMovement::getPostingDate).thenComparing(StockMovement::getId))
-                    .forEach(m -> {
-                        boolean reversal = m.getReversedMovement() != null;
-                        nodes.add(new Node(reversal ? DocumentType.GOODS_ISSUE_REVERSAL : DocumentType.GOODS_ISSUE,
-                                (reversal ? "Storno WA " : "WL Warenausgang ") + m.getMovementCode(),
-                                m.getId(), m.getMovementNumber(), delivery.getDeliveryNumber(), 2, m.getPostingDate(),
-                                CodeText.of(m.isReversed() ? "REVERSED" : "POSTED", m.isReversed() ? "Storniert" : "Gebucht"),
-                                null));
-                    });
+                    .forEach(m -> documents.computeIfAbsent(m.getMovementNumber(), k -> new ArrayList<>()).add(m));
+            documents.forEach((number, items) -> {
+                StockMovement first = items.get(0);
+                boolean reversal = first.getReversedMovement() != null;
+                boolean reversed = items.stream().allMatch(StockMovement::isReversed);
+                nodes.add(new Node(reversal ? DocumentType.GOODS_ISSUE_REVERSAL : DocumentType.GOODS_ISSUE,
+                        (reversal ? "Storno WA " : "WL Warenausgang ") + first.getMovementCode(),
+                        first.getId(), number, delivery.getDeliveryNumber(), 2, first.getPostingDate(),
+                        CodeText.of(reversed ? "REVERSED" : "POSTED", reversed ? "Storniert" : "Gebucht"),
+                        null));
+            });
 
             invoices.stream()
                     .filter(i -> i.getDelivery() != null && i.getDelivery().getId().equals(delivery.getId()))
