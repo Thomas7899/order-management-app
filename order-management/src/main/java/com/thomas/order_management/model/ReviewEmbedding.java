@@ -44,6 +44,13 @@ public class ReviewEmbedding {
     /**
      * Optional: Originaltext, aus dem das Embedding erzeugt wurde.
      */
-    @Column(length = 2000)
+    @Column(name = "source_text", columnDefinition = "TEXT")
     private String sourceText;
+
+    /** SHA-256 des Quelltexts; verhindert unnötige Neuberechnungen. */
+    @Column(name = "content_hash", length = 64)
+    private String contentHash;
+
+    @Column(name = "updated_at")
+    private java.time.LocalDateTime updatedAt;
 }
