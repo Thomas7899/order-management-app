@@ -21,10 +21,13 @@ public interface ProductReviewRepository extends JpaRepository<ProductReview, Lo
     })
     List<ProductReview> findAllById(Iterable<Long> ids);
 
+    @EntityGraph(attributePaths = {"product", "customer", "orderItem", "orderItem.order"})
     List<ProductReview> findByProductIdOrderByCreatedAtDesc(Long productId);
 
+    @EntityGraph(attributePaths = {"product", "customer", "orderItem", "orderItem.order"})
     List<ProductReview> findByCustomerIdOrderByCreatedAtDesc(Long customerId);
 
+    @EntityGraph(attributePaths = {"product", "customer", "orderItem", "orderItem.order"})
     @Query("""
         SELECT r FROM ProductReview r
         WHERE r.orderItem.order.id = :orderId
@@ -32,6 +35,7 @@ public interface ProductReviewRepository extends JpaRepository<ProductReview, Lo
     """)
     List<ProductReview> findByOrderId(@Param("orderId") Long orderId);
 
+    @EntityGraph(attributePaths = {"product", "customer", "orderItem", "orderItem.order"})
     List<ProductReview> findByOrderItemId(Long orderItemId);
 
     boolean existsByCustomerIdAndProductId(Long customerId, Long productId);
@@ -40,6 +44,8 @@ public interface ProductReviewRepository extends JpaRepository<ProductReview, Lo
         SELECT r FROM ProductReview r
         JOIN FETCH r.product
         JOIN FETCH r.customer
+        LEFT JOIN FETCH r.orderItem oi
+        LEFT JOIN FETCH oi.order
         WHERE r.id IN :ids
     """)
     List<ProductReview> findAllByIdWithProductAndCustomer(@Param("ids") List<Long> ids);
