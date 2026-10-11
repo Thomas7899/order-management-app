@@ -1,0 +1,201 @@
+@if (material(); as m) {
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">{{ m.name }}</ui5-title>
+    <ui5-title slot="snappedHeading" level="H5">{{ m.name }} ({{ m.materialNumber }})</ui5-title>
+    <div slot="subheading" class="om-subtle">Material {{ m.materialNumber }} · Handelsware · {{ m.category }}</div>
+    <ui5-tag [attr.design]="m.active ? 'Positive' : 'Negative'">{{ m.active ? 'Frei für Vertrieb' : 'Vertriebssperre' }}</ui5-tag>
+    <ui5-toolbar slot="actionsBar" design="Transparent">
+      @if (auth.hasAnyRole('WAREHOUSE')) {
+        <ui5-toolbar-button text="Warenbewegung buchen" design="Emphasized" icon="journey-arrive" (click)="dialog.set('movement')"></ui5-toolbar-button>
+      }
+      @if (auth.hasAnyRole('SALES', 'WAREHOUSE')) {
+        <ui5-toolbar-button text="Bearbeiten" icon="edit" (click)="dialog.set('edit')"></ui5-toolbar-button>
+      }
+      @if (auth.hasAnyRole('WAREHOUSE') && m.active) {
+        <ui5-toolbar-button text="Vertriebssperre" design="Transparent" icon="decline" (click)="block()"></ui5-toolbar-button>
+      }
+    </ui5-toolbar>
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <div class="header-row">
+      @if (m.imageUrl) {
+        <img class="hero" [src]="m.imageUrl" alt="" />
+      }
+      <div class="om-header-facets">
+        <div class="om-facet">
+          <span class="om-facet-label">Verkaufspreis (PR00)</span>
+          <span class="om-facet-value kpi">{{ m.price | currency: 'EUR' }}</span>
+          <span class="om-subtle">je {{ m.unitOfMeasure }} · {{ m.taxCode === 'FULL' ? '19 %' : m.taxCode === 'REDUCED' ? '7 %' : '0 %' }} USt.</span>
+        </div>
+        <div class="om-facet">
+          <span class="om-facet-label">Einstandspreis</span>
+          <span class="om-facet-value kpi">{{ m.costPrice ? (m.costPrice | currency: 'EUR') : '–' }}</span>
+          <span class="om-subtle">Marge {{ margin() === null ? '–' : (margin()! | percent: '1.0-1') }}</span>
+        </div>
+        <div class="om-facet">
+          <span class="om-facet-label">Gesamtbestand</span>
+          <span class="om-facet-value kpi" [class.om-negative]="m.stockQuantity === 0">{{ m.stockQuantity | number }} {{ m.unitOfMeasure }}</span>
+          <span class="om-subtle">Bestandswert {{ stockValue() | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+        </div>
+        @if (availability(); as a) {
+          <div class="om-facet">
+            <span class="om-facet-label">Verfügbar (ATP)</span>
+            <span class="om-facet-value kpi" [class.om-critical]="a.available === 0">{{ a.available | number }} {{ a.unitOfMeasure }}</span>
+            <span class="om-subtle">{{ a.reservedForOrders + a.reservedForDeliveries | number }} reserviert</span>
+          </div>
+        }
+      </div>
+    </div>
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    <ui5-tabcontainer content-background-design="Transparent" header-background-design="Transparent">
+      <ui5-tab text="Bestand und Verfügbarkeit" selected>
+        <div class="stock-grid">
+          <div class="om-section">
+            <ui5-title level="H5" class="om-section-title">Bestand je Lagerort (Werk 1000)</ui5-title>
+            <ui5-table overflow-mode="Popin" no-data-text="Kein Bestand in einem Lagerort">
+              <ui5-table-header-row slot="headerRow">
+                <ui5-table-header-cell>Lagerort</ui5-table-header-cell>
+                <ui5-table-header-cell>Lagerplatz</ui5-table-header-cell>
+                <ui5-table-header-cell class="om-num" horizontal-align="End">Frei verwendbar</ui5-table-header-cell>
+                <ui5-table-header-cell class="om-num" horizontal-align="End" importance="-1" popin-text="Melde-/Höchstbestand">Melde / Höchst</ui5-table-header-cell>
+                <ui5-table-header-cell>Status</ui5-table-header-cell>
+                @if (auth.hasAnyRole('WAREHOUSE')) {
+                  <ui5-table-header-cell width="3rem"></ui5-table-header-cell>
+                }
+              </ui5-table-header-row>
+              @for (s of stocks(); track s.id) {
+                <ui5-table-row>
+                  <ui5-table-cell>{{ s.warehouseCode }} {{ s.warehouseName }}</ui5-table-cell>
+                  <ui5-table-cell><span class="om-mono">{{ s.binLocation || '–' }}</span></ui5-table-cell>
+                  <ui5-table-cell class="om-num" horizontal-align="End">{{ s.quantity | number }} {{ s.unitOfMeasure }}</ui5-table-cell>
+                  <ui5-table-cell class="om-num" horizontal-align="End">{{ s.minStock || s.maxStock ? s.minStock + ' / ' + s.maxStock : 'keine Dispo' }}</ui5-table-cell>
+                  <ui5-table-cell><ui5-tag [attr.design]="semanticOf(s.stockStatus)">{{ stockStatusText[s.stockStatus] }}</ui5-tag></ui5-table-cell>
+                  @if (auth.hasAnyRole('WAREHOUSE')) {
+                    <ui5-table-cell>
+                      <ui5-button icon="edit" design="Transparent" tooltip="Dispositionsdaten" (click)="editSettings(s)"></ui5-button>
+                    </ui5-table-cell>
+                  }
+                </ui5-table-row>
+              }
+            </ui5-table>
+          </div>
+
+          @if (availability(); as a) {
+            <div class="om-section">
+              <ui5-title level="H5" class="om-section-title">Verfügbarkeitsrechnung</ui5-title>
+              <div class="atp">
+                <span>Werksbestand (frei verwendbar)</span><span class="om-num">{{ a.stock | number }} {{ a.unitOfMeasure }}</span>
+                <span>− bestätigte Kundenauftragsmengen</span><span class="om-num">{{ a.reservedForOrders | number }}</span>
+                <span>− Lieferungen ohne Warenausgang</span><span class="om-num">{{ a.reservedForDeliveries | number }}</span>
+                <span class="om-strong total">= verfügbar (ATP)</span><span class="om-num om-strong total">{{ a.available | number }} {{ a.unitOfMeasure }}</span>
+              </div>
+              <p class="om-subtle">Die Prüfung erfolgt auf Werksebene über alle Lagerorte, wie bei der SAP-Standardverfügbarkeitsprüfung.</p>
+            </div>
+          }
+        </div>
+      </ui5-tab>
+
+      <ui5-tab text="Materialbelege" [attr.additional-text]="movements().length">
+        <div class="om-section">
+          <ui5-table overflow-mode="Popin" no-data-text="Keine Materialbelege">
+            <ui5-table-header-row slot="headerRow">
+              <ui5-table-header-cell>Materialbeleg</ui5-table-header-cell>
+              <ui5-table-header-cell>Bewegungsart</ui5-table-header-cell>
+              <ui5-table-header-cell>Buchungsdatum</ui5-table-header-cell>
+              <ui5-table-header-cell importance="-1" popin-text="Lagerort">Lagerort</ui5-table-header-cell>
+              <ui5-table-header-cell class="om-num" horizontal-align="End">Menge</ui5-table-header-cell>
+              <ui5-table-header-cell importance="-1" popin-text="Referenz">Referenz</ui5-table-header-cell>
+            </ui5-table-header-row>
+            @for (mv of movements().slice(0, 50); track mv.id) {
+              <ui5-table-row>
+                <ui5-table-cell>
+                  <div class="om-cell-stack">
+                    <span class="om-strong">{{ mv.movementNumber }} / {{ mv.documentItem }}</span>
+                    <span class="om-subtle">{{ mv.createdBy }}</span>
+                  </div>
+                </ui5-table-cell>
+                <ui5-table-cell>{{ mv.movementCode }} {{ mv.movementTypeDisplay }}</ui5-table-cell>
+                <ui5-table-cell>{{ mv.postingDate | date: 'dd.MM.yyyy' }}</ui5-table-cell>
+                <ui5-table-cell>{{ mv.sourceWarehouseCode ?? '' }}{{ mv.sourceWarehouseCode && mv.targetWarehouseCode ? ' → ' : '' }}{{ mv.targetWarehouseCode ?? '' }}</ui5-table-cell>
+                <ui5-table-cell class="om-num" horizontal-align="End">
+                  <span [class.om-positive]="mv.stockEffect > 0" [class.om-negative]="mv.stockEffect < 0">
+                    {{ mv.stockEffect > 0 ? '+' : mv.stockEffect < 0 ? '−' : '' }}{{ mv.quantity | number }}
+                  </span>
+                </ui5-table-cell>
+                <ui5-table-cell>{{ mv.referenceNumber || '–' }}</ui5-table-cell>
+              </ui5-table-row>
+            }
+          </ui5-table>
+          @if (movements().length > 50) {
+            <div class="om-table-footer">
+              <span>Die letzten 50 von {{ movements().length }} Belegen</span>
+              <a [routerLink]="['/movements']" [queryParams]="{ search: m.materialNumber }">Alle in den Materialbelegen anzeigen</a>
+            </div>
+          }
+        </div>
+      </ui5-tab>
+
+      <ui5-tab text="Grunddaten">
+        <div class="om-section">
+          <div class="om-attributes">
+            <div class="om-attribute"><span class="label">Materialnummer</span><span class="value">{{ m.materialNumber }}</span></div>
+            <div class="om-attribute"><span class="label">Materialart</span><span class="value">HAWA Handelsware</span></div>
+            <div class="om-attribute"><span class="label">Warengruppe</span><span class="value">{{ m.category }}</span></div>
+            <div class="om-attribute"><span class="label">Basismengeneinheit</span><span class="value">{{ m.unitOfMeasure }}</span></div>
+            <div class="om-attribute"><span class="label">Angelegt am</span><span class="value">{{ m.createdAt | date: 'dd.MM.yyyy' }}</span></div>
+            <div class="om-attribute"><span class="label">Zuletzt geändert</span><span class="value">{{ m.updatedAt | date: 'dd.MM.yyyy HH:mm' }}</span></div>
+          </div>
+          <p>{{ m.description }}</p>
+        </div>
+      </ui5-tab>
+
+      <ui5-tab text="Änderungen" [attr.additional-text]="changes().length">
+        <div class="om-section">
+          <ui5-timeline layout="Vertical">
+            @for (c of changes(); track c.id) {
+              <ui5-timeline-item [attr.title-text]="changeText(c)" icon="history"
+                [attr.subtitle-text]="(c.changedAt | date: 'dd.MM.yyyy HH:mm') + ' · ' + c.changedBy"></ui5-timeline-item>
+            }
+          </ui5-timeline>
+          @if (!changes().length) {
+            <span class="om-subtle">Keine Änderungen protokolliert.</span>
+          }
+        </div>
+      </ui5-tab>
+    </ui5-tabcontainer>
+  </div>
+</ui5-dynamic-page>
+
+<om-material-dialog [open]="dialog() === 'edit'" [material]="m" (closed)="dialog.set(null)" (saved)="afterSave()" />
+<om-movement-dialog [open]="dialog() === 'movement'" [productId]="m.id" (closed)="dialog.set(null)" (posted)="afterSave()" />
+
+<ui5-dialog [attr.header-text]="'Dispositionsdaten · ' + settings.warehouseName" [open]="dialog() === 'settings'" (close)="dialog.set(null)">
+  <div class="om-form-grid">
+    <div class="om-field">
+      <ui5-label show-colon>Meldebestand</ui5-label>
+      <ui5-step-input [(ngModel)]="settings.minStock" min="0" max="99999"></ui5-step-input>
+    </div>
+    <div class="om-field">
+      <ui5-label show-colon>Höchstbestand</ui5-label>
+      <ui5-step-input [(ngModel)]="settings.maxStock" min="0" max="99999"></ui5-step-input>
+    </div>
+    <div class="om-field span-2">
+      <ui5-label show-colon>Lagerplatz</ui5-label>
+      <ui5-input [(ngModel)]="settings.binLocation" placeholder="z. B. A-12-3"></ui5-input>
+    </div>
+    <div class="om-field span-2">
+      <span class="om-subtle">Meldebestand 0 bedeutet: keine Disposition für diesen Lagerort. Bestandsmengen ändern Sie über Warenbewegungen.</span>
+    </div>
+  </div>
+  <div slot="footer" class="om-dialog-footer">
+    <ui5-button design="Emphasized" [disabled]="busy()" (click)="saveSettings()">Sichern</ui5-button>
+    <ui5-button design="Transparent" (click)="dialog.set(null)">Abbrechen</ui5-button>
+  </div>
+</ui5-dialog>
+} @else {
+  <div class="om-loading"><ui5-busy-indicator active size="L"></ui5-busy-indicator></div>
+}

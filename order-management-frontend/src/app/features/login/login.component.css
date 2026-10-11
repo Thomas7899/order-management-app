@@ -1,0 +1,67 @@
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background:
+    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--sapBrandColor, #0070f2) 18%, transparent), transparent 45%),
+    radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--sapAccentColor6, #7858ff) 14%, transparent), transparent 45%),
+    var(--sapBackgroundColor);
+}
+
+.login-card {
+  width: min(26rem, 100%);
+  background: var(--sapGroup_ContentBackground);
+  border: 1px solid var(--sapGroup_ContentBorderColor);
+  border-radius: 1rem;
+  box-shadow: var(--sapContent_Shadow2, 0 0.5rem 2rem rgba(0, 0, 0, 0.12));
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  background: var(--sapBrandColor, #0070f2);
+  color: var(--sapContent_ContrastTextColor, #fff);
+  font-family: var(--sapFontBoldFamily, var(--sapFontFamily));
+  font-weight: bold;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form ui5-input,
+.submit {
+  width: 100%;
+}
+
+.demo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--sapGroup_ContentBorderColor);
+  padding-top: 1rem;
+}
+
+.demo ui5-list {
+  border: 1px solid var(--sapList_BorderColor, var(--sapGroup_ContentBorderColor));
+  border-radius: 0.5rem;
+  overflow: hidden;
+}

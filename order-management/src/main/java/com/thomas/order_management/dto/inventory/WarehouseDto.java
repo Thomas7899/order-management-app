@@ -1,6 +1,8 @@
 // order-management/src/main/java/com/thomas/order_management/dto/inventory/WarehouseDto.java
 package com.thomas.order_management.dto.inventory;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,7 +15,12 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class WarehouseDto {
     private Long id;
+    @NotBlank(message = "Lagerort-Code ist erforderlich")
+    @Size(max = 10)
     private String code;
+
+    @NotBlank(message = "Bezeichnung ist erforderlich")
+    @Size(max = 100)
     private String name;
     private String description;
     private String address;

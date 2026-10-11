@@ -4,36 +4,37 @@ package com.thomas.order_management.config;
 import com.github.javafaker.Faker;
 import com.thomas.order_management.model.*;
 import com.thomas.order_management.repository.*;
+import com.thomas.order_management.service.NumberRangeService;
 import com.thomas.order_management.service.ReviewEmbeddingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
-import java.time.Month;
 import java.util.*;
 
 @Component
+@ConditionalOnProperty(name = "app.demo.seed-data", havingValue = "true", matchIfMissing = true)
 public class DataLoader implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataLoader.class);
+    private static final long SEED = 42L;
 
     private final CustomerRepository customerRepository;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
-    private final UserRepository userRepository;
+    private final OrderItemRepository orderItemRepository;
     private final ProductReviewRepository reviewRepository;
     private final ReviewEmbeddingService embeddingService;
-    private final ReviewEmbeddingRepository embeddingRepository;
-    
-    // NEU: Inventory Repositories
-    private final WarehouseRepository warehouseRepository;
-    private final WarehouseStockRepository warehouseStockRepository;
-    private final StockMovementRepository stockMovementRepository;
+    private final NumberRangeService numberRangeService;
+    private final DemoBusinessSimulator simulator;
+    private final JdbcTemplate jdbcTemplate;
 
     @Value("${app.dev.generate-embeddings:true}")
     private boolean generateEmbeddings;
@@ -44,9 +45,9 @@ public class DataLoader implements CommandLineRunner {
     @Value("${app.dev.reset-on-start:true}")
     private boolean resetOnStart;
 
-    private final Faker faker = new Faker(Locale.GERMANY);
-    private final Random random = new Random();
-    
+    private final Faker faker = new Faker(Locale.GERMANY, new Random(SEED));
+    private final Random random = new Random(SEED);
+
     // Trend-Produkte IDs (werden nach dem Seeding gesetzt)
     private final Set<Long> trendingUpProducts = new HashSet<>();
     private final Set<Long> trendingDownProducts = new HashSet<>();
@@ -55,24 +56,22 @@ public class DataLoader implements CommandLineRunner {
             CustomerRepository customerRepository,
             ProductRepository productRepository,
             OrderRepository orderRepository,
-            UserRepository userRepository,
+            OrderItemRepository orderItemRepository,
             ProductReviewRepository reviewRepository,
             ReviewEmbeddingService embeddingService,
-            ReviewEmbeddingRepository embeddingRepository,
-            WarehouseRepository warehouseRepository,
-            WarehouseStockRepository warehouseStockRepository,
-            StockMovementRepository stockMovementRepository
+            NumberRangeService numberRangeService,
+            DemoBusinessSimulator simulator,
+            JdbcTemplate jdbcTemplate
     ) {
         this.customerRepository = customerRepository;
         this.productRepository = productRepository;
         this.orderRepository = orderRepository;
-        this.userRepository = userRepository;
+        this.orderItemRepository = orderItemRepository;
         this.reviewRepository = reviewRepository;
         this.embeddingService = embeddingService;
-        this.embeddingRepository = embeddingRepository;
-        this.warehouseRepository = warehouseRepository;
-        this.warehouseStockRepository = warehouseStockRepository;
-        this.stockMovementRepository = stockMovementRepository;
+        this.numberRangeService = numberRangeService;
+        this.simulator = simulator;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
 
@@ -88,32 +87,44 @@ public class DataLoader implements CommandLineRunner {
         boolean hasAnyData =
                 customerRepository.count() > 0 ||
                 productRepository.count() > 0 ||
-                userRepository.count() > 0 ||
                 orderRepository.count() > 0 ||
                 reviewRepository.count() > 0;
 
         if (!hasAnyData) loadSampleData();
     }
 
+    /** Löscht alle Bewegungsdaten und Stammdaten in einer Reihenfolge, die alle Fremdschlüssel respektiert. */
     private void clearAll() {
-        stockMovementRepository.deleteAll();
-        warehouseStockRepository.deleteAll();
-        warehouseRepository.deleteAll();
-        embeddingRepository.deleteAll();
-        reviewRepository.deleteAll();
-        orderRepository.deleteAll();
-        productRepository.deleteAll();
-        customerRepository.deleteAll();
-        userRepository.deleteAll();
+        for (String sql : List.of(
+                "DELETE FROM change_documents",
+                "DELETE FROM review_embeddings",
+                "DELETE FROM product_reviews",
+                "DELETE FROM invoice_items",
+                "UPDATE invoices SET reference_invoice_id = NULL",
+                "DELETE FROM invoices",
+                "DELETE FROM delivery_items",
+                "DELETE FROM deliveries",
+                "UPDATE stock_movements SET reversed_movement_id = NULL",
+                "DELETE FROM stock_movements",
+                "DELETE FROM warehouse_stocks",
+                "DELETE FROM warehouses",
+                "DELETE FROM order_item_conditions",
+                "DELETE FROM order_items",
+                "DELETE FROM orders",
+                "DELETE FROM products",
+                "DELETE FROM customers",
+                "DELETE FROM number_ranges")) {
+            jdbcTemplate.update(sql);
+        }
     }
 
     private void loadSampleData() {
+        long started = System.currentTimeMillis();
         List<Customer> customers = seedCustomers();
-        seedUsers();
         List<Product> products = seedProducts();
-        seedOrders(customers, products);
+        simulator.simulate(customers, products, trendingUpProducts, trendingDownProducts, random);
         seedReviews(products, customers);
-        seedWarehouses(products);  // NEU: Lager und Bestände
+        log.info("Demo data loaded in {} s", (System.currentTimeMillis() - started) / 1000);
     }
 
     private String normalizeEmailPart(String text) {
@@ -132,40 +143,48 @@ public class DataLoader implements CommandLineRunner {
 
     private List<Customer> seedCustomers() {
         List<Customer> customers = new ArrayList<>();
-        Random r = new Random(); // Sicherstellen, dass 'r' verfügbar ist, oder 'faker' verwenden
+        LocalDateTime now = LocalDateTime.now();
 
         for (int i = 0; i < 200; i++) {
             String first = faker.name().firstName();
             String last = faker.name().lastName();
-            String email = normalizeEmailPart(first) + "." + 
-                           normalizeEmailPart(last) + "@" + 
+            String email = normalizeEmailPart(first) + "." +
+                           normalizeEmailPart(last) + "@" +
                            faker.internet().domainName();
 
             Customer c = new Customer(first, last, email);
+            c.setCustomerNumber(numberRangeService.next(NumberRangeObject.CUSTOMER));
             c.setCity(faker.address().city());
-            c.setCountry(faker.address().country());
+            c.setCountry(random.nextDouble() < 0.85 ? "Deutschland" : random.nextBoolean() ? "Österreich" : "Schweiz");
             c.setZipCode(faker.address().zipCode());
             c.setAddress(faker.address().streetAddress());
             c.setPhone(faker.phoneNumber().cellPhone());
-            // Setzt ein zufälliges Erstellungsdatum innerhalb der letzten 365 Tage
-            LocalDateTime createdAt = LocalDateTime.now().minusDays(r.nextInt(365));
+
+            // Geschäftskunden (ca. 20 %) erhalten Kundenrabatt, Skontokonditionen und höhere Kreditlimits
+            boolean business = random.nextDouble() < 0.2;
+            double terms = random.nextDouble();
+            c.setPaymentTerms(business
+                    ? (terms < 0.7 ? PaymentTerms.ZB01 : PaymentTerms.ZB30)
+                    : (terms < 0.25 ? PaymentTerms.ZB01 : terms < 0.75 ? PaymentTerms.ZB30 : terms < 0.95 ? PaymentTerms.ZB14 : PaymentTerms.ZB00));
+            c.setDiscountPercent(business ? BigDecimal.valueOf(2 + random.nextInt(9)) : BigDecimal.ZERO);
+            if (business) {
+                c.setCreditLimit(BigDecimal.valueOf((20 + random.nextInt(61)) * 1000L));
+            } else if (random.nextDouble() < 0.7) {
+                // Wenige Privatkunden mit knappem Limit erzeugen gelegentlich Kreditsperren
+                c.setCreditLimit(BigDecimal.valueOf(random.nextDouble() < 0.07 ? 1000 : (5 + random.nextInt(11)) * 1000L));
+            }
+            c.setActive(true);
+
+            // Die meisten Kunden existieren schon vor dem simulierten Jahr, einige kommen im Laufe des Jahres hinzu
+            LocalDateTime createdAt = random.nextDouble() < 0.85
+                    ? now.minusDays(370 + random.nextInt(700))
+                    : now.minusDays(random.nextInt(360));
             c.setCreatedAt(createdAt);
-            c.setUpdatedAt(createdAt); 
+            c.setUpdatedAt(createdAt);
 
             customers.add(c);
         }
         return customerRepository.saveAll(customers);
-    }
-
-    private List<User> seedUsers() {
-        List<User> list = new ArrayList<>();
-
-        list.add(new User("Admin", "admin@example.com", "Admin"));
-        list.add(new User("Marie Reuter", "marie@example.com", "User"));
-        list.add(new User("Jonas Meier", "jonas@example.com", "User"));
-        list.add(new User("Paul Richter", "paul@example.com", "User"));
-
-        return userRepository.saveAll(list);
     }
 
     // *** KOMPLETT NEUE LOGIK FÜR PRODUKTE ***
@@ -347,7 +366,10 @@ public class DataLoader implements CommandLineRunner {
             list.add(p);
         }
 
-        Collections.shuffle(list);
+        Collections.shuffle(list, random);
+        for (Product p : list) {
+            p.setMaterialNumber(numberRangeService.next(NumberRangeObject.MATERIAL));
+        }
         List<Product> savedProducts = productRepository.saveAll(list);
         
         // Trend-Produkte markieren (für saisonale Analyse)
@@ -367,7 +389,7 @@ public class DataLoader implements CommandLineRunner {
         int trendDownCount = (int) (products.size() * 0.10);
         
         List<Product> shuffled = new ArrayList<>(products);
-        Collections.shuffle(shuffled);
+        Collections.shuffle(shuffled, random);
         
         for (int i = 0; i < trendUpCount && i < shuffled.size(); i++) {
             trendingUpProducts.add(shuffled.get(i).getId());
@@ -442,122 +464,47 @@ public class DataLoader implements CommandLineRunner {
      * Nimmt jetzt eine Beschreibung entgegen und verwendet nicht mehr faker.lorem.
      */
     private Product createProduct(String name, String description, String category, double price) {
-        BigDecimal bigPrice = BigDecimal.valueOf(price);
-        Product p = new Product(
-                name,
-                description, // Verwendet die neue Beschreibung
-                bigPrice,
-                faker.number().numberBetween(5, 150)
-        );
+        BigDecimal bigPrice = BigDecimal.valueOf(price).setScale(2, java.math.RoundingMode.HALF_UP);
+        // Bestand entsteht ausschließlich über Materialbelege (Anfangsbestand 561 im Simulator)
+        Product p = new Product(name, description, bigPrice, 0);
         p.setCategory(category);
-        
-        // Behält picsum.photos bei, wie gewünscht
-        p.setImageUrl("https://picsum.photos/seed/" + name + "/400/300");
-        
+        p.setUnitOfMeasure("ST");
+        p.setTaxCode(TaxCode.FULL);
+        // Einstandspreis: 55–75 % des Verkaufspreises
+        double costShare = 0.55 + random.nextDouble() * 0.20;
+        p.setCostPrice(bigPrice.multiply(BigDecimal.valueOf(costShare)).setScale(2, java.math.RoundingMode.HALF_UP));
+        p.setImageUrl("https://picsum.photos/seed/" + name.replaceAll("[^A-Za-z0-9]", "") + "/400/300");
         return p;
-    }
-
-    // *** AB HIER ALLES UNVERÄNDERT ***
-
-    private void seedOrders(List<Customer> customers, List<Product> products) {
-        List<Order> orders = new ArrayList<>();
-        Set<String> uniqueOrderNumbers = new HashSet<>();
-
-        // Mehr Bestellungen (500 statt 300) über 365 Tage verteilt
-        for (int i = 0; i < 500; i++) {
-            Customer c = customers.get(random.nextInt(customers.size()));
-            
-            String orderNumber;
-            do {
-                orderNumber = "ORD-" + faker.number().numberBetween(10000, 99999);
-            } while (!uniqueOrderNumbers.add(orderNumber)); 
-
-            Order o = new Order(c, orderNumber);
-            OrderStatus status = OrderStatus.values()[random.nextInt(OrderStatus.values().length)];
-            o.setStatus(status);
-            
-            // Saisonale Verteilung: Mehr Bestellungen im Nov/Dez (Weihnachtsgeschäft)
-            LocalDateTime orderDate = generateSeasonalOrderDate();
-            o.setOrderDate(orderDate);
-
-            // Mehr Items pro Bestellung für Trend-Produkte
-            int itemCount = 1 + random.nextInt(4);
-            for (int j = 0; j < itemCount; j++) {
-                Product p = selectProductWithTrend(products, orderDate);
-                int qty = 1 + random.nextInt(3);
-                o.addItem(p, qty);
-            }
-
-            o.setTotalAmount(o.calculateTotalAmount());
-            orders.add(o);
-        }
-        orderRepository.saveAll(orders);
-        log.info("Seeded {} orders with seasonal patterns", orders.size());
-    }
-    
-    /**
-     * Generiert ein Bestelldatum mit saisonalen Mustern
-     * - Mehr Bestellungen im November/Dezember (Weihnachten)
-     * - Weniger im Januar/Februar
-     * - Peaks um Black Friday und Ostern
-     */
-    private LocalDateTime generateSeasonalOrderDate() {
-        LocalDateTime now = LocalDateTime.now();
-        int daysBack = random.nextInt(365);
-        LocalDateTime date = now.minusDays(daysBack);
-        
-        Month month = date.getMonth();
-        
-        // Saisonale Gewichtung - höhere Chance für bestimmte Monate
-        double keepProbability = switch (month) {
-            case NOVEMBER, DECEMBER -> 0.95; // Weihnachtsgeschäft
-            case JANUARY, FEBRUARY -> 0.6;   // Nach-Weihnachts-Flaute
-            case MARCH, APRIL -> 0.8;        // Frühjahr/Ostern
-            case JUNE, JULY, AUGUST -> 0.7;  // Sommerferien
-            default -> 0.75;
-        };
-        
-        // Wenn nicht behalten, neues Datum generieren (rekursiv begrenzt)
-        if (random.nextDouble() > keepProbability) {
-            return now.minusDays(random.nextInt(365));
-        }
-        
-        return date;
-    }
-    
-    /**
-     * Wählt ein Produkt aus, mit Berücksichtigung von Trends basierend auf dem Datum
-     */
-    private Product selectProductWithTrend(List<Product> products, LocalDateTime orderDate) {
-        // Für neuere Bestellungen: höhere Wahrscheinlichkeit für Trend-Up Produkte
-        int daysAgo = (int) java.time.Duration.between(orderDate, LocalDateTime.now()).toDays();
-        
-        if (daysAgo < 90 && random.nextDouble() < 0.3) {
-            // Letzte 90 Tage: 30% Chance auf Trend-Up Produkt
-            for (Product p : products) {
-                if (trendingUpProducts.contains(p.getId())) {
-                    return p;
-                }
-            }
-        }
-        
-        if (daysAgo > 180 && random.nextDouble() < 0.25) {
-            // Ältere Bestellungen: 25% Chance auf Trend-Down Produkt
-            for (Product p : products) {
-                if (trendingDownProducts.contains(p.getId())) {
-                    return p;
-                }
-            }
-        }
-        
-        return products.get(random.nextInt(products.size()));
     }
 
     private void seedReviews(List<Product> products, List<Customer> customers) {
         List<ProductReview> reviews = new ArrayList<>();
+        Map<Long, Product> productById = new HashMap<>();
+        products.forEach(p -> productById.put(p.getId(), p));
+        Map<Long, Customer> customerById = new HashMap<>();
+        customers.forEach(c -> customerById.put(c.getId(), c));
+        List<Object[]> purchases = orderItemRepository.findBilledPurchases();
 
-        // 600 Reviews über 365 Tage (mehr als vorher)
+        // 600 Reviews: überwiegend verifizierte Käufe, ergänzt um freie Bewertungen
         for (int i = 0; i < 600; i++) {
+            if (!purchases.isEmpty() && random.nextDouble() < 0.8) {
+                Object[] purchase = purchases.get(random.nextInt(purchases.size()));
+                Product product = productById.get((Long) purchase[0]);
+                Customer customer = customerById.get((Long) purchase[1]);
+                if (product != null && customer != null) {
+                    int rating = generateTrendAwareRating(product);
+                    ProductReview review = new ProductReview();
+                    review.setProduct(product);
+                    review.setCustomer(customer);
+                    review.setOrderItem(orderItemRepository.getReferenceById((Long) purchase[2]));
+                    review.setRating(rating);
+                    review.setComment(generateEmotionalComment(product, rating));
+                    LocalDateTime reviewDate = ((LocalDateTime) purchase[3]).plusDays(3 + random.nextInt(25));
+                    review.setCreatedAt(reviewDate.isAfter(LocalDateTime.now()) ? LocalDateTime.now().minusHours(random.nextInt(48)) : reviewDate);
+                    reviews.add(review);
+                    continue;
+                }
+            }
             Product product = products.get(random.nextInt(products.size()));
             Customer customer = customers.get(random.nextInt(customers.size()));
 
@@ -655,7 +602,8 @@ public class DataLoader implements CommandLineRunner {
         log.info("Seeded {} reviews (including anomalies and trends)", savedReviews.size());
 
         if (generateEmbeddings) {
-            if (openAiApiKey == null || openAiApiKey.isBlank() || openAiApiKey.contains("${")) {
+            if (openAiApiKey == null || openAiApiKey.isBlank() || openAiApiKey.contains("${")
+                    || "not-configured".equals(openAiApiKey)) {
                 log.warn("Embeddings werden übersprungen: kein gültiger OpenAI API Key konfiguriert.");
                 return;
             }
@@ -880,264 +828,5 @@ public class DataLoader implements CommandLineRunner {
             String[] comments = emotional_3[0];
             return comments[random.nextInt(comments.length)];
         }
-    }
-
-    // ===== NEU: Warehouse & Stock Seeding =====
-    
-    private void seedWarehouses(List<Product> products) {
-        log.info("Seeding warehouses and stock...");
-
-        // Lagerorte anlegen
-        Warehouse wh1 = new Warehouse();
-        wh1.setCode("WH-MAIN");
-        wh1.setName("Hauptlager München");
-        wh1.setDescription("Zentrales Hauptlager für alle Produktkategorien");
-        wh1.setAddress("Industriestraße 15");
-        wh1.setCity("München");
-        wh1.setZipCode("80339");
-        wh1.setCountry("Deutschland");
-        wh1.setActive(true);
-        wh1.setIsDefault(true);
-        wh1 = warehouseRepository.save(wh1);
-
-        Warehouse wh2 = new Warehouse();
-        wh2.setCode("WH-NORD");
-        wh2.setName("Außenlager Hamburg");
-        wh2.setDescription("Regionales Distributionszentrum Nord");
-        wh2.setAddress("Hafenweg 42");
-        wh2.setCity("Hamburg");
-        wh2.setZipCode("20457");
-        wh2.setCountry("Deutschland");
-        wh2.setActive(true);
-        wh2.setIsDefault(false);
-        wh2 = warehouseRepository.save(wh2);
-
-        Warehouse wh3 = new Warehouse();
-        wh3.setCode("WH-OST");
-        wh3.setName("Lager Berlin");
-        wh3.setDescription("Ostdeutsches Distributionszentrum");
-        wh3.setAddress("Spreestraße 88");
-        wh3.setCity("Berlin");
-        wh3.setZipCode("10179");
-        wh3.setCountry("Deutschland");
-        wh3.setActive(true);
-        wh3.setIsDefault(false);
-        wh3 = warehouseRepository.save(wh3);
-        
-        // NEU: Viertes Lager für mehr Vielfalt
-        Warehouse wh4 = new Warehouse();
-        wh4.setCode("WH-SUED");
-        wh4.setName("Lager Stuttgart");
-        wh4.setDescription("Süddeutsches Distributionszentrum");
-        wh4.setAddress("Automobilstraße 12");
-        wh4.setCity("Stuttgart");
-        wh4.setZipCode("70173");
-        wh4.setCountry("Deutschland");
-        wh4.setActive(true);
-        wh4.setIsDefault(false);
-        wh4 = warehouseRepository.save(wh4);
-
-        List<Warehouse> warehouses = List.of(wh1, wh2, wh3, wh4);
-        List<WarehouseStock> allStock = new ArrayList<>();
-        List<StockMovement> movements = new ArrayList<>();
-        
-        // Produkte für spezielle Bestandssituationen markieren
-        Set<Long> lowStockProducts = new HashSet<>();
-        Set<Long> outOfStockProducts = new HashSet<>();
-        Set<Long> overstockProducts = new HashSet<>();
-        
-        // 10% Low-Stock, 5% Out-of-Stock, 8% Überbestand
-        int lowStockCount = (int) (products.size() * 0.10);
-        int outOfStockCount = (int) (products.size() * 0.05);
-        int overstockCount = (int) (products.size() * 0.08);
-        
-        List<Product> shuffledProducts = new ArrayList<>(products);
-        Collections.shuffle(shuffledProducts);
-        
-        for (int i = 0; i < lowStockCount; i++) {
-            lowStockProducts.add(shuffledProducts.get(i).getId());
-        }
-        for (int i = lowStockCount; i < lowStockCount + outOfStockCount; i++) {
-            outOfStockProducts.add(shuffledProducts.get(i).getId());
-        }
-        for (int i = lowStockCount + outOfStockCount; i < lowStockCount + outOfStockCount + overstockCount; i++) {
-            overstockProducts.add(shuffledProducts.get(i).getId());
-        }
-
-        // Für jedes Produkt: Bestand in ein oder mehreren Lagern anlegen
-        for (Product p : products) {
-            int baseStock;
-            int minStock;
-            int maxStock;
-            
-            if (outOfStockProducts.contains(p.getId())) {
-                // Out-of-Stock: 0 im Hauptlager, evtl. kleine Mengen in anderen
-                baseStock = 0;
-                minStock = 20;
-                maxStock = 100;
-                allStock.add(createStockWithQuantity(wh1, p, 0, minStock, maxStock));
-                
-                // Eventuell noch 1-3 Stück in einem anderen Lager
-                if (random.nextDouble() < 0.3) {
-                    allStock.add(createStockWithQuantity(wh2, p, random.nextInt(3), minStock, maxStock));
-                }
-            } else if (lowStockProducts.contains(p.getId())) {
-                // Low-Stock: unter Minimum
-                minStock = 20 + random.nextInt(15);
-                maxStock = 150 + random.nextInt(100);
-                baseStock = random.nextInt(minStock);  // Unter Minimum!
-                allStock.add(createStockWithQuantity(wh1, p, baseStock, minStock, maxStock));
-                
-                // Evtl. auch in anderen Lagern niedrig
-                if (random.nextDouble() < 0.4) {
-                    allStock.add(createStockWithQuantity(wh2, p, random.nextInt(10), minStock, maxStock));
-                }
-            } else if (overstockProducts.contains(p.getId())) {
-                // Überbestand: weit über Maximum
-                minStock = 15 + random.nextInt(10);
-                maxStock = 100 + random.nextInt(50);
-                baseStock = maxStock + 50 + random.nextInt(150);  // Über Maximum!
-                allStock.add(createStockWithQuantity(wh1, p, baseStock, minStock, maxStock));
-                
-                // Auch in anderen Lagern hohe Bestände
-                if (random.nextDouble() < 0.7) {
-                    allStock.add(createStockWithQuantity(wh2, p, maxStock + random.nextInt(50), minStock, maxStock));
-                }
-                if (random.nextDouble() < 0.5) {
-                    allStock.add(createStockWithQuantity(wh3, p, maxStock + random.nextInt(30), minStock, maxStock));
-                }
-            } else {
-                // Normal: gesunder Bestand
-                minStock = 10 + random.nextInt(20);
-                maxStock = 200 + random.nextInt(300);
-                baseStock = minStock + random.nextInt(maxStock - minStock);
-                allStock.add(createStockWithQuantity(wh1, p, baseStock, minStock, maxStock));
-                
-                // Mit 60% auch in Hamburg
-                if (random.nextDouble() < 0.6) {
-                    int stock2 = 20 + random.nextInt(100);
-                    allStock.add(createStockWithQuantity(wh2, p, stock2, minStock, maxStock));
-                }
-                
-                // Mit 40% auch in Berlin
-                if (random.nextDouble() < 0.4) {
-                    int stock3 = 10 + random.nextInt(80);
-                    allStock.add(createStockWithQuantity(wh3, p, stock3, minStock, maxStock));
-                }
-                
-                // Mit 25% auch in Stuttgart
-                if (random.nextDouble() < 0.25) {
-                    int stock4 = 10 + random.nextInt(60);
-                    allStock.add(createStockWithQuantity(wh4, p, stock4, minStock, maxStock));
-                }
-            }
-        }
-
-        warehouseStockRepository.saveAll(allStock);
-
-        // Viel mehr Bewegungen erstellen (200 statt 50)
-        String[] movementReasons = {
-                "Lieferung vom Hersteller",
-                "Kundenbestellung",
-                "Inventurkorrektur",
-                "Retoure vom Kunden",
-                "Transfer zwischen Lagern",
-                "Saisonale Auffüllung",
-                "Beschädigte Ware aussortiert",
-                "Express-Nachlieferung",
-                "Qualitätskontrolle",
-                "Rückrufaktion"
-        };
-
-        // Wareneingang und -ausgang über 90 Tage
-        for (int i = 0; i < 150; i++) {
-            WarehouseStock stock = allStock.get(random.nextInt(allStock.size()));
-            StockMovement m = new StockMovement();
-
-            StockMovement.MovementType type = random.nextBoolean() ? 
-                    StockMovement.MovementType.GOODS_RECEIPT : 
-                    StockMovement.MovementType.GOODS_ISSUE;
-
-            m.setMovementType(type);
-            m.setProduct(stock.getProduct());
-            m.setQuantity(1 + random.nextInt(20));
-            m.setReason(movementReasons[random.nextInt(movementReasons.length)]);
-            m.setCreatedAt(LocalDateTime.now().minusDays(random.nextInt(90)));
-
-            if (type == StockMovement.MovementType.GOODS_RECEIPT) {
-                m.setTargetWarehouse(stock.getWarehouse());
-                m.setReferenceType(StockMovement.ReferenceType.PURCHASE_ORDER);
-                m.setReferenceNumber("PO-" + (10000 + random.nextInt(90000)));
-            } else {
-                m.setSourceWarehouse(stock.getWarehouse());
-                m.setReferenceType(StockMovement.ReferenceType.ORDER);
-                m.setReferenceNumber("ORD-" + (10000 + random.nextInt(90000)));
-            }
-
-            movements.add(m);
-        }
-
-        // Transfers zwischen Lagern (50 statt 10)
-        for (int i = 0; i < 50; i++) {
-            Product p = products.get(random.nextInt(products.size()));
-            Warehouse from = warehouses.get(random.nextInt(warehouses.size()));
-            Warehouse to = warehouses.get(random.nextInt(warehouses.size()));
-            if (from.getId().equals(to.getId())) continue;
-
-            StockMovement m = new StockMovement();
-            m.setMovementType(StockMovement.MovementType.TRANSFER);
-            m.setProduct(p);
-            m.setSourceWarehouse(from);
-            m.setTargetWarehouse(to);
-            m.setQuantity(5 + random.nextInt(30));
-            m.setReason("Bestandsausgleich " + from.getCity() + " → " + to.getCity());
-            m.setReferenceType(StockMovement.ReferenceType.MANUAL);
-            m.setReferenceNumber("TRF-" + (10000 + random.nextInt(90000)));
-            m.setCreatedAt(LocalDateTime.now().minusDays(random.nextInt(60)));
-            movements.add(m);
-        }
-        
-        // Inventurkorrekturen
-        for (int i = 0; i < 20; i++) {
-            WarehouseStock stock = allStock.get(random.nextInt(allStock.size()));
-            StockMovement m = new StockMovement();
-            m.setMovementType(StockMovement.MovementType.INVENTORY_ADJUSTMENT);
-            m.setProduct(stock.getProduct());
-            m.setTargetWarehouse(stock.getWarehouse());
-            m.setQuantity(random.nextInt(10) - 5);  // Kann positiv oder negativ sein
-            m.setReason("Inventurkorrektur - " + (random.nextBoolean() ? "Mehr gefunden" : "Differenz festgestellt"));
-            m.setReferenceType(StockMovement.ReferenceType.MANUAL);
-            m.setReferenceNumber("INV-" + (10000 + random.nextInt(90000)));
-            m.setCreatedAt(LocalDateTime.now().minusDays(random.nextInt(30)));
-            movements.add(m);
-        }
-
-        stockMovementRepository.saveAll(movements);
-        log.info("Seeded {} warehouses, {} stock entries ({} low-stock, {} out-of-stock, {} overstock), {} movements", 
-                warehouses.size(), allStock.size(), 
-                lowStockProducts.size(), outOfStockProducts.size(), overstockProducts.size(),
-                movements.size());
-    }
-
-    private WarehouseStock createStock(Warehouse warehouse, Product product, int quantity, Random r) {
-        return createStockWithQuantity(warehouse, product, quantity, 
-                10 + random.nextInt(20), 200 + random.nextInt(300));
-    }
-    
-    private WarehouseStock createStockWithQuantity(Warehouse warehouse, Product product, int quantity, int minStock, int maxStock) {
-        WarehouseStock stock = new WarehouseStock();
-        stock.setWarehouse(warehouse);
-        stock.setProduct(product);
-        stock.setQuantity(quantity);
-        stock.setMinStock(minStock);
-        stock.setMaxStock(maxStock);
-        
-        // Zufälligen Lagerplatz generieren
-        char row = (char) ('A' + random.nextInt(10));
-        int shelf = 1 + random.nextInt(20);
-        int position = 1 + random.nextInt(5);
-        stock.setBinLocation(String.format("%c-%02d-%d", row, shelf, position));
-        
-        return stock;
     }
 }

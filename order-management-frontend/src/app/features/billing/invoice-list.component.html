@@ -1,0 +1,101 @@
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Fakturen und offene Posten</ui5-title>
+    <ui5-title slot="snappedHeading" level="H5">Fakturen ({{ total() }})</ui5-title>
+    <div slot="subheading" class="om-subtle">Rechnungen, Stornorechnungen und Zahlungseingänge (VF03, FBL5N)</div>
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <ui5-segmented-button class="segment" (selection-change)="setView($event)">
+      <ui5-segmented-button-item data-key="all" [selected]="view() === 'all'">Alle Fakturen</ui5-segmented-button-item>
+      <ui5-segmented-button-item data-key="open" [selected]="view() === 'open'">Offene Posten</ui5-segmented-button-item>
+      <ui5-segmented-button-item data-key="overdue" [selected]="view() === 'overdue'">Überfällig</ui5-segmented-button-item>
+    </ui5-segmented-button>
+    <div class="om-filterbar">
+      <div class="om-filter wide">
+        <ui5-label show-colon>Suche</ui5-label>
+        <ui5-input [(ngModel)]="search" placeholder="Faktura, Auftrag, Debitor" show-clear-icon (keydown.enter)="go()">
+          <ui5-icon slot="icon" name="search"></ui5-icon>
+        </ui5-input>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Status</ui5-label>
+        <ui5-select [(ngModel)]="status">
+          @for (o of statusOptions; track o.code) {
+            <ui5-option [value]="o.code" [selected]="status === o.code">{{ o.text }}</ui5-option>
+          }
+        </ui5-select>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Fakturaart</ui5-label>
+        <ui5-select [(ngModel)]="billingType">
+          @for (o of typeOptions; track o.code) {
+            <ui5-option [value]="o.code" [selected]="billingType === o.code">{{ o.text }}</ui5-option>
+          }
+        </ui5-select>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Fakturadatum von</ui5-label>
+        <ui5-date-picker placeholder="TT.MM.JJJJ" [(ngModel)]="dateFrom" value-format="yyyy-MM-dd" display-format="dd.MM.yyyy"></ui5-date-picker>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>bis</ui5-label>
+        <ui5-date-picker placeholder="TT.MM.JJJJ" [(ngModel)]="dateTo" value-format="yyyy-MM-dd" display-format="dd.MM.yyyy"></ui5-date-picker>
+      </div>
+      <div class="om-filter-actions">
+        <ui5-button design="Transparent" (click)="reset()">Zurücksetzen</ui5-button>
+        <ui5-button design="Emphasized" (click)="go()">Start</ui5-button>
+      </div>
+    </div>
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    <div class="om-section">
+      <ui5-title level="H5" class="om-section-title">Fakturen ({{ total() }})</ui5-title>
+      <ui5-table overflow-mode="Popin" [loading]="loading()" (row-click)="open($event)" no-data-text="Keine Fakturen gefunden">
+        <ui5-table-header-row slot="headerRow" sticky>
+          <ui5-table-header-cell min-width="9rem">Faktura</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="12rem">Regulierer</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="8rem" importance="-1" popin-text="Auftrag">Auftrag</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="7rem">Fakturadatum</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="7rem">Fällig</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="8rem" class="om-num" horizontal-align="End">Bruttobetrag</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="8rem">Status</ui5-table-header-cell>
+        </ui5-table-header-row>
+        @for (inv of rows(); track inv.id) {
+          <ui5-table-row interactive [attr.row-key]="inv.id">
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <span class="om-strong">{{ inv.invoiceNumber }}</span>
+                <span class="om-subtle">{{ inv.billingType.code }} {{ inv.billingType.text }}</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <span>{{ inv.payer.name }}</span>
+                <span class="om-subtle">{{ inv.payer.customerNumber }}</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>{{ inv.orderNumber }}</ui5-table-cell>
+            <ui5-table-cell>{{ inv.billingDate | date: 'dd.MM.yyyy' }}</ui5-table-cell>
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <span [class.om-negative]="inv.overdue">{{ inv.dueDate | date: 'dd.MM.yyyy' }}</span>
+                @if (inv.overdue) {
+                  <span class="om-subtle om-negative">{{ inv.daysOverdue }} Tage überfällig</span>
+                }
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">
+              <span [class.om-negative]="inv.grossAmount < 0">{{ inv.grossAmount | currency: inv.currency }}</span>
+            </ui5-table-cell>
+            <ui5-table-cell><om-status [status]="inv.status" /></ui5-table-cell>
+          </ui5-table-row>
+        }
+        @if (rows().length < total()) {
+          <ui5-table-growing slot="features" mode="Button" text="Mehr" [attr.subtext]="'[' + rows().length + ' / ' + total() + ']'" (load-more)="more()"></ui5-table-growing>
+        }
+      </ui5-table>
+    </div>
+  </div>
+</ui5-dynamic-page>

@@ -17,7 +17,9 @@ public class WarehouseStockDto {
     private String warehouseCode;
     private String warehouseName;
     private Long productId;
+    private String materialNumber;
     private String productName;
+    private String unitOfMeasure;
     private String productCategory;
     private BigDecimal productPrice;
     private Integer quantity;

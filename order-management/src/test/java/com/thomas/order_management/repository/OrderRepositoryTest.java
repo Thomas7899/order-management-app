@@ -1,8 +1,6 @@
 package com.thomas.order_management.repository;
 
-import com.thomas.order_management.model.Customer;
-import com.thomas.order_management.model.Order;
-import com.thomas.order_management.model.OrderStatus;
+import com.thomas.order_management.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -14,14 +12,14 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Integrationstests für OrderRepository.
- * Testet JPA-Queries mit einer eingebetteten H2-Datenbank.
+ * Integrationstests für Auftrags-Repositories mit einer eingebetteten H2-Datenbank.
  */
 @DataJpaTest
 @ActiveProfiles("test")
@@ -34,197 +32,138 @@ class OrderRepositoryTest {
     @Autowired
     private OrderRepository orderRepository;
 
+    @Autowired
+    private OrderItemRepository orderItemRepository;
+
     private Customer testCustomer;
-    private Order order1;
-    private Order order2;
+    private Product product;
+    private Order openOrder;
+    private Order completedOrder;
 
     @BeforeEach
     void setUp() {
-        // Test-Customer erstellen und persistieren
         testCustomer = new Customer("Test", "User", "test@example.com");
         entityManager.persist(testCustomer);
 
-        // Test-Orders erstellen
-        order1 = new Order(testCustomer, "ORD-001");
-        order1.setStatus(OrderStatus.DELIVERED);
-        order1.setTotalAmount(new BigDecimal("100.00"));
-        order1.setOrderDate(LocalDateTime.now().minusDays(5));
-        entityManager.persist(order1);
+        product = new Product("Testmaterial", "Beschreibung", new BigDecimal("10.00"), 0);
+        product.setMaterialNumber("200001");
+        entityManager.persist(product);
 
-        order2 = new Order(testCustomer, "ORD-002");
-        order2.setStatus(OrderStatus.PENDING);
-        order2.setTotalAmount(new BigDecimal("250.00"));
-        order2.setOrderDate(LocalDateTime.now().minusDays(2));
-        entityManager.persist(order2);
+        openOrder = order("10000001", OrderStatus.OPEN, LocalDateTime.now().minusDays(2), 5, 3, 0);
+        completedOrder = order("10000002", OrderStatus.COMPLETED, LocalDateTime.now().minusDays(5), 4, 4, 4);
 
         entityManager.flush();
     }
 
+    private Order order(String number, OrderStatus status, LocalDateTime date, int qty, int confirmed, int delivered) {
+        Order order = new Order(testCustomer, number);
+        order.setStatus(status);
+        order.setOrderDate(date);
+        OrderItem item = new OrderItem(product, qty);
+        item.setUnitPrice(new BigDecimal("10.00"));
+        item.setNetAmount(new BigDecimal(qty * 10));
+        item.setConfirmedQuantity(confirmed);
+        item.setDeliveredQuantity(delivered);
+        order.addItem(item);
+        order.recalculateTotals();
+        entityManager.persist(order);
+        return order;
+    }
+
     @Nested
-    @DisplayName("findByOrderNumber Tests")
-    class FindByOrderNumberTests {
+    @DisplayName("Belegnummer und Status")
+    class LookupTests {
 
         @Test
-        @DisplayName("Sollte Bestellung nach Bestellnummer finden")
+        @DisplayName("Sollte Auftrag über Belegnummer finden")
         void shouldFindOrderByOrderNumber() {
-            // When
-            Optional<Order> found = orderRepository.findByOrderNumber("ORD-001");
+            Optional<Order> found = orderRepository.findByOrderNumber("10000001");
 
-            // Then
             assertThat(found).isPresent();
-            assertThat(found.get().getOrderNumber()).isEqualTo("ORD-001");
-            assertThat(found.get().getStatus()).isEqualTo(OrderStatus.DELIVERED);
+            assertThat(found.get().getStatus()).isEqualTo(OrderStatus.OPEN);
+            assertThat(found.get().getOrderItems()).extracting(OrderItem::getItemNumber).containsExactly(10);
         }
 
         @Test
-        @DisplayName("Sollte Empty Optional zurückgeben für nicht existierende Bestellnummer")
+        @DisplayName("Sollte leeres Optional für unbekannte Belegnummer liefern")
         void shouldReturnEmptyForNonExistentOrderNumber() {
-            // When
-            Optional<Order> found = orderRepository.findByOrderNumber("ORD-999");
-
-            // Then
-            assertThat(found).isEmpty();
-        }
-    }
-
-    @Nested
-    @DisplayName("findByStatus Tests")
-    class FindByStatusTests {
-
-        @Test
-        @DisplayName("Sollte Bestellungen nach Status finden")
-        void shouldFindOrdersByStatus() {
-            // When
-            List<Order> deliveredOrders = orderRepository.findByStatus(OrderStatus.DELIVERED);
-            List<Order> pendingOrders = orderRepository.findByStatus(OrderStatus.PENDING);
-
-            // Then
-            assertThat(deliveredOrders).hasSize(1);
-            assertThat(pendingOrders).hasSize(1);
-            assertThat(deliveredOrders.get(0).getOrderNumber()).isEqualTo("ORD-001");
-            assertThat(pendingOrders.get(0).getOrderNumber()).isEqualTo("ORD-002");
+            assertThat(orderRepository.findByOrderNumber("19999999")).isEmpty();
         }
 
         @Test
-        @DisplayName("Sollte leere Liste zurückgeben wenn kein Order mit Status existiert")
-        void shouldReturnEmptyListForNonExistentStatus() {
-            // When
-            List<Order> cancelledOrders = orderRepository.findByStatus(OrderStatus.CANCELLED);
-
-            // Then
-            assertThat(cancelledOrders).isEmpty();
-        }
-    }
-
-    @Nested
-    @DisplayName("findByCustomerId Tests")
-    class FindByCustomerIdTests {
-
-        @Test
-        @DisplayName("Sollte alle Bestellungen eines Kunden finden")
-        void shouldFindOrdersByCustomerId() {
-            // When
-            List<Order> customerOrders = orderRepository.findByCustomerId(testCustomer.getId());
-
-            // Then
-            assertThat(customerOrders).hasSize(2);
-        }
-    }
-
-    @Nested
-    @DisplayName("getTotalAmountByStatus Tests")
-    class GetTotalAmountByStatusTests {
-
-        @Test
-        @DisplayName("Sollte Gesamtumsatz nach Status berechnen")
-        void shouldCalculateTotalAmountByStatus() {
-            // When
-            BigDecimal deliveredTotal = orderRepository.getTotalAmountByStatus(OrderStatus.DELIVERED);
-            BigDecimal pendingTotal = orderRepository.getTotalAmountByStatus(OrderStatus.PENDING);
-
-            // Then
-            assertThat(deliveredTotal).isEqualByComparingTo(new BigDecimal("100.00"));
-            assertThat(pendingTotal).isEqualByComparingTo(new BigDecimal("250.00"));
-        }
-
-        @Test
-        @DisplayName("Sollte null zurückgeben wenn keine Bestellungen mit Status existieren")
-        void shouldReturnNullForNoOrdersWithStatus() {
-            // When
-            BigDecimal cancelledTotal = orderRepository.getTotalAmountByStatus(OrderStatus.CANCELLED);
-
-            // Then
-            assertThat(cancelledTotal).isNull();
-        }
-    }
-
-    @Nested
-    @DisplayName("countByStatus Tests")
-    class CountByStatusTests {
-
-        @Test
-        @DisplayName("Sollte Anzahl der Bestellungen nach Status zählen")
+        @DisplayName("Sollte Aufträge nach Status zählen")
         void shouldCountOrdersByStatus() {
-            // When
-            long deliveredCount = orderRepository.countByStatus(OrderStatus.DELIVERED);
-            long pendingCount = orderRepository.countByStatus(OrderStatus.PENDING);
-            long cancelledCount = orderRepository.countByStatus(OrderStatus.CANCELLED);
+            assertThat(orderRepository.countByStatus(OrderStatus.OPEN)).isEqualTo(1);
+            assertThat(orderRepository.countByStatus(OrderStatus.COMPLETED)).isEqualTo(1);
+            assertThat(orderRepository.countByStatus(OrderStatus.CANCELLED)).isZero();
+        }
 
-            // Then
-            assertThat(deliveredCount).isEqualTo(1);
-            assertThat(pendingCount).isEqualTo(1);
-            assertThat(cancelledCount).isZero();
+        @Test
+        @DisplayName("Sollte offene Aufträge eines Debitors finden")
+        void shouldFindOpenOrdersOfCustomer() {
+            List<Order> open = orderRepository.findByCustomerIdAndStatusIn(testCustomer.getId(),
+                    EnumSet.of(OrderStatus.OPEN, OrderStatus.IN_PROCESS));
+
+            assertThat(open).extracting(Order::getOrderNumber).containsExactly("10000001");
         }
     }
 
     @Nested
-    @DisplayName("findByOrderDateBetween Tests")
-    class FindByOrderDateBetweenTests {
+    @DisplayName("Zeitraum und Sortierung")
+    class DateTests {
 
         @Test
-        @DisplayName("Sollte Bestellungen im Zeitraum finden")
-        void shouldFindOrdersInDateRange() {
-            // Given
-            LocalDateTime startDate = LocalDateTime.now().minusDays(10);
-            LocalDateTime endDate = LocalDateTime.now();
+        @DisplayName("Sollte Aufträge im Zeitraum zählen")
+        void shouldCountOrdersInPeriod() {
+            long count = orderRepository.countByOrderDateBetween(LocalDateTime.now().minusDays(3), LocalDateTime.now());
 
-            // When
-            List<Order> ordersInRange = orderRepository.findByOrderDateBetween(startDate, endDate);
-
-            // Then
-            assertThat(ordersInRange).hasSize(2);
+            assertThat(count).isEqualTo(1);
         }
 
         @Test
-        @DisplayName("Sollte leere Liste für Zeitraum ohne Bestellungen zurückgeben")
-        void shouldReturnEmptyListForDateRangeWithNoOrders() {
-            // Given
-            LocalDateTime startDate = LocalDateTime.now().minusYears(2);
-            LocalDateTime endDate = LocalDateTime.now().minusYears(1);
+        @DisplayName("Sollte neueste Aufträge zuerst liefern")
+        void shouldReturnNewestOrdersFirst() {
+            List<Order> orders = orderRepository.findTop10ByOrderByOrderDateDesc();
 
-            // When
-            List<Order> ordersInRange = orderRepository.findByOrderDateBetween(startDate, endDate);
-
-            // Then
-            assertThat(ordersInRange).isEmpty();
+            assertThat(orders).extracting(Order::getOrderNumber).containsExactly("10000001", "10000002");
         }
     }
 
     @Nested
-    @DisplayName("findAllOrderByOrderDateDesc Tests")
-    class FindAllOrderByOrderDateDescTests {
+    @DisplayName("Reservierungen für die Verfügbarkeitsprüfung")
+    class ReservationTests {
 
         @Test
-        @DisplayName("Sollte Bestellungen absteigend nach Datum sortieren")
-        void shouldReturnOrdersSortedByDateDescending() {
-            // When
-            List<Order> orders = orderRepository.findAllOrderByOrderDateDesc();
+        @DisplayName("Sollte bestätigte, noch nicht gelieferte Mengen summieren")
+        void shouldSumOpenConfirmedQuantity() {
+            assertThat(orderItemRepository.sumOpenConfirmedQuantity(product.getId(), null)).isEqualTo(3);
+        }
 
-            // Then
-            assertThat(orders).hasSize(2);
-            // Neuere Bestellung (order2) sollte zuerst kommen
-            assertThat(orders.get(0).getOrderNumber()).isEqualTo("ORD-002");
-            assertThat(orders.get(1).getOrderNumber()).isEqualTo("ORD-001");
+        @Test
+        @DisplayName("Sollte die Reservierung einer Position ausklammern können")
+        void shouldExcludeOwnItem() {
+            Long itemId = openOrder.getOrderItems().get(0).getId();
+
+            assertThat(orderItemRepository.sumOpenConfirmedQuantity(product.getId(), itemId)).isZero();
+        }
+
+        @Test
+        @DisplayName("Sollte abgesagte Positionen nicht als Reservierung zählen")
+        void shouldIgnoreRejectedItems() {
+            OrderItem item = openOrder.getOrderItems().get(0);
+            item.setRejectionReason(RejectionReason.R10);
+            entityManager.flush();
+
+            assertThat(orderItemRepository.sumOpenConfirmedQuantity(product.getId(), null)).isZero();
+        }
+
+        @Test
+        @DisplayName("Sollte nicht voll bestätigte Positionen offener Aufträge als Rückstand liefern")
+        void shouldFindBacklogItems() {
+            List<OrderItem> backlog = orderItemRepository.findBacklogItems();
+
+            assertThat(backlog).hasSize(1);
+            assertThat(backlog.get(0).getOrder().getOrderNumber()).isEqualTo("10000001");
         }
     }
 }

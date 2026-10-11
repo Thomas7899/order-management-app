@@ -1,0 +1,76 @@
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Debitoren</ui5-title>
+    <ui5-title slot="snappedHeading" level="H5">Debitoren ({{ filtered().length }})</ui5-title>
+    <div slot="subheading" class="om-subtle">Kundenstamm mit Zahlungsbedingung, Kreditlimit und Kundenrabatt</div>
+    <ui5-toolbar slot="actionsBar" design="Transparent">
+      @if (auth.hasAnyRole('SALES', 'BILLING')) {
+        <ui5-toolbar-button text="Anlegen" design="Emphasized" icon="add" (click)="dialogOpen.set(true)"></ui5-toolbar-button>
+      }
+    </ui5-toolbar>
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <div class="om-filterbar">
+      <div class="om-filter wide">
+        <ui5-label show-colon>Suche</ui5-label>
+        <ui5-input [ngModel]="search()" (ngModelChange)="search.set($event); filterChanged()"
+          placeholder="Debitor, Name, E-Mail, Ort" show-clear-icon>
+          <ui5-icon slot="icon" name="search"></ui5-icon>
+        </ui5-input>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Zahlungsbedingung</ui5-label>
+        <ui5-select [ngModel]="terms()" (ngModelChange)="terms.set($event); filterChanged()">
+          @for (t of paymentTerms; track t.code) {
+            <ui5-option [value]="t.code" [selected]="terms() === t.code">{{ t.code ? t.code + ' – ' + t.text : t.text }}</ui5-option>
+          }
+        </ui5-select>
+      </div>
+      <div class="om-filter">
+        <ui5-checkbox text="Nur Geschäftskunden (mit Rabatt)" [ngModel]="withDiscount()" (ngModelChange)="withDiscount.set($event); filterChanged()"></ui5-checkbox>
+        <ui5-checkbox text="Nur gesperrte" [ngModel]="onlyBlocked()" (ngModelChange)="onlyBlocked.set($event); filterChanged()"></ui5-checkbox>
+      </div>
+    </div>
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    <div class="om-section">
+      <ui5-title level="H5" class="om-section-title">Debitoren ({{ filtered().length }})</ui5-title>
+      <ui5-table overflow-mode="Popin" [loading]="loading()" (row-click)="open($event)" no-data-text="Keine Debitoren gefunden">
+        <ui5-table-header-row slot="headerRow" sticky>
+          <ui5-table-header-cell min-width="7rem">Debitor</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="12rem">Name</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="10rem" popin-text="Ort">Ort</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="10rem" importance="-1" popin-text="Zahlungsbedingung">Zahlungsbedingung</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="8rem" class="om-num" horizontal-align="End">Kreditlimit</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="6rem" class="om-num" horizontal-align="End" importance="-1" popin-text="Rabatt">Rabatt</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="6rem">Status</ui5-table-header-cell>
+        </ui5-table-header-row>
+        @for (c of rows(); track c.id) {
+          <ui5-table-row interactive [attr.row-key]="c.id">
+            <ui5-table-cell><span class="om-strong">{{ c.customerNumber }}</span></ui5-table-cell>
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <span>{{ c.fullName }}</span>
+                <span class="om-subtle">{{ c.email }}</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>{{ c.zipCode }} {{ c.city }}<span class="om-subtle">{{ c.country ? ', ' + c.country : '' }}</span></ui5-table-cell>
+            <ui5-table-cell>{{ c.paymentTerms }} <span class="om-subtle">{{ c.paymentTermsText }}</span></ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">{{ c.creditLimit !== null && c.creditLimit !== undefined ? (c.creditLimit | currency: 'EUR' : 'symbol' : '1.0-0') : '–' }}</ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">{{ (c.discountPercent ?? 0) > 0 ? (c.discountPercent | number: '1.0-1') + ' %' : '–' }}</ui5-table-cell>
+            <ui5-table-cell>
+              <ui5-tag [attr.design]="c.active ? 'Positive' : 'Negative'">{{ c.active ? 'Aktiv' : 'Gesperrt' }}</ui5-tag>
+            </ui5-table-cell>
+          </ui5-table-row>
+        }
+        @if (rows().length < filtered().length) {
+          <ui5-table-growing slot="features" mode="Button" text="Mehr" [attr.subtext]="'[' + rows().length + ' / ' + filtered().length + ']'" (load-more)="more()"></ui5-table-growing>
+        }
+      </ui5-table>
+    </div>
+  </div>
+</ui5-dynamic-page>
+
+<om-customer-dialog [open]="dialogOpen()" (closed)="dialogOpen.set(false)" (saved)="saved($event)" />

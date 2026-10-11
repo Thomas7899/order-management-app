@@ -33,7 +33,6 @@ public class InventoryAiService {
 
     private final WarehouseStockRepository stockRepository;
     private final StockMovementRepository movementRepository;
-    private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
     private final ProductReviewRepository reviewRepository;
     private final ChatClient chatClient;
@@ -76,13 +75,12 @@ public class InventoryAiService {
         }
 
         // Sammle historische Daten
-        LocalDateTime startDate = LocalDateTime.now().minusMonths(3);
-        List<Object[]> salesData = orderItemRepository.getProductSalesData();
+        List<Object[]> salesData = movementRepository.getIssuedQuantityByProduct(LocalDateTime.now().minusDays(90));
         Map<Long, Integer> salesByProduct = salesData.stream()
                 .collect(Collectors.toMap(
                         row -> ((Number) row[0]).longValue(),
-                        row -> ((Number) row[5]).intValue(),
-                        (a, b) -> a + b
+                        row -> ((Number) row[1]).intValue(),
+                        Integer::sum
                 ));
 
         // Sammle Review-Sentiment für Nachfrage-Einschätzung
@@ -239,8 +237,15 @@ public class InventoryAiService {
                 .sum();
         int turnoverScore = Math.min(100, totalMovements * 2); // Mehr Bewegungen = besser
 
-        // Accuracy Score (simuliert - in Produktion würde man echte Inventurdaten nutzen)
-        int accuracyScore = 85 + new Random().nextInt(10);
+        // Inventurgenauigkeit: Inventurdifferenzen (701/702) der letzten 12 Monate im Verhältnis zum Bestand
+        long totalStock = allStock.stream().mapToLong(WarehouseStock::getQuantity).sum();
+        long differenceQuantity = movementRepository.getMovementStatistics(LocalDateTime.now().minusMonths(12)).stream()
+                .filter(m -> "701".equals(m[0]) || "702".equals(m[0]))
+                .mapToLong(m -> ((Number) m[2]).longValue())
+                .sum();
+        int accuracyScore = totalStock > 0
+                ? (int) Math.max(0, Math.round(100 - differenceQuantity * 100.0 / totalStock))
+                : 100;
 
         int overallScore = (availabilityScore + turnoverScore + accuracyScore) / 3;
         String grade = calculateGrade(overallScore);
@@ -270,12 +275,12 @@ public class InventoryAiService {
     }
 
     private Map<Long, Double> calculateSalesVelocity() {
-        List<Object[]> salesData = orderItemRepository.getProductSalesData();
+        List<Object[]> salesData = movementRepository.getIssuedQuantityByProduct(LocalDateTime.now().minusDays(90));
         return salesData.stream()
                 .collect(Collectors.toMap(
                         row -> ((Number) row[0]).longValue(),
-                        row -> ((Number) row[5]).doubleValue() / 90.0, // Durchschnitt pro Tag
-                        (a, b) -> a + b
+                        row -> ((Number) row[1]).doubleValue() / 90.0, // Durchschnitt pro Tag
+                        Double::sum
                 ));
     }
 
@@ -604,17 +609,17 @@ public class InventoryAiService {
 
     private List<Map<String, Object>> formatMovementStats(List<Object[]> stats) {
         return stats.stream().map(s -> Map.<String, Object>of(
-                "type", s[0],
+                "movementType", s[0],
                 "count", s[1],
                 "totalQuantity", s[2]
         )).toList();
     }
 
     private List<Map<String, Object>> formatDailyTrends(List<Object[]> trends) {
-        return trends.stream().limit(14).map(t -> Map.<String, Object>of(
+        return trends.stream().skip(Math.max(0, trends.size() - 14)).map(t -> Map.<String, Object>of(
                 "date", t[0].toString(),
-                "type", t[1],
-                "quantity", t[2]
+                "receipts", t[1],
+                "issues", t[2]
         )).toList();
     }
 }

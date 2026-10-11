@@ -2,11 +2,16 @@ package com.thomas.order_management.service;
 
 import com.thomas.order_management.dto.CustomerDTO;
 import com.thomas.order_management.dto.CustomerRequestDTO;
+import com.thomas.order_management.exception.BusinessException;
 import com.thomas.order_management.exception.ConflictException;
 import com.thomas.order_management.exception.ResourceNotFoundException;
 import com.thomas.order_management.mapper.CustomerMapper;
 import com.thomas.order_management.model.Customer;
+import com.thomas.order_management.model.NumberRangeObject;
+import com.thomas.order_management.model.Order;
+import com.thomas.order_management.model.PaymentTerms;
 import com.thomas.order_management.repository.CustomerRepository;
+import com.thomas.order_management.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,6 +43,15 @@ class CustomerServiceImplTest {
 
     @Mock
     private CustomerMapper customerMapper;
+
+    @Mock
+    private OrderRepository orderRepository;
+
+    @Mock
+    private NumberRangeService numberRangeService;
+
+    @Mock
+    private ChangeDocumentService changeDocumentService;
 
     @InjectMocks
     private CustomerServiceImpl customerService;
@@ -140,11 +154,14 @@ class CustomerServiceImplTest {
     class CreateCustomerTests {
 
         @Test
-        @DisplayName("Sollte neuen Kunden erstellen")
+        @DisplayName("Sollte neuen Kunden mit Debitorennummer und Standardkonditionen erstellen")
         void shouldCreateNewCustomer() {
             // Given
+            testCustomer.setPaymentTerms(null);
+            testCustomer.setDiscountPercent(null);
             when(customerRepository.findByEmail("max@example.com"))
                 .thenReturn(Optional.empty());
+            when(numberRangeService.next(NumberRangeObject.CUSTOMER)).thenReturn("100001");
             when(customerMapper.toCustomer(testRequestDTO)).thenReturn(testCustomer);
             when(customerRepository.save(testCustomer)).thenReturn(testCustomer);
             when(customerMapper.toCustomerDTO(testCustomer)).thenReturn(testCustomerDTO);
@@ -158,6 +175,8 @@ class CustomerServiceImplTest {
             assertThat(result.getEmail()).isEqualTo("max@example.com");
             verify(customerRepository).findByEmail("max@example.com");
             verify(customerRepository).save(testCustomer);
+            assertThat(testCustomer.getCustomerNumber()).isEqualTo("100001");
+            assertThat(testCustomer.getPaymentTerms()).isEqualTo(PaymentTerms.ZB30);
         }
 
         @Test
@@ -236,32 +255,46 @@ class CustomerServiceImplTest {
     class DeleteCustomerTests {
 
         @Test
-        @DisplayName("Sollte Kunde löschen wenn er existiert")
-        void shouldDeleteCustomerWhenExists() {
+        @DisplayName("Sollte Kunde ohne Belege löschen")
+        void shouldDeleteCustomerWithoutDocuments() {
             // Given
-            when(customerRepository.existsById(1L)).thenReturn(true);
-            doNothing().when(customerRepository).deleteById(1L);
+            when(customerRepository.findById(1L)).thenReturn(Optional.of(testCustomer));
+            when(orderRepository.findByCustomerIdOrderByOrderDateDesc(1L)).thenReturn(List.of());
 
             // When
             customerService.deleteCustomer(1L);
 
             // Then
-            verify(customerRepository).existsById(1L);
-            verify(customerRepository).deleteById(1L);
+            verify(customerRepository).delete(testCustomer);
+        }
+
+        @Test
+        @DisplayName("Sollte Löschen verweigern, wenn Belege existieren")
+        void shouldRejectDeletionWhenDocumentsExist() {
+            // Given
+            testCustomer.setCustomerNumber("100001");
+            when(customerRepository.findById(1L)).thenReturn(Optional.of(testCustomer));
+            when(orderRepository.findByCustomerIdOrderByOrderDateDesc(1L)).thenReturn(List.of(new Order()));
+
+            // When & Then
+            assertThatThrownBy(() -> customerService.deleteCustomer(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("100001 hat Belege");
+            verify(customerRepository, never()).delete(any());
         }
 
         @Test
         @DisplayName("Sollte ResourceNotFoundException werfen wenn Kunde nicht existiert")
         void shouldThrowExceptionWhenDeletingNonExistentCustomer() {
             // Given
-            when(customerRepository.existsById(999L)).thenReturn(false);
+            when(customerRepository.findById(999L)).thenReturn(Optional.empty());
 
             // When & Then
             assertThatThrownBy(() -> customerService.deleteCustomer(999L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Kunde mit ID 999 nicht gefunden");
 
-            verify(customerRepository, never()).deleteById(anyLong());
+            verify(customerRepository, never()).delete(any());
         }
     }
 
@@ -270,18 +303,17 @@ class CustomerServiceImplTest {
     class SearchCustomersTests {
 
         @Test
-        @DisplayName("Sollte Kunden nach Namen suchen")
+        @DisplayName("Sollte Kunden nach Name, Nummer oder E-Mail suchen")
         void shouldSearchCustomersByName() {
             // Given
             List<Customer> foundCustomers = Arrays.asList(testCustomer);
             List<CustomerDTO> foundDTOs = Arrays.asList(testCustomerDTO);
 
-            when(customerRepository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase("Max", "Max"))
-                .thenReturn(foundCustomers);
+            when(customerRepository.search("max")).thenReturn(foundCustomers);
             when(customerMapper.toCustomerDTOs(foundCustomers)).thenReturn(foundDTOs);
 
             // When
-            List<CustomerDTO> result = customerService.searchCustomers("Max");
+            List<CustomerDTO> result = customerService.searchCustomers(" Max ");
 
             // Then
             assertThat(result).hasSize(1);
@@ -297,14 +329,14 @@ class CustomerServiceImplTest {
         @DisplayName("Sollte Anzahl der Kunden zurückgeben")
         void shouldReturnCustomerCount() {
             // Given
-            when(customerRepository.countCustomers()).thenReturn(42L);
+            when(customerRepository.count()).thenReturn(42L);
 
             // When
             long result = customerService.getCustomerCount();
 
             // Then
             assertThat(result).isEqualTo(42L);
-            verify(customerRepository).countCustomers();
+            verify(customerRepository).count();
         }
     }
 }

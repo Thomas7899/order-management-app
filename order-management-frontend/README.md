@@ -1,27 +1,28 @@
-# OrderManagementFrontend
+# Order Management – Frontend
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.0.4.
+Angular 22 mit UI5 Web Components (SAP Fiori, Theme Horizon hell und dunkel). Überblick über das Gesamtprojekt: [README im Hauptverzeichnis](../README.md).
 
-## Development server
+## Entwicklung
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+```bash
+npm ci
+npx ng serve            # http://localhost:4200, erwartet das Backend auf http://localhost:8080
+```
 
-## Code scaffolding
+## Build und Tests
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+```bash
+npx ng build                                        # Produktions-Build nach dist/order-management-frontend/browser
+npx ng test --watch=false --browsers=ChromeHeadless # Unit-Tests (Karma/Jasmine)
+```
 
-## Build
+## Aufbau
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+| Ordner | Inhalt |
+|--------|--------|
+| `src/app/core` | API-Services, Anmeldung und Rollen, HTTP-Interceptors (JWT, Fehlermeldungen nach RFC 7807), Modelle |
+| `src/app/layout` | Shell mit ShellBar, Seitennavigation, Benutzermenü und Meldungen |
+| `src/app/features` | Fachseiten: Launchpad, Aufträge, Lieferungen, Fakturierung, Debitoren, Materialien, Bestand, Analysen, Benutzer |
+| `src/app/shared` | Registrierung der UI5-Komponenten und Icons, Status-Tags, Kacheln, Diagramm-Theme |
 
-## Running unit tests
-
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
-
-## Running end-to-end tests
-
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
-
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Neue UI5-Komponenten oder Icons müssen in `src/app/shared/ui5.ts` importiert werden, sonst bleiben die Tags im Template wirkungslos.

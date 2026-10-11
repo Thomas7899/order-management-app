@@ -20,13 +20,13 @@ public interface WarehouseStockRepository extends JpaRepository<WarehouseStock, 
 
     List<WarehouseStock> findByProductId(Long productId);
 
-    @Query("SELECT ws FROM WarehouseStock ws WHERE ws.quantity <= ws.minStock")
+    @Query("SELECT ws FROM WarehouseStock ws WHERE ws.minStock > 0 AND ws.quantity <= ws.minStock")
     List<WarehouseStock> findLowStockItems();
 
-    @Query("SELECT ws FROM WarehouseStock ws WHERE ws.quantity > ws.maxStock")
+    @Query("SELECT ws FROM WarehouseStock ws WHERE ws.maxStock > 0 AND ws.quantity > ws.maxStock")
     List<WarehouseStock> findOverStockItems();
 
-    @Query("SELECT ws FROM WarehouseStock ws WHERE ws.warehouse.id = :warehouseId AND ws.quantity <= ws.minStock")
+    @Query("SELECT ws FROM WarehouseStock ws WHERE ws.warehouse.id = :warehouseId AND ws.minStock > 0 AND ws.quantity <= ws.minStock")
     List<WarehouseStock> findLowStockItemsByWarehouse(@Param("warehouseId") Long warehouseId);
 
     @Query("SELECT SUM(ws.quantity) FROM WarehouseStock ws WHERE ws.product.id = :productId")
@@ -36,11 +36,11 @@ public interface WarehouseStockRepository extends JpaRepository<WarehouseStock, 
         SELECT p.id, p.name, p.category,
                COALESCE(SUM(ws.quantity), 0) as total_stock,
                COUNT(DISTINCT ws.warehouse_id) as warehouse_count,
-               p.price * COALESCE(SUM(ws.quantity), 0) as stock_value
+               COALESCE(p.cost_price, p.price) * COALESCE(SUM(ws.quantity), 0) as stock_value
         FROM products p
         LEFT JOIN warehouse_stocks ws ON p.id = ws.product_id
         WHERE p.active = true
-        GROUP BY p.id, p.name, p.category, p.price
+        GROUP BY p.id, p.name, p.category, p.price, p.cost_price
         ORDER BY stock_value DESC
         """, nativeQuery = true)
     List<Object[]> getStockOverviewByProduct();

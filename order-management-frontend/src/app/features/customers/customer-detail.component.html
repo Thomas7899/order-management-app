@@ -1,0 +1,168 @@
+@if (customer(); as c) {
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">{{ c.fullName }}</ui5-title>
+    <ui5-title slot="snappedHeading" level="H5">{{ c.fullName }} ({{ c.customerNumber }})</ui5-title>
+    <div slot="subheading" class="om-subtle">Debitor {{ c.customerNumber }} · {{ c.email }}</div>
+    <ui5-tag [attr.design]="c.active ? 'Positive' : 'Negative'">{{ c.active ? 'Aktiv' : 'Gesperrt' }}</ui5-tag>
+    <ui5-toolbar slot="actionsBar" design="Transparent">
+      @if (auth.hasAnyRole('SALES') && c.active) {
+        <ui5-toolbar-button text="Auftrag anlegen" design="Emphasized" icon="add" (click)="newOrder()"></ui5-toolbar-button>
+      }
+      @if (auth.hasAnyRole('SALES', 'BILLING')) {
+        <ui5-toolbar-button text="Bearbeiten" icon="edit" (click)="dialogOpen.set(true)"></ui5-toolbar-button>
+      }
+    </ui5-toolbar>
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <div class="om-header-facets">
+      <div class="om-facet">
+        <span class="om-facet-label">Anschrift</span>
+        <span class="om-facet-value">{{ c.address }}</span>
+        <span class="om-subtle">{{ c.zipCode }} {{ c.city }}, {{ c.country }}</span>
+      </div>
+      <div class="om-facet">
+        <span class="om-facet-label">Zahlungsbedingung</span>
+        <span class="om-facet-value">{{ c.paymentTerms }}</span>
+        <span class="om-subtle">{{ c.paymentTermsText }}</span>
+      </div>
+      <div class="om-facet">
+        <span class="om-facet-label">Kundenrabatt (K007)</span>
+        <span class="om-facet-value kpi">{{ (c.discountPercent ?? 0) | number: '1.0-2' }} %</span>
+      </div>
+      <div class="om-facet">
+        <span class="om-facet-label">Umsatz (fakturiert, netto)</span>
+        <span class="om-facet-value kpi">{{ revenue() | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+        <span class="om-subtle">{{ orders().length }} Aufträge</span>
+      </div>
+      @if (exposure(); as e) {
+        <div class="om-facet credit">
+          <span class="om-facet-label">Kreditlimit / Obligo</span>
+          @if (e.creditLimit !== null) {
+            <span class="om-facet-value">{{ e.totalExposure | currency: 'EUR' }} von {{ e.creditLimit | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+            <ui5-progress-indicator [value]="(e.utilizationPercent ?? 0) > 100 ? 100 : (e.utilizationPercent ?? 0)"
+              [attr.display-value]="(e.utilizationPercent ?? 0) + ' %'"
+              [attr.value-state]="(e.utilizationPercent ?? 0) > 100 ? 'Negative' : (e.utilizationPercent ?? 0) > 80 ? 'Critical' : 'Positive'"></ui5-progress-indicator>
+            <span class="om-subtle">Aufträge {{ e.openOrderValue | currency: 'EUR' : 'symbol' : '1.0-0' }} · offene Posten {{ e.openItemsValue | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+          } @else {
+            <span class="om-facet-value">Keine Kreditprüfung</span>
+          }
+        </div>
+      }
+    </div>
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    <ui5-tabcontainer content-background-design="Transparent" header-background-design="Transparent" (tab-select)="onTabSelect($event)">
+      <ui5-tab text="Aufträge" [attr.additional-text]="orders().length" selected>
+        <div class="om-section">
+          <ui5-table overflow-mode="Popin" (row-click)="openOrder($event)" no-data-text="Keine Aufträge">
+            <ui5-table-header-row slot="headerRow">
+              <ui5-table-header-cell>Auftrag</ui5-table-header-cell>
+              <ui5-table-header-cell>Belegdatum</ui5-table-header-cell>
+              <ui5-table-header-cell importance="-1" popin-text="Bestellnr.">Bestellnr. Kunde</ui5-table-header-cell>
+              <ui5-table-header-cell class="om-num" horizontal-align="End">Nettowert</ui5-table-header-cell>
+              <ui5-table-header-cell>Status</ui5-table-header-cell>
+              <ui5-table-header-cell importance="-1" popin-text="Kredit">Kredit</ui5-table-header-cell>
+            </ui5-table-header-row>
+            @for (o of orders(); track o.id) {
+              <ui5-table-row interactive [attr.row-key]="o.id">
+                <ui5-table-cell><span class="om-strong">{{ o.orderNumber }}</span></ui5-table-cell>
+                <ui5-table-cell>{{ o.orderDate | date: 'dd.MM.yyyy' }}</ui5-table-cell>
+                <ui5-table-cell>{{ o.customerReference || '–' }}</ui5-table-cell>
+                <ui5-table-cell class="om-num" horizontal-align="End">{{ o.netAmount | currency: o.currency }}</ui5-table-cell>
+                <ui5-table-cell><om-status [status]="o.status" /></ui5-table-cell>
+                <ui5-table-cell><om-status [status]="o.creditStatus" /></ui5-table-cell>
+              </ui5-table-row>
+            }
+          </ui5-table>
+        </div>
+      </ui5-tab>
+
+      <ui5-tab text="Offene Posten" [attr.additional-text]="openItems().length">
+        <div class="om-section">
+          @if (overdueItems().length) {
+            <ui5-message-strip design="Negative" hide-close-button>
+              {{ overdueItems().length }} Rechnung(en) überfällig – Mahnung prüfen.
+            </ui5-message-strip>
+          }
+          <ui5-table overflow-mode="Popin" (row-click)="openInvoice($event)" no-data-text="Keine offenen Posten">
+            <ui5-table-header-row slot="headerRow">
+              <ui5-table-header-cell>Rechnung</ui5-table-header-cell>
+              <ui5-table-header-cell>Fakturadatum</ui5-table-header-cell>
+              <ui5-table-header-cell>Fällig</ui5-table-header-cell>
+              <ui5-table-header-cell class="om-num" horizontal-align="End">Betrag</ui5-table-header-cell>
+              <ui5-table-header-cell>Status</ui5-table-header-cell>
+            </ui5-table-header-row>
+            @for (i of openItems(); track i.id) {
+              <ui5-table-row interactive [attr.row-key]="i.id">
+                <ui5-table-cell><span class="om-strong">{{ i.invoiceNumber }}</span></ui5-table-cell>
+                <ui5-table-cell>{{ i.billingDate | date: 'dd.MM.yyyy' }}</ui5-table-cell>
+                <ui5-table-cell><span [class.om-negative]="i.overdue">{{ i.dueDate | date: 'dd.MM.yyyy' }}</span></ui5-table-cell>
+                <ui5-table-cell class="om-num" horizontal-align="End">{{ i.grossAmount | currency: i.currency }}</ui5-table-cell>
+                <ui5-table-cell><om-status [status]="i.status" /></ui5-table-cell>
+              </ui5-table-row>
+            }
+          </ui5-table>
+        </div>
+      </ui5-tab>
+
+      <ui5-tab text="Alle Fakturen" [attr.additional-text]="invoices().length">
+        <div class="om-section">
+          <ui5-table overflow-mode="Popin" (row-click)="openInvoice($event)" no-data-text="Keine Fakturen">
+            <ui5-table-header-row slot="headerRow">
+              <ui5-table-header-cell>Faktura</ui5-table-header-cell>
+              <ui5-table-header-cell>Art</ui5-table-header-cell>
+              <ui5-table-header-cell>Fakturadatum</ui5-table-header-cell>
+              <ui5-table-header-cell class="om-num" horizontal-align="End">Netto</ui5-table-header-cell>
+              <ui5-table-header-cell>Status</ui5-table-header-cell>
+            </ui5-table-header-row>
+            @for (i of invoices(); track i.id) {
+              <ui5-table-row interactive [attr.row-key]="i.id">
+                <ui5-table-cell><span class="om-strong">{{ i.invoiceNumber }}</span></ui5-table-cell>
+                <ui5-table-cell>{{ i.billingType.code }}</ui5-table-cell>
+                <ui5-table-cell>{{ i.billingDate | date: 'dd.MM.yyyy' }}</ui5-table-cell>
+                <ui5-table-cell class="om-num" horizontal-align="End">{{ i.netAmount | currency: i.currency }}</ui5-table-cell>
+                <ui5-table-cell><om-status [status]="i.status" /></ui5-table-cell>
+              </ui5-table-row>
+            }
+          </ui5-table>
+        </div>
+      </ui5-tab>
+
+      <ui5-tab text="Umsatzentwicklung" data-key="revenue">
+        <div class="om-section">
+          <ui5-title level="H5" class="om-section-title">Fakturierter Nettoumsatz der letzten 12 Monate</ui5-title>
+          <!-- Diagramm erst rendern, wenn der Reiter sichtbar ist, damit es seine Größe kennt -->
+          @if (revenueTabShown()) {
+            @if (chart(); as option) {
+              <div echarts [options]="option" class="om-chart"></div>
+            } @else {
+              <span class="om-subtle">Noch keine Fakturen.</span>
+            }
+          }
+        </div>
+      </ui5-tab>
+
+      <ui5-tab text="Änderungen" [attr.additional-text]="changes().length">
+        <div class="om-section">
+          <ui5-timeline layout="Vertical">
+            @for (ch of changes(); track ch.id) {
+              <ui5-timeline-item [attr.title-text]="changeText(ch)" icon="history"
+                [attr.subtitle-text]="(ch.changedAt | date: 'dd.MM.yyyy HH:mm') + ' · ' + ch.changedBy"></ui5-timeline-item>
+            }
+          </ui5-timeline>
+          @if (!changes().length) {
+            <span class="om-subtle">Keine Änderungen protokolliert.</span>
+          }
+        </div>
+      </ui5-tab>
+    </ui5-tabcontainer>
+  </div>
+</ui5-dynamic-page>
+
+<om-customer-dialog [open]="dialogOpen()" [customer]="c" (closed)="dialogOpen.set(false)" (saved)="saved()" />
+} @else {
+  <div class="om-loading"><ui5-busy-indicator active size="L"></ui5-busy-indicator></div>
+}

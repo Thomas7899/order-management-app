@@ -1,0 +1,122 @@
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Benutzer pflegen</ui5-title>
+    <div slot="subheading" class="om-subtle">{{ users().length }} Benutzer · Rollen steuern die Schreibrechte je Fachbereich</div>
+    <ui5-toolbar slot="actionsBar" design="Transparent">
+      <ui5-toolbar-button design="Emphasized" icon="add" text="Benutzer anlegen" (click)="create()"></ui5-toolbar-button>
+    </ui5-toolbar>
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <div class="om-filterbar">
+      <div class="om-filter wide">
+        <ui5-label show-colon>Suche</ui5-label>
+        <ui5-input [(ngModel)]="search" placeholder="Benutzer, Name, E-Mail oder Rolle" show-clear-icon
+          (input)="onSearch()" (change)="onSearch()">
+          <ui5-icon slot="icon" name="search"></ui5-icon>
+        </ui5-input>
+      </div>
+    </div>
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    <div class="om-section">
+      <ui5-table (row-click)="openFromRow($event)" [attr.loading]="loading() ? '' : null"
+        no-data-text="Keine Benutzer gefunden">
+        <ui5-table-header-row slot="headerRow" sticky>
+          <ui5-table-header-cell width="9rem">Benutzer</ui5-table-header-cell>
+          <ui5-table-header-cell>Name</ui5-table-header-cell>
+          <ui5-table-header-cell>Rollen</ui5-table-header-cell>
+          <ui5-table-header-cell width="8rem">Status</ui5-table-header-cell>
+          <ui5-table-header-cell width="10rem">Letzte Anmeldung</ui5-table-header-cell>
+          <ui5-table-header-cell width="9rem"></ui5-table-header-cell>
+        </ui5-table-header-row>
+        @for (u of filtered(); track u.id) {
+          <ui5-table-row [attr.row-key]="u.id" interactive>
+            <ui5-table-cell><span class="om-strong om-mono">{{ u.username }}</span></ui5-table-cell>
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <span>{{ u.fullName }}@if (isSelf(u)) { <span class="om-subtle"> (Sie)</span> }</span>
+                <span class="om-subtle">{{ u.email }}</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>
+              <div class="roles">
+                @for (r of u.roles; track r.code) {
+                  <ui5-tag [attr.design]="r.code === 'ADMIN' ? 'Critical' : 'Information'" [attr.title]="r.description" hide-state-icon>{{ r.text }}</ui5-tag>
+                }
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>
+              <ui5-tag [attr.design]="u.active ? 'Positive' : 'Negative'">{{ u.active ? 'Aktiv' : 'Gesperrt' }}</ui5-tag>
+            </ui5-table-cell>
+            <ui5-table-cell>
+              @if (u.lastLoginAt) { {{ u.lastLoginAt | date: 'dd.MM.yyyy HH:mm' }} } @else { <span class="om-subtle">nie</span> }
+            </ui5-table-cell>
+            <ui5-table-cell>
+              @if (!isSelf(u)) {
+                <ui5-button design="Transparent" [attr.icon]="u.active ? 'locked' : 'unlocked'"
+                  (click)="$event.stopPropagation(); setActive(u, !u.active)">{{ u.active ? 'Sperren' : 'Entsperren' }}</ui5-button>
+              }
+            </ui5-table-cell>
+          </ui5-table-row>
+        }
+      </ui5-table>
+    </div>
+  </div>
+</ui5-dynamic-page>
+
+<ui5-dialog [attr.header-text]="editing() ? 'Benutzer ' + editing()!.username + ' ändern' : 'Benutzer anlegen'"
+  [open]="dialogOpen()" (close)="dialogOpen.set(false)">
+  <div class="om-form-grid">
+    <div class="om-field">
+      <ui5-label show-colon required>Benutzer</ui5-label>
+      <ui5-input [(ngModel)]="form.username" [disabled]="!!editing()" maxlength="12"
+        [attr.value-state]="errors()['username'] ? 'Negative' : 'None'">
+        <div slot="valueStateMessage">{{ errors()['username'] }}</div>
+      </ui5-input>
+    </div>
+    <div class="om-field">
+      <ui5-label show-colon required>Vollständiger Name</ui5-label>
+      <ui5-input [(ngModel)]="form.fullName" [attr.value-state]="errors()['fullName'] ? 'Negative' : 'None'">
+        <div slot="valueStateMessage">{{ errors()['fullName'] }}</div>
+      </ui5-input>
+    </div>
+    <div class="om-field span-2">
+      <ui5-label show-colon required>E-Mail</ui5-label>
+      <ui5-input type="Email" [(ngModel)]="form.email" [attr.value-state]="errors()['email'] ? 'Negative' : 'None'">
+        <div slot="valueStateMessage">{{ errors()['email'] }}</div>
+      </ui5-input>
+    </div>
+    <div class="om-field span-2">
+      <ui5-label show-colon required>Rollen</ui5-label>
+      <div class="role-list">
+        @for (r of roles(); track r.code) {
+          <ui5-checkbox [attr.text]="r.text" [checked]="hasRole(r.code)"
+            [disabled]="r.code === 'ADMIN' && !!editing() && isSelf(editing()!)"
+            (change)="toggleRole(r.code, $any($event.target).checked)"></ui5-checkbox>
+          <div class="role-desc">{{ r.description }}</div>
+        }
+      </div>
+      @if (errors()['roles']; as e) {
+        <ui5-message-strip design="Negative" hide-close-button>{{ e }}</ui5-message-strip>
+      }
+    </div>
+    <div class="om-field">
+      <ui5-label show-colon [required]="!editing()">{{ editing() ? 'Neues Kennwort (optional)' : 'Initialkennwort' }}</ui5-label>
+      <ui5-input type="Password" [(ngModel)]="form.password" [attr.value-state]="errors()['password'] ? 'Negative' : 'None'">
+        <div slot="valueStateMessage">{{ errors()['password'] }}</div>
+      </ui5-input>
+    </div>
+    @if (editing()) {
+      <div class="om-field">
+        <ui5-label show-colon>Status</ui5-label>
+        <ui5-switch [(ngModel)]="form.active" text-on="Aktiv" text-off="Gesperrt" [disabled]="isSelf(editing()!)"></ui5-switch>
+      </div>
+    }
+  </div>
+  <div slot="footer" class="om-dialog-footer">
+    <ui5-button design="Emphasized" [disabled]="busy()" (click)="save()">Sichern</ui5-button>
+    <ui5-button design="Transparent" (click)="dialogOpen.set(false)">Abbrechen</ui5-button>
+  </div>
+</ui5-dialog>

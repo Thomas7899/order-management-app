@@ -1,341 +1,178 @@
 <div align="center">
 
-# 📦 AI-Powered Order Management System
+# 📦 Order Management – Auftragsabwicklung im SAP-Stil
 
 [![Java](https://img.shields.io/badge/Java-17-orange?style=for-the-badge&logo=openjdk)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4-brightgreen?style=for-the-badge&logo=springboot)](https://spring.io/projects/spring-boot)
-[![Angular](https://img.shields.io/badge/Angular-19-red?style=for-the-badge&logo=angular)](https://angular.io/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen?style=for-the-badge&logo=springboot)](https://spring.io/projects/spring-boot)
+[![Angular](https://img.shields.io/badge/Angular-22-red?style=for-the-badge&logo=angular)](https://angular.dev/)
+[![UI5](https://img.shields.io/badge/UI5%20Web%20Components-Horizon-0a6ed1?style=for-the-badge)](https://sap.github.io/ui5-webcomponents/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%2B%20pgvector-blue?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
 
-**Ein modernes Order Management System mit KI-gestützter Analyse von Kundenbewertungen**
+**Order-to-Cash wie in SAP SD – vom Kundenauftrag über Lieferung und Warenausgang bis zur Faktura und zum Zahlungseingang, mit Fiori-Oberfläche und KI-Auswertung der Kundenbewertungen**
 
-[Demo](#-live-demo) • [Features](#-features) • [Tech Stack](#-tech-stack) • [Installation](#-installation) • [API Docs](#-api-dokumentation) • [Architektur](#-architektur)
+[Live-Demo](#-live-demo) • [Funktionen](#-funktionen) • [Demo-Zugänge](#-demo-zugänge) • [Lokal starten](#-lokal-starten) • [Architektur](#-architektur) • [Deployment](#-deployment)
 
 </div>
 
 ---
 
-## 🎯 Über das Projekt
+## 🌐 Live-Demo
 
-Dieses Order Management System geht über die klassische Bestellverwaltung hinaus. Durch die Integration von **Spring Boot**, **pgvector** und **OpenAI** bietet es tiefgehende Einblicke in Kundenfeedback durch **semantische Suche** und **KI-generierte Trendanalysen**.
+| | URL |
+|---|---|
+| **Frontend** | https://order-management-front.netlify.app |
+| **Backend / API** | https://thomas-order-backend-f8a0728f603a.herokuapp.com |
+| **API-Dokumentation** | https://thomas-order-backend-f8a0728f603a.herokuapp.com/swagger-ui.html |
 
-### 💡 Warum dieses Projekt?
-
-> *"Kundenfeedback ist Gold wert – aber nur wenn man es versteht."*
-
-Traditionelle Systeme erlauben nur Keyword-Suchen. Dieses System versteht den **Kontext**: Eine Suche nach *"schlechte Qualität"* findet auch Bewertungen wie *"ging sofort kaputt"* oder *"Material fühlt sich billig an"*.
-
----
-
-## ✨ Features
-
-<table>
-<tr>
-<td width="50%">
-
-### 🧠 KI-gestützte Analyse
-- **Semantische Suche** via Vector Embeddings
-- **Trend-Erkennung** durch LLM-Zusammenfassungen
-- **Sentiment Analysis** (positiv/neutral/negativ)
-- **Anomalie-Detection** für Qualitätsprobleme
-
-</td>
-<td width="50%">
-
-### 📊 Dashboard & Analytics
-- **Echtzeit-KPIs** (Umsatz, Bestellungen, Kunden)
-- **Interaktive Charts** mit Chart.js
-- **Kundenanalyse** (Top-Kunden, ABC-Analyse)
-- **Umsatzprognosen**
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 🛒 Order Management
-- Vollständiges **CRUD** für Bestellungen
-- **Status-Tracking** (Pending → Shipped → Delivered)
-- **Bestellhistorie** pro Kunde
-- **Umsatzreporting** nach Zeitraum
-
-</td>
-<td width="50%">
-
-### 📦 Inventory & Products
-- **Lagerverwaltung** mit Stock-Alerts
-- **Produktkategorien** und Filterung
-- **Bewertungssystem** (1-5 Sterne)
-- **Bildverwaltung** für Produkte
-
-</td>
-</tr>
-</table>
+Die Demo-Daten entstehen durch die Simulation eines kompletten Geschäftsjahres über die echten Fachservices: rund 500 Kundenaufträge mit Lieferungen, Warenausgängen, Fakturen, Zahlungseingängen, Stornos, Kreditsperren und Nachschub.
 
 ---
 
-## 🛠 Tech Stack
+## ✨ Funktionen
 
-### Backend
+### Vertrieb (SD)
+- **Kundenauftrag (Terminauftrag TA)** mit Positionen 10/20/30, Assistent zum Anlegen (vergleichbar VA01) und Änderungsbelegen
+- **Preisfindung** mit Konditionsarten: `PR00` Preis, `K007` Kundenrabatt, `ZMEN` Mengenstaffel (3 % ab 10, 5 % ab 25 Stück), `RA01` manueller Rabatt, `MWST` Ausgangssteuer, `VPRS` Verrechnungspreis (statistisch, für die Marge)
+- **Verfügbarkeitsprüfung (ATP)** auf Werksebene: Bestand − bestätigte Auftragsmengen − Lieferungen ohne Warenausgang
+- **Kreditprüfung** gegen das Kreditlimit (Obligo aus offenen Aufträgen und offenen Posten) mit Kreditsperre und Freigabe
+- **Absagegründe** (R01–R10), **Rückstandsbearbeitung** und **Belegfluss**
+- Abgeleitete Status wie in SAP: Gesamt-, Liefer-, Faktura- und Kreditstatus
 
-| Technologie | Version | Verwendung |
-|-------------|---------|------------|
-| **Java** | 17 | Programmiersprache |
-| **Spring Boot** | 3.4.0 | Framework |
-| **Spring Data JPA** | - | ORM / Data Access |
-| **Spring Security** | - | Authentifizierung |
-| **Spring AI** | 1.0.3 | OpenAI Integration |
-| **PostgreSQL** | 15+ | Datenbank |
-| **pgvector** | - | Vector Similarity Search |
-| **Liquibase** | - | Database Migrations |
-| **MapStruct** | 1.5.5 | DTO Mapping |
-| **Lombok** | 1.18.34 | Boilerplate Reduction |
-| **Maven** | 3.9+ | Build Tool |
-| **JUnit 5** | - | Unit & Integration Tests |
-| **OpenAPI/Swagger** | 2.7.0 | API Documentation |
+### Logistik (LE / MM-IM)
+- **Auslieferung (LF)** mit Kommissionierliste und Lieferschein, Lagerortfindung, Begrenzung auf freien Bestand
+- **Warenausgang** (Bewegungsart 601) und Storno (602)
+- **Materialbelege** mit Positionen und SAP-Bewegungsarten (561, 101, 201, 311, 551, 651, 701/702 …), Storno je Beleg
+- **Bestandsübersicht** je Lagerort mit Melde- und Höchstbestand
 
-### Frontend
+### Fakturierung und Debitorenbuchhaltung (SD-BIL / FI-AR)
+- **Fakturavorrat** (vergleichbar VF04): mehrere Lieferungen in einem Schritt fakturieren
+- **Rechnung (F2)** und **Storno (S1)**, Rechnung als PDF
+- **Zahlungsbedingungen** (ZB01 mit Skonto, ZB30, ZB14, ZB00), offene und überfällige Posten, Zahlungseingang
 
-| Technologie | Version | Verwendung |
-|-------------|---------|------------|
-| **Angular** | 19 | Framework |
-| **TypeScript** | 5.x | Programmiersprache |
-| **Chart.js** | - | Datenvisualisierung |
-| **RxJS** | - | Reactive Programming |
+### Analyse und KI
+- **Kennzahlen**: Umsatz, Bruttomarge, DSO, Liefertreue, Durchlaufzeit, Lagerumschlag, Reichweite
+- **ABC-Analyse** für Materialien und Debitoren, **Umsatzprognose** per linearer Regression
+- **Semantische Suche** in Kundenbewertungen (OpenAI-Embeddings + pgvector)
+- **KI-Trends, Auffälligkeiten und Stimmungsanalyse** der Bewertungen, **KI-Bestandsanalyse**
 
-### DevOps & Tools
+### Plattform
+- **Fiori-Oberfläche** mit UI5 Web Components (Theme Horizon, hell und dunkel): Launchpad, List Reports, Object Pages, Dynamic Page, Wizard
+- **Anmeldung per JWT** mit Rollen; Schreibrechte je Fachbereich
+- **Nummernkreise** (Auftrag 10000001, Lieferung 80000001, Faktura 90000001, Materialbeleg 4900000001 …)
+- **Änderungsbelege** (vergleichbar CDHDR/CDPOS) und **Fehlermeldungen mit Nachrichtennummer** (RFC 7807, z. B. `V1 382`)
+- **Schemaverwaltung mit Flyway**
 
-| Technologie | Verwendung |
-|-------------|------------|
-| **Docker** | Containerization |
-| **Git** | Version Control |
-| **GitHub Actions** | CI/CD (optional) |
-| **Heroku** | Cloud Deployment |
+---
+
+## 👤 Demo-Zugänge
+
+Kennwort für alle: **`demo1234`** – auf der Anmeldeseite genügt ein Klick auf den Benutzer.
+
+| Benutzer | Rolle | Darf ändern |
+|----------|-------|-------------|
+| `ADMIN` | Administrator | alles, inkl. Benutzerverwaltung |
+| `MREUTER` | Vertrieb | Kundenaufträge, Debitoren, Materialien |
+| `JMEIER` | Lager & Versand | Lieferungen, Warenausgang, Bestandsbuchungen, Materialien |
+| `PRICHTER`, `AKOCH` | Fakturierung & Debitorenbuchhaltung | Fakturen, Zahlungseingänge, Kreditfreigaben, Debitoren |
+| `SWEBER` | Controlling | KI-Analysen starten |
+
+Lesen dürfen alle angemeldeten Benutzer.
+
+---
+
+## 🛠 Tech-Stack
+
+| Bereich | Technologie |
+|---------|-------------|
+| Backend | Java 17, Spring Boot 3.5, Spring Data JPA, Spring Security (OAuth2 Resource Server, JWT), Flyway, MapStruct, Lombok, OpenPDF |
+| KI | Spring AI 1.0 mit OpenAI (Chat: `gpt-4o-mini`, Embeddings mit 1536 Dimensionen), pgvector |
+| Datenbank | PostgreSQL 16 mit pgvector |
+| Frontend | Angular 22 (Standalone, Signals), UI5 Web Components 2 (Fiori Horizon), ECharts |
+| Tests | JUnit 5, Spring Boot Test (Backend); Karma/Jasmine (Frontend) |
+| Betrieb | Heroku (Backend), Netlify (Frontend), GitHub Actions (CI) |
+
+---
+
+## 🚀 Lokal starten
+
+### Voraussetzungen
+- Java 17, Node.js 22
+- PostgreSQL mit pgvector, z. B. per Docker/Podman
+- optional ein OpenAI-API-Schlüssel – ohne Schlüssel läuft alles außer den KI-Funktionen
+
+### 1. Datenbank
+
+```bash
+docker run -d --name order-management-db -p 5432:5432 \
+  -e POSTGRES_DB=order_management -e POSTGRES_PASSWORD=postgres \
+  pgvector/pgvector:pg16
+```
+
+oder `docker compose up -d postgres-dev` im Ordner `order-management`. Das Schema legt Flyway beim Start an.
+
+### 2. Backend
+
+```bash
+cd order-management
+export OPENAI_API_KEY=sk-...        # optional
+./mvnw spring-boot:run
+```
+
+Beim ersten Start mit leerer Datenbank wird das Demo-Geschäftsjahr simuliert (einige Minuten). Backend: http://localhost:8080, API-Dokumentation: http://localhost:8080/swagger-ui.html
+
+### 3. Frontend
+
+```bash
+cd order-management-frontend
+npm ci
+npx ng serve
+```
+
+Frontend: http://localhost:4200
+
+### Konfiguration
+
+| Variable | Bedeutung | Standard |
+|----------|-----------|----------|
+| `OPENAI_API_KEY` | Schlüssel für die KI-Funktionen | nicht gesetzt (KI antwortet mit 503) |
+| `JWT_SECRET` | Signaturschlüssel für Anmeldungen, mindestens 32 Zeichen | zufällig je Start (Anmeldungen gelten dann nur bis zum Neustart) |
+| `CORS_ALLOWED_ORIGINS` | erlaubte Frontend-Adressen, kommagetrennt, Platzhalter erlaubt | localhost:4200 und die Netlify-Domain |
+| `APP_DEMO_SEED_DATA` | Demo-Daten bei leerer Datenbank erzeugen | `true` |
+| `APP_DEV_RESET_ON_START` | Demo-Daten bei jedem Start neu erzeugen | `false` |
+| `APP_DEV_GENERATE_EMBEDDINGS` | beim Erzeugen der Demo-Daten auch die Embeddings für die semantische Suche anlegen (braucht `OPENAI_API_KEY`) | `false` |
+
+Embeddings lassen sich auch nachträglich erzeugen: `POST /api/reviews/maintenance/reembed` (Rolle Controlling oder Administrator).
 
 ---
 
 ## 🏗 Architektur
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         FRONTEND                                │
-│                    Angular 19 (TypeScript)                      │
-│   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐      │
-│   │Dashboard │  │ Orders   │  │ Products │  │ Reviews  │       │
-│   └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘      │
-└────────┼─────────────┼─────────────┼─────────────┼─────────────┘
-         │             │             │             │
-         └─────────────┴─────────────┴─────────────┘
-                              │
-                         REST API
-                              │
-┌─────────────────────────────┼───────────────────────────────────┐
-│                         BACKEND                                 │
-│                    Spring Boot 3.4                              │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                    Controller Layer                      │   │
-│  │  OrderController │ CustomerController │ ReviewController │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                              │                                  │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                    Service Layer                         │   │
-│  │  OrderService │ CustomerService │ ReviewEmbeddingService │   │
-│  │                    ReviewTrendAnalysisService            │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                              │                                  │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                   Repository Layer                       │   │
-│  │          Spring Data JPA │ Custom Queries                │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                              │                                  │
-└──────────────────────────────┼──────────────────────────────────┘
-                               │
-┌──────────────────────────────┼──────────────────────────────────┐
-│                         DATABASE                                │
-│                     PostgreSQL + pgvector                       │
-│                                                                 │
-│   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────────┐ │
-│   │Customers │  │ Orders   │  │ Products │  │ReviewEmbeddings│ │
-│   └──────────┘  └──────────┘  └──────────┘  │  (Vector 1536) │ │
-│                                             └───────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-                               │
-┌──────────────────────────────┼──────────────────────────────────┐
-│                      EXTERNAL SERVICES                          │
-│                                                                 │
-│   ┌─────────────────────────────────────────────────────────┐  │
-│   │                    OpenAI API                            │  │
-│   │  • text-embedding-3-small (Vector Generation)           │  │
-│   │  • gpt-4o-mini (Trend Analysis & Summaries)             │  │
-│   └─────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+order-management-frontend/  Angular 22 + UI5 Web Components
+  src/app/core/             API-Services, Anmeldung, Interceptors, Modelle
+  src/app/layout/           Shell: ShellBar, Seitennavigation, Meldungen
+  src/app/features/         launchpad, orders, deliveries, billing, customers,
+                            materials, inventory, analytics, admin
+  src/app/shared/           UI5-Registrierung, Status-Tags, Kacheln, Diagramm-Theme
+
+order-management/           Spring Boot
+  controller/               REST-API (/api/orders, /deliveries, /invoices, /inventory, …)
+  service/sales/            Preisfindung, ATP, Kreditprüfung, Auftrag, Lieferung,
+                            Faktura, Belegfluss, Rechnungs-PDF
+  service/                  Bestandsbuchungen, Nummernkreise, Änderungsbelege,
+                            Reporting, Benutzer
+  ai/                       Embeddings, Trend-, Anomalie- und Stimmungsanalyse
+  config/                   Security (JWT, Rollen), Demo-Daten und Geschäftsjahressimulation
+  resources/db/migration/   Flyway-Migrationen
 ```
 
-### 🗂 Datenmodell (ER-Diagramm)
+Der Order-to-Cash-Ablauf im Backend:
 
-```mermaid
-erDiagram
-    CUSTOMER ||--o{ ORDER : places
-    CUSTOMER ||--o{ PRODUCT_REVIEW : writes
-    ORDER ||--|{ ORDER_ITEM : contains
-    PRODUCT ||--o{ ORDER_ITEM : "is ordered in"
-    PRODUCT ||--o{ PRODUCT_REVIEW : "has"
-    PRODUCT_REVIEW ||--|| REVIEW_EMBEDDING : "has vector"
-
-    CUSTOMER {
-        Long id PK
-        String firstName
-        String lastName
-        String email UK
-        String phone
-        String address
-        String city
-        DateTime createdAt
-    }
-
-    ORDER {
-        Long id PK
-        String orderNumber UK
-        Long customerId FK
-        DateTime orderDate
-        String status
-        Decimal totalAmount
-        String shippingAddress
-    }
-
-    ORDER_ITEM {
-        Long id PK
-        Long orderId FK
-        Long productId FK
-        Integer quantity
-        Decimal unitPrice
-    }
-
-    PRODUCT {
-        Long id PK
-        String name
-        String description
-        Decimal price
-        String category
-        Integer stockQuantity
-        Boolean active
-    }
-
-    PRODUCT_REVIEW {
-        Long id PK
-        Long productId FK
-        Long customerId FK
-        Integer rating
-        String comment
-        DateTime createdAt
-    }
-
-    REVIEW_EMBEDDING {
-        Long id PK
-        Long reviewId FK
-        Vector embedding "1536 dimensions"
-    }
 ```
-
----
-
-## 🚀 Installation
-
-### Voraussetzungen
-
-- ☕ **Java 17+** ([Download](https://adoptium.net/))
-- 📦 **Maven 3.9+** ([Download](https://maven.apache.org/download.cgi))
-- 🐘 **PostgreSQL 15+** mit `pgvector` Extension
-- 🟢 **Node.js 18+** & npm ([Download](https://nodejs.org/))
-- 🔑 **OpenAI API Key** ([Get Key](https://platform.openai.com/api-keys))
-
-### 1️⃣ Repository klonen
-
-```bash
-git clone https://github.com/Thomas7899/order-management-app.git
-cd order-management-app
-```
-
-### 2️⃣ Datenbank einrichten
-
-```sql
--- PostgreSQL
-CREATE DATABASE order_management;
-\c order_management
-CREATE EXTENSION IF NOT EXISTS vector;
-```
-
-**Oder mit Docker:**
-
-```bash
-cd order-management
-docker-compose up -d postgres-dev
-```
-
-### 3️⃣ Backend starten
-
-```bash
-cd order-management
-
-# OpenAI API Key setzen
-export OPENAI_API_KEY=sk-your-api-key
-
-# Anwendung starten
-./mvnw spring-boot:run
-```
-
-> 📍 Backend läuft auf: **http://localhost:8080**  
-> 📖 API-Docs: **http://localhost:8080/swagger-ui.html**
-
-### 4️⃣ Frontend starten
-
-```bash
-cd order-management-frontend
-
-# Dependencies installieren
-npm install
-
-# Development Server starten
-ng serve
-```
-
-> 📍 Frontend läuft auf: **http://localhost:4200**
-
----
-
-## 📖 API Dokumentation
-
-Die vollständige API-Dokumentation ist via **Swagger UI** verfügbar:
-
-🔗 **http://localhost:8080/swagger-ui.html**
-
-### Wichtige Endpoints
-
-| Methode | Endpoint | Beschreibung |
-|---------|----------|--------------|
-| `GET` | `/api/orders` | Alle Bestellungen abrufen |
-| `POST` | `/api/orders` | Neue Bestellung erstellen |
-| `GET` | `/api/orders/{id}` | Bestellung nach ID |
-| `PATCH` | `/api/orders/{id}/status` | Bestellstatus ändern |
-| `GET` | `/api/customers` | Alle Kunden abrufen |
-| `GET` | `/api/customers/search?query=` | Kunden suchen |
-| `GET` | `/api/products` | Alle Produkte abrufen |
-| `GET` | `/api/reviews/similar?query=` | Semantische Suche |
-| `GET` | `/api/dashboard/stats` | Dashboard KPIs |
-
-### Beispiel: Bestellung erstellen
-
-```bash
-curl -X POST http://localhost:8080/api/orders \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customer": {"id": 1},
-    "orderItems": [
-      {"product": {"id": 1}, "quantity": 2}
-    ]
-  }'
+Kundenauftrag (TA) ──► Auslieferung (LF) ──► Warenausgang (601) ──► Faktura (F2) ──► Zahlungseingang
+   │  Preisfindung          │  Lagerortfindung      │  Materialbeleg         │  Zahlungsbedingung
+   │  ATP-Prüfung           │  Kommissionierung     │  Bestandsabbau         │  Skonto
+   └  Kreditprüfung         └  Storno               └  Storno (602)          └  Storno (S1)
 ```
 
 ---
@@ -343,107 +180,17 @@ curl -X POST http://localhost:8080/api/orders \
 ## 🧪 Tests
 
 ```bash
-cd order-management
-
-# Alle Tests ausführen
-./mvnw test
-
-# Spezifische Test-Klasse
-./mvnw test -Dtest="OrderServiceTest"
-
-# Mit Coverage Report
-./mvnw test jacoco:report
+cd order-management && ./mvnw test                                            # Backend
+cd order-management-frontend && npx ng test --watch=false --browsers=ChromeHeadless   # Frontend
 ```
 
-### Test-Struktur
-
-```
-src/test/java/
-├── service/
-│   ├── OrderServiceTest.java        # 13 Unit Tests
-│   └── CustomerServiceImplTest.java # 11 Unit Tests
-└── repository/
-    └── OrderRepositoryTest.java     # 11 Integration Tests
-```
+Die CI (`.github/workflows/ci.yml`) führt beide Testläufe und den Produktions-Build bei jedem Pull Request aus.
 
 ---
 
-## 🐳 Docker
+## 📦 Deployment
 
-```bash
-# Komplettes Setup mit Docker Compose
-docker-compose up -d
-
-# Nur Datenbank
-docker-compose up -d postgres-dev
-
-# Logs anzeigen
-docker-compose logs -f
-```
-
----
-
-## 📁 Projektstruktur
-
-```
-order-management-app/
-├── 📂 order-management/              # Backend (Spring Boot)
-│   ├── 📂 src/main/java/
-│   │   └── com/thomas/order_management/
-│   │       ├── 📂 config/            # Konfigurationen (Security, OpenAPI, etc.)
-│   │       ├── 📂 controller/        # REST Controller
-│   │       ├── 📂 dto/               # Data Transfer Objects
-│   │       ├── 📂 exception/         # Exception Handling
-│   │       ├── 📂 mapper/            # MapStruct Mapper
-│   │       ├── 📂 model/             # JPA Entities
-│   │       ├── 📂 repository/        # Spring Data Repositories
-│   │       └── 📂 service/           # Business Logic
-│   ├── 📂 src/main/resources/
-│   │   ├── 📂 db/changelog/          # Liquibase Migrations
-│   │   └── application.properties
-│   ├── 📂 src/test/                  # JUnit Tests
-│   ├── docker-compose.yml
-│   └── pom.xml
-│
-├── 📂 order-management-frontend/     # Frontend (Angular)
-│   ├── 📂 src/app/
-│   │   ├── 📂 components/
-│   │   ├── 📂 services/
-│   │   └── 📂 types/
-│   ├── angular.json
-│   └── package.json
-│
-└── 📂 docs/                          # Dokumentation
-```
-
----
-
-## 🔮 Roadmap
-
-- [ ] 📧 **E-Mail-Alerts** bei negativen Trend-Spikes
-- [ ] 🤖 **RAG Chatbot** für Support-Anfragen
-- [ ] 🏢 **Multi-Tenant Support** für mehrere Shops
-- [ ] 📱 **Mobile App** (Flutter/React Native)
-- [ ] 🔐 **OAuth2/JWT** Authentifizierung
-- [ ] 📈 **Erweiterte Analytics** mit Machine Learning
-
----
-
-## 🤝 Contributing
-
-Beiträge sind willkommen! Bitte lies zuerst die Contributing Guidelines.
-
-1. Fork das Repository
-2. Erstelle einen Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Committe deine Änderungen (`git commit -m 'Add some AmazingFeature'`)
-4. Push zum Branch (`git push origin feature/AmazingFeature`)
-5. Öffne einen Pull Request
-
----
-
-## 📄 Lizenz
-
-Dieses Projekt ist unter der MIT-Lizenz lizenziert - siehe [LICENSE](LICENSE) für Details.
+Backend (Heroku) und Frontend (Netlify) werden manuell per CLI veröffentlicht – Details in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ---
 
@@ -454,4 +201,3 @@ Dieses Projekt ist unter der MIT-Lizenz lizenziert - siehe [LICENSE](LICENSE) f�
 [![GitHub](https://img.shields.io/badge/GitHub-Thomas7899-black?style=flat-square&logo=github)](https://github.com/Thomas7899)
 
 </div>
-

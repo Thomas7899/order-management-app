@@ -1,0 +1,164 @@
+@if (invoice(); as i) {
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">{{ i.billingType.text }} {{ i.invoiceNumber }}</ui5-title>
+    <ui5-title slot="snappedHeading" level="H5">{{ i.billingType.text }} {{ i.invoiceNumber }} · {{ i.payer.name }}</ui5-title>
+    <div slot="subheading" class="om-subtle">
+      Fakturaart {{ i.billingType.code }} · Auftrag <a [routerLink]="['/orders', i.orderId]">{{ i.orderNumber }}</a>
+      @if (i.deliveryId) {
+        · Lieferung <a [routerLink]="['/deliveries', i.deliveryId]">{{ i.deliveryNumber }}</a>
+      }
+    </div>
+    <om-status [status]="i.status" />
+    <ui5-toolbar slot="actionsBar" design="Transparent">
+      @if (auth.hasAnyRole('BILLING')) {
+        @if (canPay()) {
+          <ui5-toolbar-button text="Zahlungseingang buchen" design="Emphasized" icon="money-bills" (click)="openPayment()"></ui5-toolbar-button>
+        }
+        @if (canCancel()) {
+          <ui5-toolbar-button text="Stornieren" design="Transparent" icon="decline" (click)="dialog.set('cancel')"></ui5-toolbar-button>
+        }
+      }
+      <ui5-toolbar-button text="Rechnung (PDF)" design="Transparent" icon="pdf-attachment" (click)="openPdf()"></ui5-toolbar-button>
+    </ui5-toolbar>
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <div class="om-header-facets">
+      <div class="om-facet">
+        <span class="om-facet-label">Bruttobetrag</span>
+        <span class="om-facet-value kpi" [class.om-negative]="i.grossAmount < 0">{{ i.grossAmount | currency: i.currency }}</span>
+        <span class="om-subtle">Netto {{ i.netAmount | currency: i.currency }} · USt. {{ i.taxAmount | currency: i.currency }}</span>
+      </div>
+      <div class="om-facet">
+        <span class="om-facet-label">Deckungsbeitrag</span>
+        <span class="om-facet-value kpi">{{ i.marginAmount | currency: i.currency }}</span>
+        <span class="om-subtle">{{ marginPercent() === null ? '' : (marginPercent()! | percent: '1.1-1') + ' vom Nettoumsatz · Einstand ' }}{{ i.costAmount | currency: i.currency }}</span>
+      </div>
+      <div class="om-facet">
+        <span class="om-facet-label">Regulierer</span>
+        <a [routerLink]="['/customers', i.payer.id]" class="om-facet-value">{{ i.payer.name }}</a>
+        <span class="om-subtle">{{ i.payer.customerNumber }}</span>
+      </div>
+      <div class="om-facet">
+        <span class="om-facet-label">Fakturadatum</span>
+        <span class="om-facet-value">{{ i.billingDate | date: 'dd.MM.yyyy' }}</span>
+        <span class="om-facet-label">Fälligkeit netto</span>
+        <span class="om-facet-value" [class.om-negative]="i.overdue">{{ i.dueDate | date: 'dd.MM.yyyy' }}{{ i.overdue ? ' (' + i.daysOverdue + ' Tage überfällig)' : '' }}</span>
+      </div>
+      <div class="om-facet">
+        <span class="om-facet-label">Zahlungsbedingung</span>
+        <span class="om-facet-value" [attr.title]="i.paymentTerms?.text">{{ i.paymentTerms?.code }} – {{ i.paymentTerms?.text }}</span>
+        @if (i.cashDiscountDate) {
+          <span class="om-subtle">{{ i.cashDiscountPercent | number: '1.0-2' }} % Skonto bis {{ i.cashDiscountDate | date: 'dd.MM.yyyy' }}</span>
+        }
+      </div>
+      @if (i.paidAt) {
+        <div class="om-facet">
+          <span class="om-facet-label">Ausgeglichen am</span>
+          <span class="om-facet-value">{{ i.paidAt | date: 'dd.MM.yyyy' }}</span>
+          @if (i.paidAmount) {
+            <span class="om-subtle">{{ i.paidAmount | currency: i.currency }}{{ i.cashDiscountAmount ? ' · Skonto ' + (i.cashDiscountAmount | currency: i.currency) : '' }}</span>
+          }
+        </div>
+      }
+      @if (i.referenceInvoiceNumber) {
+        <div class="om-facet">
+          <span class="om-facet-label">Storno zu</span>
+          <span class="om-facet-value">{{ i.referenceInvoiceNumber }}</span>
+        </div>
+      }
+    </div>
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    <div class="om-section">
+      <ui5-title level="H5" class="om-section-title">Positionen</ui5-title>
+      <ui5-table overflow-mode="Popin">
+        <ui5-table-header-row slot="headerRow">
+          <ui5-table-header-cell width="4rem">Pos.</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="14rem">Material</ui5-table-header-cell>
+          <ui5-table-header-cell class="om-num" horizontal-align="End">Menge</ui5-table-header-cell>
+          <ui5-table-header-cell class="om-num" horizontal-align="End">Nettopreis</ui5-table-header-cell>
+          <ui5-table-header-cell class="om-num" horizontal-align="End" importance="-1" popin-text="USt.">USt.</ui5-table-header-cell>
+          <ui5-table-header-cell class="om-num" horizontal-align="End">Nettowert</ui5-table-header-cell>
+        </ui5-table-header-row>
+        @for (item of i.items; track item.itemNumber) {
+          <ui5-table-row>
+            <ui5-table-cell>{{ item.itemNumber }}</ui5-table-cell>
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <a [routerLink]="['/materials', item.productId]">{{ item.productName }}</a>
+                <span class="om-subtle">{{ item.materialNumber }} · Auftragsposition {{ item.orderItemNumber }}</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">{{ item.quantity | number }} {{ item.unitOfMeasure }}</ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">{{ item.unitNetPrice | currency: i.currency }}</ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">{{ item.taxRate | number: '1.0-2' }} %</ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">{{ item.netAmount | currency: i.currency }}</ui5-table-cell>
+          </ui5-table-row>
+        }
+      </ui5-table>
+      <div class="totals">
+        <span>Nettobetrag</span><span class="om-num">{{ i.netAmount | currency: i.currency }}</span>
+        <span>Umsatzsteuer</span><span class="om-num">{{ i.taxAmount | currency: i.currency }}</span>
+        <span class="om-strong">Rechnungsbetrag</span><span class="om-num om-strong">{{ i.grossAmount | currency: i.currency }}</span>
+      </div>
+    </div>
+
+    <div class="om-grid-2">
+      <div class="om-section">
+        <ui5-title level="H5" class="om-section-title">Rechnungsempfänger</ui5-title>
+        <div class="om-attribute"><span class="value">{{ i.billingAddress }}</span></div>
+        <div class="om-attribute"><span class="label">E-Mail</span><span class="value">{{ i.payer.email }}</span></div>
+      </div>
+      <div class="om-section">
+        <ui5-title level="H5" class="om-section-title">Änderungen</ui5-title>
+        <ui5-timeline layout="Vertical">
+          @for (c of changes(); track c.id) {
+            <ui5-timeline-item [attr.title-text]="changeText(c)" icon="history"
+              [attr.subtitle-text]="(c.changedAt | date: 'dd.MM.yyyy HH:mm') + ' · ' + c.changedBy"></ui5-timeline-item>
+          }
+        </ui5-timeline>
+      </div>
+    </div>
+  </div>
+</ui5-dynamic-page>
+
+<ui5-dialog header-text="Zahlungseingang buchen" [open]="dialog() === 'payment'" (close)="dialog.set(null)">
+  <div class="om-form-grid">
+    <div class="om-field">
+      <ui5-label show-colon required>Zahlungsdatum</ui5-label>
+      <ui5-date-picker placeholder="TT.MM.JJJJ" [value]="paymentDate()" (change)="paymentDate.set($any($event.target).value)"
+        value-format="yyyy-MM-dd" display-format="dd.MM.yyyy"></ui5-date-picker>
+    </div>
+    <div class="om-field span-2">
+      <div class="payment-preview">
+        <span>Rechnungsbetrag</span><span class="om-num">{{ i.grossAmount | currency: i.currency }}</span>
+        <span>Skonto</span><span class="om-num">{{ discount() > 0 ? '− ' + (discount() | currency: i.currency) : 'kein Skonto' }}</span>
+        <span class="om-strong">Zahlbetrag</span><span class="om-num om-strong">{{ (i.grossAmount - discount()) | currency: i.currency }}</span>
+      </div>
+      @if (i.cashDiscountDate) {
+        <span class="om-subtle">Skontofrist bis {{ i.cashDiscountDate | date: 'dd.MM.yyyy' }}</span>
+      }
+    </div>
+  </div>
+  <div slot="footer" class="om-dialog-footer">
+    <ui5-button design="Emphasized" [disabled]="busy()" (click)="postPayment()">Ausgleichen</ui5-button>
+    <ui5-button design="Transparent" (click)="dialog.set(null)">Abbrechen</ui5-button>
+  </div>
+</ui5-dialog>
+
+<ui5-dialog header-text="Faktura stornieren" state="Critical" [open]="dialog() === 'cancel'" (close)="dialog.set(null)">
+  <p class="dialog-text">
+    Für Rechnung {{ i.invoiceNumber }} wird eine Stornorechnung (S1) über {{ (-i.grossAmount) | currency: i.currency }} angelegt.
+    Die Lieferung {{ i.deliveryNumber }} wird anschließend wieder im Fakturavorrat angezeigt.
+  </p>
+  <div slot="footer" class="om-dialog-footer">
+    <ui5-button design="Negative" [disabled]="busy()" (click)="cancelInvoice()">Stornieren</ui5-button>
+    <ui5-button design="Transparent" (click)="dialog.set(null)">Abbrechen</ui5-button>
+  </div>
+</ui5-dialog>
+} @else {
+  <div class="om-loading"><ui5-busy-indicator active size="L"></ui5-busy-indicator></div>
+}

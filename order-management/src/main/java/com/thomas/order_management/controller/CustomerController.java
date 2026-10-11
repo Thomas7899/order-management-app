@@ -11,6 +11,16 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import com.thomas.order_management.dto.ChangeDocumentDto;
+import com.thomas.order_management.dto.sales.CreditExposureDto;
+import com.thomas.order_management.dto.sales.InvoiceDto;
+import com.thomas.order_management.exception.ResourceNotFoundException;
+import com.thomas.order_management.model.ChangeDocument;
+import com.thomas.order_management.repository.CustomerRepository;
+import com.thomas.order_management.service.ChangeDocumentService;
+import com.thomas.order_management.service.sales.BillingService;
+import com.thomas.order_management.service.sales.CreditCheckService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -32,6 +42,10 @@ public class CustomerController {
 
     private final CustomerService customerService;
     private final CustomerModelAssembler assembler;
+    private final CustomerRepository customerRepository;
+    private final CreditCheckService creditCheckService;
+    private final BillingService billingService;
+    private final ChangeDocumentService changeDocumentService;
 
     @Operation(summary = "Alle Kunden abrufen", description = "Gibt eine Liste aller registrierten Kunden zurück")
     @ApiResponse(responseCode = "200", description = "Erfolgreich - Liste der Kunden")
@@ -66,7 +80,7 @@ public class CustomerController {
     })
     @PostMapping
     @SuppressWarnings("null")
-    public ResponseEntity<EntityModel<CustomerDTO>> createCustomer(@RequestBody CustomerRequestDTO customerDto) {
+    public ResponseEntity<EntityModel<CustomerDTO>> createCustomer(@Valid @RequestBody CustomerRequestDTO customerDto) {
         CustomerDTO createdCustomer = Objects.requireNonNull(customerService.createCustomer(customerDto), "createdCustomer");
         EntityModel<CustomerDTO> model = assembler.toModel(createdCustomer);
 
@@ -84,7 +98,7 @@ public class CustomerController {
     @PutMapping("/{id}")
     public ResponseEntity<EntityModel<CustomerDTO>> updateCustomer(
             @Parameter(description = "ID des Kunden") @PathVariable Long id, 
-            @RequestBody CustomerRequestDTO customerDetails) {
+            @Valid @RequestBody CustomerRequestDTO customerDetails) {
         CustomerDTO updatedCustomer = Objects.requireNonNull(customerService.updateCustomer(id, customerDetails), "updatedCustomer");
         return ResponseEntity.ok(assembler.toModel(updatedCustomer));
     }
@@ -111,5 +125,24 @@ public class CustomerController {
                 .toList();
         
         return ResponseEntity.ok(CollectionModel.of(customers));
+    }
+
+    @Operation(summary = "Kreditobligo", description = "Kreditlimit, offener Auftragswert und offene Posten")
+    @GetMapping("/{id}/credit-exposure")
+    public CreditExposureDto getCreditExposure(@PathVariable Long id) {
+        return creditCheckService.exposure(customerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Kunde mit ID " + id + " nicht gefunden")));
+    }
+
+    @Operation(summary = "Fakturen des Debitors")
+    @GetMapping("/{id}/invoices")
+    public List<InvoiceDto> getInvoices(@PathVariable Long id) {
+        return billingService.getByCustomer(id);
+    }
+
+    @Operation(summary = "Änderungsbelege des Debitors")
+    @GetMapping("/{id}/changes")
+    public List<ChangeDocumentDto> getChanges(@PathVariable Long id) {
+        return changeDocumentService.getChanges(ChangeDocument.ObjectClass.CUSTOMER, id);
     }
 }

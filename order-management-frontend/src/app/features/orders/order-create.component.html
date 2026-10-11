@@ -1,0 +1,211 @@
+<ui5-dynamic-page class="om-page" hide-pin-button show-footer>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Kundenauftrag anlegen</ui5-title>
+    <div slot="subheading" class="om-subtle">Terminauftrag (TA) · Verkaufsorganisation 1000 · Werk 1000</div>
+  </ui5-dynamic-page-title>
+
+  <div class="wizard-host">
+    <ui5-wizard content-layout="SingleStep" (step-change)="stepChange($event)">
+      <!-- Schritt 1 -->
+      <ui5-wizard-step icon="customer" title-text="Auftraggeber" data-step="1" [selected]="step() === 1">
+        <div class="om-section">
+          <ui5-title level="H5" class="om-section-title">1. Auftraggeber und Kopfdaten</ui5-title>
+          <div class="om-form-grid">
+            <div class="om-field span-2">
+              <ui5-label show-colon required>Auftraggeber</ui5-label>
+              <ui5-combobox placeholder="Name, Debitorennummer oder Ort eingeben" filter="Contains"
+                [value]="customer() ? customerLabel(customer()!) : ''" (selection-change)="customerSelected($event)" (change)="customerTyped($event)">
+                @for (c of customers(); track c.id) {
+                  <ui5-cb-item [attr.text]="customerLabel(c)" [attr.additional-text]="c.city" [attr.data-id]="c.id"></ui5-cb-item>
+                }
+              </ui5-combobox>
+            </div>
+            <div class="om-field">
+              <ui5-label show-colon>Bestellnummer Kunde</ui5-label>
+              <ui5-input [(ngModel)]="customerReference" maxlength="35" placeholder="z. B. PO-4711"></ui5-input>
+            </div>
+            <div class="om-field">
+              <ui5-label show-colon>Wunschliefertermin</ui5-label>
+              <ui5-date-picker placeholder="TT.MM.JJJJ" [(ngModel)]="requestedDeliveryDate" [attr.min-date]="minDate"
+                value-format="yyyy-MM-dd" display-format="dd.MM.yyyy"></ui5-date-picker>
+            </div>
+            <div class="om-field span-2">
+              <ui5-label show-colon>Notiz</ui5-label>
+              <ui5-textarea [(ngModel)]="notes" rows="2" placeholder="Interne Notiz zum Auftrag"></ui5-textarea>
+            </div>
+          </div>
+
+          @if (customer(); as c) {
+            <div class="customer-card">
+              <div class="om-attributes">
+                <div class="om-attribute"><span class="label">Debitor</span><span class="value om-strong">{{ c.fullName }} ({{ c.customerNumber }})</span></div>
+                <div class="om-attribute"><span class="label">Anschrift</span><span class="value">{{ c.address }}, {{ c.zipCode }} {{ c.city }}</span></div>
+                <div class="om-attribute"><span class="label">Zahlungsbedingung</span><span class="value">{{ c.paymentTerms }} – {{ c.paymentTermsText }}</span></div>
+                <div class="om-attribute"><span class="label">Kundenrabatt (K007)</span><span class="value">{{ (c.discountPercent ?? 0) | number: '1.0-2' }} %</span></div>
+                @if (exposure(); as e) {
+                  <div class="om-attribute">
+                    <span class="label">Kreditlimit / Obligo</span>
+                    <span class="value">
+                      @if (e.creditLimit !== null) {
+                        {{ e.totalExposure | currency: 'EUR' }} von {{ e.creditLimit | currency: 'EUR' : 'symbol' : '1.0-0' }}
+                      } @else {
+                        Keine Kreditprüfung
+                      }
+                    </span>
+                    @if (e.creditLimit !== null) {
+                      <ui5-progress-indicator [value]="e.utilizationPercent ?? 0"
+                        [attr.value-state]="(e.utilizationPercent ?? 0) > 90 ? 'Negative' : (e.utilizationPercent ?? 0) > 70 ? 'Critical' : 'Positive'"
+                        [attr.display-value]="(e.utilizationPercent ?? 0) + ' %'"></ui5-progress-indicator>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+          <div class="step-actions">
+            <ui5-button design="Emphasized" [disabled]="!customer()" (click)="goTo(2)">Weiter zu Positionen</ui5-button>
+          </div>
+        </div>
+      </ui5-wizard-step>
+
+      <!-- Schritt 2 -->
+      <ui5-wizard-step icon="sales-order-item" title-text="Positionen" data-step="2" [selected]="step() === 2" [disabled]="!customer()">
+        <div class="om-section">
+          <div class="om-section-header">
+            <ui5-title level="H5">2. Positionen</ui5-title>
+            <div class="row-actions">
+              <ui5-button icon="refresh" design="Transparent" [disabled]="busy() || !validItems().length" (click)="simulate()">Preise und Verfügbarkeit prüfen</ui5-button>
+              <ui5-button icon="add" design="Transparent" (click)="addItem()">Position</ui5-button>
+            </div>
+          </div>
+
+          <div class="items">
+            @for (i of items(); track i.key; let idx = $index) {
+              <div class="item-row">
+                <span class="pos">{{ (idx + 1) * 10 }}</span>
+                <div class="om-field material">
+                  <ui5-label show-colon required>Material</ui5-label>
+                  <ui5-combobox placeholder="Material suchen" filter="Contains"
+                    [value]="materialOf(i.productId) ? materialLabel(materialOf(i.productId)!) : ''"
+                    (selection-change)="materialSelected(i.key, $event)" (change)="materialTyped(i.key, $event)">
+                    @for (m of materials(); track m.id) {
+                      <ui5-cb-item [attr.text]="materialLabel(m)" [attr.additional-text]="m.stockQuantity + ' ' + m.unitOfMeasure + ' Bestand'" [attr.data-id]="m.id"></ui5-cb-item>
+                    }
+                  </ui5-combobox>
+                </div>
+                <div class="om-field qty">
+                  <ui5-label show-colon required>Menge</ui5-label>
+                  <ui5-step-input [value]="i.quantity" min="1" max="9999"
+                    (change)="updateItem(i.key, { quantity: $any($event.target).value })"></ui5-step-input>
+                </div>
+                <div class="om-field disc">
+                  <ui5-label show-colon>Rabatt %</ui5-label>
+                  <ui5-step-input [value]="i.discountPercent" min="0" max="100" step="0.5" value-precision="1"
+                    (change)="updateItem(i.key, { discountPercent: $any($event.target).value })"></ui5-step-input>
+                </div>
+                <div class="result">
+                  @if (simulated(idx); as s) {
+                    <div class="om-cell-stack">
+                      <span class="om-strong">{{ s.netAmount | currency: 'EUR' }}</span>
+                      <span class="om-subtle">{{ s.unitPrice | currency: 'EUR' }} / {{ s.unitOfMeasure }}</span>
+                    </div>
+                    @if (s.confirmedQuantity >= s.quantity) {
+                      <ui5-tag design="Positive">Bestätigt {{ s.confirmedQuantity }}</ui5-tag>
+                    } @else if (s.confirmedQuantity > 0) {
+                      <ui5-tag design="Critical">Teilweise {{ s.confirmedQuantity }} / {{ s.quantity }}</ui5-tag>
+                    } @else {
+                      <ui5-tag design="Negative">Nicht verfügbar</ui5-tag>
+                    }
+                  } @else if (materialOf(i.productId); as m) {
+                    <span class="om-subtle">Listenpreis {{ m.price | currency: 'EUR' }}</span>
+                  }
+                </div>
+                <ui5-button icon="delete" design="Transparent" tooltip="Position entfernen" [disabled]="items().length === 1" (click)="removeItem(i.key)"></ui5-button>
+              </div>
+            }
+          </div>
+          <div class="step-actions">
+            <ui5-button design="Transparent" (click)="goTo(1)">Zurück</ui5-button>
+            <ui5-button design="Emphasized" [disabled]="!validItems().length" (click)="goTo(3)">Weiter zu Prüfen</ui5-button>
+          </div>
+        </div>
+      </ui5-wizard-step>
+
+      <!-- Schritt 3 -->
+      <ui5-wizard-step icon="accept" title-text="Prüfen und Sichern" data-step="3" [selected]="step() === 3" [disabled]="!validItems().length">
+        <div class="om-section">
+          <ui5-title level="H5" class="om-section-title">3. Prüfen und Sichern</ui5-title>
+          @if (busy() && !simulation()) {
+            <div class="om-loading"><ui5-busy-indicator active></ui5-busy-indicator></div>
+          }
+          @if (simulation(); as sim) {
+            <div class="messages">
+              @for (m of sim.messages; track m.messageId + m.text) {
+                <ui5-message-strip hide-close-button
+                  [attr.design]="m.type === 'S' ? 'Positive' : m.type === 'W' ? 'Critical' : m.type === 'E' ? 'Negative' : 'Information'">
+                  <span class="om-strong">{{ m.messageId }}</span> {{ m.text }}
+                </ui5-message-strip>
+              }
+            </div>
+
+            <div class="om-attributes summary">
+              <div class="om-attribute"><span class="label">Auftraggeber</span><span class="value om-strong">{{ customer()?.fullName }} ({{ customer()?.customerNumber }})</span></div>
+              <div class="om-attribute"><span class="label">Zahlungsbedingung</span><span class="value">{{ sim.paymentTerms?.code }} – {{ sim.paymentTerms?.text }}</span></div>
+              <div class="om-attribute"><span class="label">Kreditprüfung</span><span class="value"><om-status [status]="sim.creditStatus" /></span></div>
+              <div class="om-attribute"><span class="label">Bestellnummer Kunde</span><span class="value">{{ customerReference || '–' }}</span></div>
+            </div>
+
+            <ui5-table overflow-mode="Popin">
+              <ui5-table-header-row slot="headerRow">
+                <ui5-table-header-cell width="4rem">Pos.</ui5-table-header-cell>
+                <ui5-table-header-cell>Material</ui5-table-header-cell>
+                <ui5-table-header-cell class="om-num" horizontal-align="End">Menge</ui5-table-header-cell>
+                <ui5-table-header-cell class="om-num" horizontal-align="End">Bestätigt</ui5-table-header-cell>
+                <ui5-table-header-cell importance="-1" popin-text="Konditionen">Konditionen</ui5-table-header-cell>
+                <ui5-table-header-cell class="om-num" horizontal-align="End">Nettowert</ui5-table-header-cell>
+              </ui5-table-header-row>
+              @for (s of sim.items; track s.itemNumber) {
+                <ui5-table-row>
+                  <ui5-table-cell>{{ s.itemNumber }}</ui5-table-cell>
+                  <ui5-table-cell>
+                    <div class="om-cell-stack">
+                      <span>{{ s.productName }}</span>
+                      <span class="om-subtle">{{ s.materialNumber }} · verfügbar {{ s.availableQuantity }} {{ s.unitOfMeasure }}</span>
+                    </div>
+                  </ui5-table-cell>
+                  <ui5-table-cell class="om-num" horizontal-align="End">{{ s.quantity }} {{ s.unitOfMeasure }}</ui5-table-cell>
+                  <ui5-table-cell class="om-num" horizontal-align="End">
+                    <span [class.om-critical]="s.confirmedQuantity < s.quantity">{{ s.confirmedQuantity }}</span>
+                  </ui5-table-cell>
+                  <ui5-table-cell>
+                    <span class="om-subtle conditions">
+                      @for (c of s.conditions; track c.stepNumber) {
+                        @if (!c.statistical) {
+                          <span>{{ c.conditionType }} {{ c.conditionValue | currency: 'EUR' }}</span>
+                        }
+                      }
+                    </span>
+                  </ui5-table-cell>
+                  <ui5-table-cell class="om-num" horizontal-align="End">{{ s.netAmount | currency: 'EUR' }}</ui5-table-cell>
+                </ui5-table-row>
+              }
+            </ui5-table>
+            <div class="totals">
+              <span>Nettowert</span><span class="om-num">{{ sim.netAmount | currency: 'EUR' }}</span>
+              <span>Umsatzsteuer</span><span class="om-num">{{ sim.taxAmount | currency: 'EUR' }}</span>
+              <span class="om-strong">Bruttowert</span><span class="om-num om-strong">{{ sim.totalAmount | currency: 'EUR' }}</span>
+            </div>
+          }
+          <div class="step-actions">
+            <ui5-button design="Transparent" (click)="goTo(2)">Zurück</ui5-button>
+          </div>
+        </div>
+      </ui5-wizard-step>
+    </ui5-wizard>
+  </div>
+
+  <ui5-bar slot="footerArea" design="FloatingFooter">
+    <ui5-button slot="endContent" design="Emphasized" [disabled]="step() !== 3 || !simulation() || busy()" (click)="save()">Sichern</ui5-button>
+    <ui5-button slot="endContent" design="Transparent" (click)="cancel()">Abbrechen</ui5-button>
+  </ui5-bar>
+</ui5-dynamic-page>

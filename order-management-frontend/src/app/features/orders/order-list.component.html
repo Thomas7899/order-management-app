@@ -1,0 +1,145 @@
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Kundenaufträge</ui5-title>
+    <ui5-title slot="snappedHeading" level="H5">Kundenaufträge ({{ total() }})</ui5-title>
+    <div slot="subheading" class="variant">
+      <ui5-label show-colon>Variante</ui5-label>
+      <ui5-select (change)="applyVariant($event)" class="variant-select">
+        @for (v of variants; track v.key) {
+          <ui5-option [value]="v.key" [selected]="variant === v.key">{{ v.text }}</ui5-option>
+        }
+      </ui5-select>
+    </div>
+    <ui5-toolbar slot="actionsBar" design="Transparent">
+      @if (auth.hasAnyRole('SALES', 'WAREHOUSE')) {
+        <ui5-toolbar-button text="Rückstand bearbeiten" design="Transparent" icon="pending" (click)="processBacklog()"></ui5-toolbar-button>
+      }
+      @if (auth.hasAnyRole('SALES')) {
+        <ui5-toolbar-button text="Anlegen" design="Emphasized" icon="add" (click)="create()"></ui5-toolbar-button>
+      }
+    </ui5-toolbar>
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <div class="om-filterbar">
+      <div class="om-filter wide">
+        <ui5-label show-colon>Suche</ui5-label>
+        <ui5-input [(ngModel)]="search" placeholder="Auftrag, Debitor, Bestellnummer" show-clear-icon (keydown.enter)="go()">
+          <ui5-icon slot="icon" name="search"></ui5-icon>
+        </ui5-input>
+      </div>
+      <div class="om-filter wide">
+        <ui5-label show-colon>Gesamtstatus</ui5-label>
+        <ui5-multi-combobox placeholder="Alle" (selection-change)="statusSelection($event)">
+          @for (s of statusOptions; track s.code) {
+            <ui5-mcb-item [attr.text]="s.text" [attr.data-code]="s.code" [selected]="statuses.includes(s.code)"></ui5-mcb-item>
+          }
+        </ui5-multi-combobox>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Lieferstatus</ui5-label>
+        <ui5-select [(ngModel)]="deliveryStatus">
+          @for (o of processingOptions; track o.code) {
+            <ui5-option [value]="o.code" [selected]="deliveryStatus === o.code">{{ o.text }}</ui5-option>
+          }
+        </ui5-select>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Fakturastatus</ui5-label>
+        <ui5-select [(ngModel)]="billingStatus">
+          @for (o of processingOptions; track o.code) {
+            <ui5-option [value]="o.code" [selected]="billingStatus === o.code">{{ o.text }}</ui5-option>
+          }
+        </ui5-select>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Kreditstatus</ui5-label>
+        <ui5-select [(ngModel)]="creditStatus">
+          @for (o of creditOptions; track o.code) {
+            <ui5-option [value]="o.code" [selected]="creditStatus === o.code">{{ o.text }}</ui5-option>
+          }
+        </ui5-select>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Belegdatum von</ui5-label>
+        <ui5-date-picker placeholder="TT.MM.JJJJ" [(ngModel)]="dateFrom" value-format="yyyy-MM-dd" display-format="dd.MM.yyyy"></ui5-date-picker>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>bis</ui5-label>
+        <ui5-date-picker placeholder="TT.MM.JJJJ" [(ngModel)]="dateTo" value-format="yyyy-MM-dd" display-format="dd.MM.yyyy"></ui5-date-picker>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Sortierung</ui5-label>
+        <ui5-select [(ngModel)]="sort" (change)="go()">
+          @for (o of sortOptions; track o.code) {
+            <ui5-option [value]="o.code" [selected]="sort === o.code">{{ o.text }}</ui5-option>
+          }
+        </ui5-select>
+      </div>
+      <div class="om-filter-actions">
+        <ui5-button design="Transparent" (click)="reset()">Zurücksetzen</ui5-button>
+        <ui5-button design="Emphasized" (click)="go()">Start</ui5-button>
+      </div>
+    </div>
+    @if (customerId) {
+      <ui5-message-strip design="Information" class="customer-filter" (close)="customerId = null; go()">
+        Gefiltert auf Debitor-ID {{ customerId }}
+      </ui5-message-strip>
+    }
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    <div class="om-section">
+      <div class="om-section-header">
+        <ui5-title level="H5">Aufträge ({{ total() }})</ui5-title>
+      </div>
+      <ui5-table overflow-mode="Popin" [loading]="loading()" (row-click)="open($event)"
+        no-data-text="Keine Aufträge gefunden. Filter anpassen oder zurücksetzen.">
+        <ui5-table-header-row slot="headerRow" sticky>
+          <ui5-table-header-cell min-width="9rem">Auftrag</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="10rem">Auftraggeber</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="8rem" importance="-1" popin-text="Bestellnr. Kunde">Bestellnr. Kunde</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="7rem" popin-text="Wunschliefertermin">Wunschtermin</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="8rem" class="om-num" horizontal-align="End">Nettowert</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="7rem">Status</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="11rem" importance="-1" popin-text="Lieferstatus">Lieferung</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="11rem" importance="-1" popin-text="Fakturastatus">Faktura</ui5-table-header-cell>
+        </ui5-table-header-row>
+        @for (o of rows(); track o.id) {
+          <ui5-table-row interactive [attr.row-key]="o.id">
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <span class="om-strong">{{ o.orderNumber }}</span>
+                <span class="om-subtle">{{ o.orderDate | date: 'dd.MM.yyyy' }} · {{ o.itemCount }} Pos.</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <span>{{ o.customer.name }}</span>
+                <span class="om-subtle">{{ o.customer.customerNumber }} · {{ o.customer.city }}</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>{{ o.customerReference || '–' }}</ui5-table-cell>
+            <ui5-table-cell>
+              <span [class.om-negative]="isLate(o)">{{ o.requestedDeliveryDate | date: 'dd.MM.yyyy' }}</span>
+            </ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">{{ o.netAmount | currency: o.currency }}</ui5-table-cell>
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <om-status [status]="o.status" />
+                @if (o.creditStatus.code === 'BLOCKED') {
+                  <om-status [status]="o.creditStatus" label="Kreditstatus" />
+                }
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell><om-status [status]="o.deliveryStatus" label="Lieferstatus" /></ui5-table-cell>
+            <ui5-table-cell><om-status [status]="o.billingStatus" label="Fakturastatus" /></ui5-table-cell>
+          </ui5-table-row>
+        }
+        @if (rows().length < total()) {
+          <ui5-table-growing slot="features" mode="Button" [attr.text]="'Mehr'" [attr.subtext]="'[' + rows().length + ' / ' + total() + ']'" (load-more)="more()"></ui5-table-growing>
+        }
+      </ui5-table>
+    </div>
+  </div>
+</ui5-dynamic-page>

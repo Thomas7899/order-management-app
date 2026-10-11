@@ -41,5 +41,6 @@ public class SalesForecastDto {
         private BigDecimal growthTrend;
         private String trendDirection; // "UP", "DOWN", "STABLE"
         private BigDecimal confidenceLevel;
+        private String method;
     }
 }

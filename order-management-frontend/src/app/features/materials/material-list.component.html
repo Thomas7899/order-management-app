@@ -1,0 +1,90 @@
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Materialien</ui5-title>
+    <ui5-title slot="snappedHeading" level="H5">Materialien ({{ filtered().length }})</ui5-title>
+    <div slot="subheading" class="om-subtle">Materialstamm mit Preisen, Einstandspreis und Gesamtbestand</div>
+    <ui5-toolbar slot="actionsBar" design="Transparent">
+      @if (auth.hasAnyRole('SALES', 'WAREHOUSE')) {
+        <ui5-toolbar-button text="Anlegen" design="Emphasized" icon="add" (click)="dialogOpen.set(true)"></ui5-toolbar-button>
+      }
+    </ui5-toolbar>
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <div class="om-filterbar">
+      <div class="om-filter wide">
+        <ui5-label show-colon>Suche</ui5-label>
+        <ui5-input [ngModel]="search()" (ngModelChange)="search.set($event); filterChanged()" placeholder="Materialnummer oder Bezeichnung" show-clear-icon>
+          <ui5-icon slot="icon" name="search"></ui5-icon>
+        </ui5-input>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Warengruppe</ui5-label>
+        <ui5-select [ngModel]="category()" (ngModelChange)="category.set($event); filterChanged()">
+          <ui5-option value="" [selected]="!category()">Alle</ui5-option>
+          @for (c of categories(); track c) {
+            <ui5-option [value]="c" [selected]="category() === c">{{ c }}</ui5-option>
+          }
+        </ui5-select>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Bestand</ui5-label>
+        <ui5-select [ngModel]="stock()" (ngModelChange)="stock.set($event); filterChanged()">
+          <ui5-option value="" [selected]="!stock()">Alle</ui5-option>
+          <ui5-option value="available" [selected]="stock() === 'available'">Mit Bestand</ui5-option>
+          <ui5-option value="none" [selected]="stock() === 'none'">Ohne Bestand</ui5-option>
+        </ui5-select>
+      </div>
+      <div class="om-filter">
+        <ui5-checkbox text="Gesperrte anzeigen" [ngModel]="showBlocked()" (ngModelChange)="showBlocked.set($event); filterChanged()"></ui5-checkbox>
+      </div>
+    </div>
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    <div class="om-section">
+      <ui5-title level="H5" class="om-section-title">Materialien ({{ filtered().length }})</ui5-title>
+      <ui5-table overflow-mode="Popin" [loading]="loading()" (row-click)="open($event)" no-data-text="Keine Materialien gefunden">
+        <ui5-table-header-row slot="headerRow" sticky>
+          <ui5-table-header-cell min-width="16rem">Material</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="9rem" importance="-1" popin-text="Warengruppe">Warengruppe</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="7rem" class="om-num" horizontal-align="End">Preis PR00</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="7rem" class="om-num" horizontal-align="End" importance="-1" popin-text="Einstand">Einstand</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="6rem" class="om-num" horizontal-align="End" importance="-1" popin-text="Marge">Marge</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="6rem" class="om-num" horizontal-align="End">Bestand</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="7rem">Status</ui5-table-header-cell>
+        </ui5-table-header-row>
+        @for (m of rows(); track m.id) {
+          <ui5-table-row interactive [attr.row-key]="m.id">
+            <ui5-table-cell>
+              <div class="material">
+                @if (m.imageUrl) {
+                  <img class="thumb" [src]="m.imageUrl" alt="" loading="lazy" />
+                }
+                <div class="om-cell-stack">
+                  <span class="om-strong">{{ m.name }}</span>
+                  <span class="om-subtle">{{ m.materialNumber }}</span>
+                </div>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>{{ m.category }}</ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">{{ m.price | currency: 'EUR' }}</ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">{{ m.costPrice ? (m.costPrice | currency: 'EUR') : '–' }}</ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">{{ margin(m) === null ? '–' : (margin(m)! | percent: '1.0-0') }}</ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">
+              <span [class.om-negative]="m.stockQuantity === 0">{{ m.stockQuantity | number }} {{ m.unitOfMeasure }}</span>
+            </ui5-table-cell>
+            <ui5-table-cell>
+              <ui5-tag [attr.design]="m.active ? 'Positive' : 'Negative'">{{ m.active ? 'Frei' : 'Vertriebssperre' }}</ui5-tag>
+            </ui5-table-cell>
+          </ui5-table-row>
+        }
+        @if (rows().length < filtered().length) {
+          <ui5-table-growing slot="features" mode="Button" text="Mehr" [attr.subtext]="'[' + rows().length + ' / ' + filtered().length + ']'" (load-more)="more()"></ui5-table-growing>
+        }
+      </ui5-table>
+    </div>
+  </div>
+</ui5-dynamic-page>
+
+<om-material-dialog [open]="dialogOpen()" (closed)="dialogOpen.set(false)" (saved)="saved($event)" />

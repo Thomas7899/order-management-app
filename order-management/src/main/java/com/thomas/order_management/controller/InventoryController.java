@@ -1,151 +1,179 @@
 // order-management/src/main/java/com/thomas/order_management/controller/InventoryController.java
 package com.thomas.order_management.controller;
 
+import com.thomas.order_management.dto.PageResponse;
 import com.thomas.order_management.dto.inventory.*;
+import com.thomas.order_management.dto.sales.AvailabilityDto;
+import com.thomas.order_management.dto.sales.LogisticsRequests;
 import com.thomas.order_management.service.InventoryService;
+import com.thomas.order_management.service.sales.AvailabilityService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/inventory")
-@CrossOrigin(origins = "*")
+@Tag(name = "Bestandsführung", description = "Lagerorte, Bestände, Verfügbarkeit und Materialbelege (MMBE/MIGO/MB51)")
 public class InventoryController {
 
     private final InventoryService inventoryService;
+    private final AvailabilityService availabilityService;
 
-    public InventoryController(InventoryService inventoryService) {
+    public InventoryController(InventoryService inventoryService, AvailabilityService availabilityService) {
         this.inventoryService = inventoryService;
+        this.availabilityService = availabilityService;
     }
 
-    // === Warehouse Endpoints ===
+    // === Lagerorte ===
 
     @GetMapping("/warehouses")
-    public ResponseEntity<List<WarehouseDto>> getAllWarehouses() {
-        return ResponseEntity.ok(inventoryService.getAllWarehouses());
+    public List<WarehouseDto> getAllWarehouses() {
+        return inventoryService.getAllWarehouses();
     }
 
     @GetMapping("/warehouses/active")
-    public ResponseEntity<List<WarehouseDto>> getActiveWarehouses() {
-        return ResponseEntity.ok(inventoryService.getActiveWarehouses());
+    public List<WarehouseDto> getActiveWarehouses() {
+        return inventoryService.getActiveWarehouses();
     }
 
     @GetMapping("/warehouses/{id}")
-    public ResponseEntity<WarehouseDto> getWarehouse(@PathVariable Long id) {
-        return ResponseEntity.ok(inventoryService.getWarehouseById(id));
+    public WarehouseDto getWarehouse(@PathVariable Long id) {
+        return inventoryService.getWarehouseById(id);
     }
 
     @PostMapping("/warehouses")
-    public ResponseEntity<WarehouseDto> createWarehouse(@RequestBody WarehouseDto dto) {
-        return ResponseEntity.ok(inventoryService.createWarehouse(dto));
+    @ResponseStatus(HttpStatus.CREATED)
+    public WarehouseDto createWarehouse(@Valid @RequestBody WarehouseDto dto) {
+        return inventoryService.createWarehouse(dto);
     }
 
     @PutMapping("/warehouses/{id}")
-    public ResponseEntity<WarehouseDto> updateWarehouse(@PathVariable Long id, @RequestBody WarehouseDto dto) {
-        return ResponseEntity.ok(inventoryService.updateWarehouse(id, dto));
+    public WarehouseDto updateWarehouse(@PathVariable Long id, @Valid @RequestBody WarehouseDto dto) {
+        return inventoryService.updateWarehouse(id, dto);
     }
 
     @GetMapping("/warehouses/overview")
-    public ResponseEntity<List<Object[]>> getWarehouseOverview() {
-        return ResponseEntity.ok(inventoryService.getWarehouseOverview());
+    public List<Object[]> getWarehouseOverview() {
+        return inventoryService.getWarehouseOverview();
     }
 
-    // === Stock Endpoints ===
+    // === Bestände ===
+
+    @Operation(summary = "Bestandsübersicht je Material und Lagerort mit Verfügbarkeit (MMBE)")
+    @GetMapping("/availability/{productId}")
+    public AvailabilityDto getAvailability(@PathVariable Long productId) {
+        return availabilityService.getAvailability(productId);
+    }
 
     @GetMapping("/stock/warehouse/{warehouseId}")
-    public ResponseEntity<List<WarehouseStockDto>> getStockByWarehouse(@PathVariable Long warehouseId) {
-        return ResponseEntity.ok(inventoryService.getStockByWarehouse(warehouseId));
+    public List<WarehouseStockDto> getStockByWarehouse(@PathVariable Long warehouseId) {
+        return inventoryService.getStockByWarehouse(warehouseId);
     }
 
     @GetMapping("/stock/product/{productId}")
-    public ResponseEntity<List<WarehouseStockDto>> getStockByProduct(@PathVariable Long productId) {
-        return ResponseEntity.ok(inventoryService.getStockByProduct(productId));
+    public List<WarehouseStockDto> getStockByProduct(@PathVariable Long productId) {
+        return inventoryService.getStockByProduct(productId);
     }
 
     @GetMapping("/stock/low")
-    public ResponseEntity<List<WarehouseStockDto>> getLowStockItems() {
-        return ResponseEntity.ok(inventoryService.getLowStockItems());
+    public List<WarehouseStockDto> getLowStockItems() {
+        return inventoryService.getLowStockItems();
     }
 
     @GetMapping("/stock/over")
-    public ResponseEntity<List<WarehouseStockDto>> getOverStockItems() {
-        return ResponseEntity.ok(inventoryService.getOverStockItems());
+    public List<WarehouseStockDto> getOverStockItems() {
+        return inventoryService.getOverStockItems();
     }
 
     @GetMapping("/stock/overview")
-    public ResponseEntity<List<Object[]>> getStockOverview() {
-        return ResponseEntity.ok(inventoryService.getStockOverview());
+    public List<Object[]> getStockOverview() {
+        return inventoryService.getStockOverview();
     }
 
+    @Operation(summary = "Lagerplatz, Mindest- und Höchstbestand pflegen",
+            description = "Bestandsmengen sind nur über Materialbelege änderbar")
     @PutMapping("/stock/warehouse/{warehouseId}/product/{productId}")
-    public ResponseEntity<WarehouseStockDto> updateStock(
-            @PathVariable Long warehouseId,
-            @PathVariable Long productId,
-            @RequestBody Map<String, Object> updates) {
-        Integer quantity = updates.containsKey("quantity") ? (Integer) updates.get("quantity") : null;
-        Integer minStock = updates.containsKey("minStock") ? (Integer) updates.get("minStock") : null;
-        Integer maxStock = updates.containsKey("maxStock") ? (Integer) updates.get("maxStock") : null;
-        String binLocation = updates.containsKey("binLocation") ? (String) updates.get("binLocation") : null;
-        
-        return ResponseEntity.ok(inventoryService.updateStock(warehouseId, productId, quantity, minStock, maxStock, binLocation));
+    public WarehouseStockDto updateStockSettings(@PathVariable Long warehouseId, @PathVariable Long productId,
+                                                 @Valid @RequestBody StockSettingsRequest request) {
+        return inventoryService.updateStockSettings(warehouseId, productId,
+                request.minStock(), request.maxStock(), request.binLocation());
     }
 
     @GetMapping("/stock/product/{productId}/total")
-    public ResponseEntity<Integer> getTotalStock(@PathVariable Long productId) {
-        return ResponseEntity.ok(inventoryService.getTotalStockByProduct(productId));
+    public Integer getTotalStock(@PathVariable Long productId) {
+        return inventoryService.getTotalStockByProduct(productId);
     }
 
-    // === Movement Endpoints ===
+    // === Materialbelege ===
 
+    @Operation(summary = "Materialbelege suchen (MB51)")
     @GetMapping("/movements")
-    public ResponseEntity<Page<StockMovementDto>> getMovements(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(inventoryService.getStockMovements(pageable));
+    public PageResponse<StockMovementDto> getMovements(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) List<String> movementCode,
+            @RequestParam(required = false) Long productId,
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @PageableDefault(size = 20, sort = {"postingDate", "id"}, direction = Sort.Direction.DESC) Pageable pageable) {
+        return inventoryService.searchMovements(new InventoryService.MovementSearch(search, movementCode, productId,
+                warehouseId, dateFrom, dateTo), pageable);
     }
 
     @GetMapping("/movements/warehouse/{warehouseId}")
-    public ResponseEntity<Page<StockMovementDto>> getMovementsByWarehouse(
+    public Page<StockMovementDto> getMovementsByWarehouse(
             @PathVariable Long warehouseId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(inventoryService.getStockMovementsByWarehouse(warehouseId, pageable));
+        return inventoryService.getStockMovementsByWarehouse(warehouseId, PageRequest.of(page, size));
     }
 
     @GetMapping("/movements/product/{productId}")
-    public ResponseEntity<List<StockMovementDto>> getMovementsByProduct(@PathVariable Long productId) {
-        return ResponseEntity.ok(inventoryService.getStockMovementsByProduct(productId));
+    public List<StockMovementDto> getMovementsByProduct(@PathVariable Long productId) {
+        return inventoryService.getStockMovementsByProduct(productId);
     }
 
+    @Operation(summary = "Warenbewegung buchen (MIGO)")
     @PostMapping("/movements")
-    public ResponseEntity<StockMovementDto> createMovement(@RequestBody StockMovementRequestDto request) {
-        return ResponseEntity.ok(inventoryService.createStockMovement(request));
+    public ResponseEntity<StockMovementDto> createMovement(@Valid @RequestBody StockMovementRequestDto request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(inventoryService.createStockMovement(request));
     }
 
-    // === Statistics Endpoints ===
+    @Operation(summary = "Materialbeleg stornieren")
+    @PostMapping("/movements/{id}/reverse")
+    public StockMovementDto reverseMovement(@PathVariable Long id,
+                                            @Valid @RequestBody(required = false) LogisticsRequests.Cancel request) {
+        return inventoryService.reverseMovement(id,
+                request != null ? request.date() : null,
+                request != null ? request.reason() : null);
+    }
+
+    // === Statistik ===
 
     @GetMapping("/statistics/movements")
-    public ResponseEntity<List<Object[]>> getMovementStatistics(
-            @RequestParam(defaultValue = "30") int days) {
-        return ResponseEntity.ok(inventoryService.getMovementStatistics(days));
+    public List<Object[]> getMovementStatistics(@RequestParam(defaultValue = "30") int days) {
+        return inventoryService.getMovementStatistics(days);
     }
 
     @GetMapping("/statistics/trend")
-    public ResponseEntity<List<Object[]>> getDailyTrend(
-            @RequestParam(defaultValue = "30") int days) {
-        return ResponseEntity.ok(inventoryService.getDailyMovementTrend(days));
+    public List<Object[]> getDailyTrend(@RequestParam(defaultValue = "30") int days) {
+        return inventoryService.getDailyMovementTrend(days);
     }
 
     @GetMapping("/statistics/top-products")
-    public ResponseEntity<List<Object[]>> getTopMovedProducts(
-            @RequestParam(defaultValue = "30") int days) {
-        return ResponseEntity.ok(inventoryService.getTopMovedProducts(days));
+    public List<Object[]> getTopMovedProducts(@RequestParam(defaultValue = "30") int days) {
+        return inventoryService.getTopMovedProducts(days);
     }
 }

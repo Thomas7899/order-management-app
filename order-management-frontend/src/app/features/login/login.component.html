@@ -1,0 +1,43 @@
+<div class="login-page">
+  <div class="login-card">
+    <div class="brand">
+      <span class="logo">OM</span>
+      <div>
+        <ui5-title level="H3">Order Management</ui5-title>
+        <div class="om-subtle">Auftragsabwicklung im SAP-Fiori-Stil</div>
+      </div>
+    </div>
+
+    <form (ngSubmit)="login()" class="form">
+      @if (error()) {
+        <ui5-message-strip design="Negative" hide-close-button>{{ error() }}</ui5-message-strip>
+      }
+      <div class="om-field">
+        <ui5-label for="username" required show-colon>Benutzer</ui5-label>
+        <ui5-input id="username" name="username" [(ngModel)]="username" placeholder="z. B. MREUTER"
+          (keydown.enter)="login()"></ui5-input>
+      </div>
+      <div class="om-field">
+        <ui5-label for="password" required show-colon>Kennwort</ui5-label>
+        <ui5-input id="password" name="password" type="Password" [(ngModel)]="password"
+          (keydown.enter)="login()"></ui5-input>
+      </div>
+      <ui5-button design="Emphasized" class="submit" [disabled]="busy() || !username || !password" (click)="login()">
+        {{ busy() ? 'Anmeldung läuft …' : 'Anmelden' }}
+      </ui5-button>
+    </form>
+
+    @if (demoUsers().length) {
+      <div class="demo">
+        <ui5-title level="H6">Demo-Zugänge</ui5-title>
+        <div class="om-subtle">Kennwort für alle: <span class="om-strong">{{ demoPassword }}</span> – oder einfach anklicken.</div>
+        <ui5-list separators="Inner">
+          @for (u of demoUsers(); track u.username) {
+            <ui5-li type="Active" icon="employee" [attr.description]="u.fullName"
+              [attr.additional-text]="u.roles[0]?.text" (click)="useDemo(u)">{{ u.username }}</ui5-li>
+          }
+        </ui5-list>
+      </div>
+    }
+  </div>
+</div>

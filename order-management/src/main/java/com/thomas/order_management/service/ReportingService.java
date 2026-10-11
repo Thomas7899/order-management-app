@@ -4,11 +4,8 @@ package com.thomas.order_management.service;
 import com.thomas.order_management.dto.reporting.AbcAnalysisDto;
 import com.thomas.order_management.dto.reporting.KpiDashboardDto;
 import com.thomas.order_management.dto.reporting.SalesForecastDto;
-import com.thomas.order_management.model.OrderStatus;
-import com.thomas.order_management.repository.CustomerRepository;
-import com.thomas.order_management.repository.OrderItemRepository;
-import com.thomas.order_management.repository.OrderRepository;
-import com.thomas.order_management.repository.ProductRepository;
+import com.thomas.order_management.model.*;
+import com.thomas.order_management.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,477 +14,378 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Auswertungen auf Basis fakturierter Umsätze (nach Stornos), Lieferungen und Bestände.
+ */
 @Service
 @Transactional(readOnly = true)
 public class ReportingService {
 
+    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final DeliveryRepository deliveryRepository;
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
+    private final WarehouseStockRepository stockRepository;
 
     public ReportingService(OrderRepository orderRepository,
                             OrderItemRepository orderItemRepository,
+                            InvoiceRepository invoiceRepository,
+                            DeliveryRepository deliveryRepository,
                             ProductRepository productRepository,
-                            CustomerRepository customerRepository) {
+                            CustomerRepository customerRepository,
+                            WarehouseStockRepository stockRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
+        this.invoiceRepository = invoiceRepository;
+        this.deliveryRepository = deliveryRepository;
         this.productRepository = productRepository;
         this.customerRepository = customerRepository;
+        this.stockRepository = stockRepository;
     }
 
-    /**
-     * ABC-Analyse für Produkte basierend auf Umsatz
-     */
+    // ------------------------------------------------------------------
+    // ABC-Analyse
+    // ------------------------------------------------------------------
+
+    /** ABC-Analyse der Materialien nach fakturiertem Nettoumsatz (A ≤ 80 %, B ≤ 95 %, C Rest). */
     public AbcAnalysisDto getProductAbcAnalysis() {
-        List<Object[]> salesData = orderItemRepository.getProductSalesData();
-        
-        if (salesData.isEmpty()) {
-            return new AbcAnalysisDto(Collections.emptyList(), 
-                new AbcAnalysisDto.AbcSummary(0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
-        }
-
-        // Gesamtumsatz berechnen
-        BigDecimal totalRevenue = salesData.stream()
-                .map(row -> (BigDecimal) row[3])
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // ABC-Items erstellen
         List<AbcAnalysisDto.AbcItem> items = new ArrayList<>();
-        BigDecimal cumulativePercentage = BigDecimal.ZERO;
-
-        for (Object[] row : salesData) {
-            Long productId = ((Number) row[0]).longValue();
-            String productName = (String) row[1];
-            String category = (String) row[2];
-            BigDecimal revenue = (BigDecimal) row[3];
-            Integer orderCount = ((Number) row[4]).intValue();
-            Integer quantitySold = ((Number) row[5]).intValue();
-
-            BigDecimal revenuePercentage = totalRevenue.compareTo(BigDecimal.ZERO) > 0
-                    ? revenue.multiply(BigDecimal.valueOf(100)).divide(totalRevenue, 2, RoundingMode.HALF_UP)
-                    : BigDecimal.ZERO;
-            cumulativePercentage = cumulativePercentage.add(revenuePercentage);
-
-            String abcClass = determineAbcClass(cumulativePercentage);
-
+        for (Object[] row : invoiceRepository.getProductRevenue()) {
             items.add(new AbcAnalysisDto.AbcItem(
-                    productId, productName, category, revenue,
-                    revenuePercentage, cumulativePercentage, abcClass,
-                    orderCount, quantitySold
-            ));
+                    ((Number) row[0]).longValue(), (String) row[1], (String) row[2], (String) row[3],
+                    toBigDecimal(row[4]), null, null, null,
+                    ((Number) row[5]).intValue(), ((Number) row[6]).intValue()));
         }
-
-        // Summary berechnen
-        AbcAnalysisDto.AbcSummary summary = calculateAbcSummary(items, totalRevenue);
-
-        return new AbcAnalysisDto(items, summary);
+        return classify(items);
     }
 
-    /**
-     * ABC-Analyse für Kunden basierend auf Umsatz
-     */
+    /** ABC-Analyse der Debitoren nach fakturiertem Nettoumsatz. */
     public AbcAnalysisDto getCustomerAbcAnalysis() {
-        List<Object[]> customerSalesData = orderRepository.getCustomerSalesData();
-        
-        if (customerSalesData.isEmpty()) {
-            return new AbcAnalysisDto(Collections.emptyList(),
-                new AbcAnalysisDto.AbcSummary(0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
-        }
-
-        BigDecimal totalRevenue = customerSalesData.stream()
-                .map(row -> (BigDecimal) row[3])
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
         List<AbcAnalysisDto.AbcItem> items = new ArrayList<>();
-        BigDecimal cumulativePercentage = BigDecimal.ZERO;
-
-        for (Object[] row : customerSalesData) {
-            Long customerId = ((Number) row[0]).longValue();
-            String firstName = (String) row[1];
-            String lastName = (String) row[2];
-            BigDecimal revenue = (BigDecimal) row[3];
-            Integer orderCount = ((Number) row[4]).intValue();
-
-            BigDecimal revenuePercentage = totalRevenue.compareTo(BigDecimal.ZERO) > 0
-                    ? revenue.multiply(BigDecimal.valueOf(100)).divide(totalRevenue, 2, RoundingMode.HALF_UP)
-                    : BigDecimal.ZERO;
-            cumulativePercentage = cumulativePercentage.add(revenuePercentage);
-
-            String abcClass = determineAbcClass(cumulativePercentage);
-
+        for (Object[] row : invoiceRepository.getCustomerRevenue()) {
             items.add(new AbcAnalysisDto.AbcItem(
-                    customerId, firstName + " " + lastName, null, revenue,
-                    revenuePercentage, cumulativePercentage, abcClass,
-                    orderCount, 0
-            ));
+                    ((Number) row[0]).longValue(), (String) row[1], row[2] + " " + row[3], null,
+                    toBigDecimal(row[4]), null, null, null,
+                    ((Number) row[5]).intValue(), 0));
         }
-
-        AbcAnalysisDto.AbcSummary summary = calculateAbcSummary(items, totalRevenue);
-        return new AbcAnalysisDto(items, summary);
+        return classify(items);
     }
 
-    /**
-     * Umsatzprognose basierend auf historischen Daten
-     */
-    public SalesForecastDto getSalesForecast(int monthsHistory, int monthsForecast) {
-        LocalDateTime startDate = LocalDateTime.now().minusMonths(monthsHistory).withDayOfMonth(1).toLocalDate().atStartOfDay();
-        
-        List<Object[]> monthlyData = orderRepository.getMonthlySalesData(startDate);
-        
-        List<SalesForecastDto.ForecastPeriod> historicalData = new ArrayList<>();
-        
-        for (Object[] row : monthlyData) {
-            int year = ((Number) row[0]).intValue();
-            int month = ((Number) row[1]).intValue();
-            BigDecimal revenue = row[2] != null ? (BigDecimal) row[2] : BigDecimal.ZERO;
-            int orderCount = ((Number) row[3]).intValue();
-            
-            historicalData.add(new SalesForecastDto.ForecastPeriod(
-                    LocalDate.of(year, month, 1),
-                    String.format("%d-%02d", year, month),
-                    revenue,
-                    null,
-                    orderCount,
-                    null,
-                    false
-            ));
+    private AbcAnalysisDto classify(List<AbcAnalysisDto.AbcItem> items) {
+        BigDecimal total = items.stream().map(AbcAnalysisDto.AbcItem::getRevenue).reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (items.isEmpty() || total.signum() == 0) {
+            return new AbcAnalysisDto(List.of(), new AbcAnalysisDto.AbcSummary(0, 0, 0,
+                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
         }
 
-        // Wachstumsraten berechnen
-        for (int i = 1; i < historicalData.size(); i++) {
-            SalesForecastDto.ForecastPeriod current = historicalData.get(i);
-            SalesForecastDto.ForecastPeriod previous = historicalData.get(i - 1);
-            if (previous.getActualRevenue().compareTo(BigDecimal.ZERO) > 0) {
-                BigDecimal growth = current.getActualRevenue()
-                        .subtract(previous.getActualRevenue())
-                        .multiply(BigDecimal.valueOf(100))
-                        .divide(previous.getActualRevenue(), 2, RoundingMode.HALF_UP);
-                current.setGrowthRate(growth);
-            }
+        BigDecimal cumulative = BigDecimal.ZERO;
+        for (AbcAnalysisDto.AbcItem item : items) {
+            BigDecimal share = percent(item.getRevenue(), total);
+            // Die Klasse richtet sich nach dem kumulierten Anteil vor dem Element, damit das
+            // Element, das die 80-%-Grenze überschreitet, noch zur Klasse A zählt.
+            String abcClass = cumulative.compareTo(BigDecimal.valueOf(80)) < 0 ? "A"
+                    : cumulative.compareTo(BigDecimal.valueOf(95)) < 0 ? "B" : "C";
+            cumulative = cumulative.add(share);
+            item.setRevenuePercentage(share);
+            item.setCumulativePercentage(cumulative.min(HUNDRED));
+            item.setAbcClass(abcClass);
         }
 
-        // Prognose erstellen (einfache lineare Regression)
-        List<SalesForecastDto.ForecastPeriod> forecastData = generateForecast(historicalData, monthsForecast);
-
-        // Summary
-        SalesForecastDto.ForecastSummary summary = calculateForecastSummary(historicalData, forecastData);
-
-        return new SalesForecastDto(historicalData, forecastData, summary);
-    }
-
-    /**
-     * Erweitertes KPI-Dashboard
-     */
-    public KpiDashboardDto getKpiDashboard() {
-        KpiDashboardDto.FinancialKpis financial = calculateFinancialKpis();
-        KpiDashboardDto.OperationalKpis operational = calculateOperationalKpis();
-        KpiDashboardDto.CustomerKpis customer = calculateCustomerKpis();
-        KpiDashboardDto.InventoryKpis inventory = calculateInventoryKpis();
-        
-        List<KpiDashboardDto.TrendData> revenueTrend = calculateRevenueTrend();
-        List<KpiDashboardDto.TrendData> orderTrend = calculateOrderTrend();
-
-        return new KpiDashboardDto(financial, operational, customer, inventory, revenueTrend, orderTrend);
-    }
-
-    // === Private Helper Methods ===
-
-    private String determineAbcClass(BigDecimal cumulativePercentage) {
-        if (cumulativePercentage.compareTo(BigDecimal.valueOf(80)) <= 0) {
-            return "A";
-        } else if (cumulativePercentage.compareTo(BigDecimal.valueOf(95)) <= 0) {
-            return "B";
-        } else {
-            return "C";
-        }
-    }
-
-    private AbcAnalysisDto.AbcSummary calculateAbcSummary(List<AbcAnalysisDto.AbcItem> items, BigDecimal totalRevenue) {
         Map<String, List<AbcAnalysisDto.AbcItem>> grouped = items.stream()
                 .collect(Collectors.groupingBy(AbcAnalysisDto.AbcItem::getAbcClass));
-
-        List<AbcAnalysisDto.AbcItem> aClass = grouped.getOrDefault("A", Collections.emptyList());
-        List<AbcAnalysisDto.AbcItem> bClass = grouped.getOrDefault("B", Collections.emptyList());
-        List<AbcAnalysisDto.AbcItem> cClass = grouped.getOrDefault("C", Collections.emptyList());
-
-        BigDecimal aRevenue = aClass.stream().map(AbcAnalysisDto.AbcItem::getRevenue).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal bRevenue = bClass.stream().map(AbcAnalysisDto.AbcItem::getRevenue).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal cRevenue = cClass.stream().map(AbcAnalysisDto.AbcItem::getRevenue).reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        return new AbcAnalysisDto.AbcSummary(
-                aClass.size(), bClass.size(), cClass.size(),
-                aRevenue, bRevenue, cRevenue,
-                calculatePercentage(aRevenue, totalRevenue),
-                calculatePercentage(bRevenue, totalRevenue),
-                calculatePercentage(cRevenue, totalRevenue)
-        );
+        BigDecimal a = revenue(grouped.get("A"));
+        BigDecimal b = revenue(grouped.get("B"));
+        BigDecimal c = revenue(grouped.get("C"));
+        return new AbcAnalysisDto(items, new AbcAnalysisDto.AbcSummary(
+                size(grouped.get("A")), size(grouped.get("B")), size(grouped.get("C")),
+                a, b, c, percent(a, total), percent(b, total), percent(c, total)));
     }
 
-    private BigDecimal calculatePercentage(BigDecimal part, BigDecimal total) {
-        if (total.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
-        return part.multiply(BigDecimal.valueOf(100)).divide(total, 2, RoundingMode.HALF_UP);
-    }
+    // ------------------------------------------------------------------
+    // Umsatzprognose
+    // ------------------------------------------------------------------
 
-    private List<SalesForecastDto.ForecastPeriod> generateForecast(
-            List<SalesForecastDto.ForecastPeriod> historical, int months) {
-        
-        if (historical.isEmpty()) {
-            return Collections.emptyList();
+    /**
+     * Prognose des fakturierten Nettoumsatzes per linearer Regression über abgeschlossene Monate.
+     * Die Konfidenz ergibt sich aus 100 − mittlerer absoluter prozentualer Fehler (MAPE) der Anpassung.
+     */
+    public SalesForecastDto getSalesForecast(int monthsHistory, int monthsForecast) {
+        YearMonth current = YearMonth.now();
+        YearMonth first = current.minusMonths(monthsHistory);
+
+        Map<YearMonth, Object[]> byMonth = new HashMap<>();
+        for (Object[] row : invoiceRepository.getMonthlyRevenue(first.atDay(1))) {
+            byMonth.put(YearMonth.of(((Number) row[0]).intValue(), ((Number) row[1]).intValue()), row);
         }
 
-        // Durchschnittswachstum berechnen
-        BigDecimal avgGrowth = historical.stream()
-                .filter(p -> p.getGrowthRate() != null)
-                .map(SalesForecastDto.ForecastPeriod::getGrowthRate)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
-        long growthCount = historical.stream()
-                .filter(p -> p.getGrowthRate() != null)
-                .count();
-        
-        if (growthCount > 0) {
-            avgGrowth = avgGrowth.divide(BigDecimal.valueOf(growthCount), 4, RoundingMode.HALF_UP);
+        List<SalesForecastDto.ForecastPeriod> history = new ArrayList<>();
+        BigDecimal previous = null;
+        for (YearMonth m = first; !m.isAfter(current); m = m.plusMonths(1)) {
+            Object[] row = byMonth.get(m);
+            BigDecimal revenue = row != null ? toBigDecimal(row[2]) : BigDecimal.ZERO;
+            int orders = row != null ? ((Number) row[3]).intValue() : 0;
+            BigDecimal growth = previous != null && previous.signum() > 0
+                    ? revenue.subtract(previous).multiply(HUNDRED).divide(previous, 2, RoundingMode.HALF_UP) : null;
+            history.add(new SalesForecastDto.ForecastPeriod(m.atDay(1), m.toString(), revenue, null, orders, growth, false));
+            previous = revenue;
         }
 
-        // Letzte bekannte Werte
-        SalesForecastDto.ForecastPeriod lastPeriod = historical.get(historical.size() - 1);
-        BigDecimal lastRevenue = lastPeriod.getActualRevenue();
-        YearMonth currentMonth = YearMonth.from(lastPeriod.getDate()).plusMonths(1);
+        // Nur abgeschlossene Monate in die Regression einbeziehen; der laufende Monat ist unvollständig.
+        List<SalesForecastDto.ForecastPeriod> complete = history.subList(0, Math.max(0, history.size() - 1));
+        int n = complete.size();
+        double[] y = complete.stream().mapToDouble(p -> p.getActualRevenue().doubleValue()).toArray();
+        double slope = 0;
+        double intercept = n > 0 ? Arrays.stream(y).average().orElse(0) : 0;
+        if (n >= 2) {
+            double meanX = (n - 1) / 2.0;
+            double meanY = intercept;
+            double num = 0, den = 0;
+            for (int i = 0; i < n; i++) {
+                num += (i - meanX) * (y[i] - meanY);
+                den += (i - meanX) * (i - meanX);
+            }
+            slope = den > 0 ? num / den : 0;
+            intercept = meanY - slope * meanX;
+        }
+
+        double mape = 0;
+        int mapeCount = 0;
+        for (int i = 0; i < n; i++) {
+            if (y[i] > 0) {
+                mape += Math.abs(y[i] - (intercept + slope * i)) / y[i];
+                mapeCount++;
+            }
+        }
+        double confidence = mapeCount > 0 ? Math.max(0, 100 - (mape / mapeCount) * 100) : 0;
 
         List<SalesForecastDto.ForecastPeriod> forecast = new ArrayList<>();
-        BigDecimal forecastedRevenue = lastRevenue;
-
-        for (int i = 0; i < months; i++) {
-            BigDecimal growthFactor = BigDecimal.ONE.add(avgGrowth.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
-            forecastedRevenue = forecastedRevenue.multiply(growthFactor).setScale(2, RoundingMode.HALF_UP);
-
-            forecast.add(new SalesForecastDto.ForecastPeriod(
-                    currentMonth.atDay(1),
-                    currentMonth.toString(),
-                    null,
-                    forecastedRevenue,
-                    0,
-                    avgGrowth,
-                    true
-            ));
-            currentMonth = currentMonth.plusMonths(1);
+        for (int k = 0; k < monthsForecast; k++) {
+            YearMonth m = current.plusMonths(k);
+            double value = Math.max(0, intercept + slope * (n + k));
+            forecast.add(new SalesForecastDto.ForecastPeriod(m.atDay(1), m.toString(), null,
+                    BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP), 0, null, true));
         }
 
-        return forecast;
-    }
-
-    private SalesForecastDto.ForecastSummary calculateForecastSummary(
-            List<SalesForecastDto.ForecastPeriod> historical,
-            List<SalesForecastDto.ForecastPeriod> forecast) {
-        
-        BigDecimal avgMonthly = historical.stream()
-                .map(SalesForecastDto.ForecastPeriod::getActualRevenue)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
-        if (!historical.isEmpty()) {
-            avgMonthly = avgMonthly.divide(BigDecimal.valueOf(historical.size()), 2, RoundingMode.HALF_UP);
-        }
-
+        BigDecimal average = n > 0
+                ? BigDecimal.valueOf(Arrays.stream(y).average().orElse(0)).setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        BigDecimal monthlyTrend = average.signum() > 0
+                ? BigDecimal.valueOf(slope).multiply(HUNDRED).divide(average, 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        String direction = monthlyTrend.compareTo(BigDecimal.ONE) > 0 ? "UP"
+                : monthlyTrend.compareTo(BigDecimal.ONE.negate()) < 0 ? "DOWN" : "STABLE";
         BigDecimal nextMonth = forecast.isEmpty() ? BigDecimal.ZERO : forecast.get(0).getForecastedRevenue();
-        BigDecimal nextQuarter = forecast.stream()
-                .limit(3)
-                .map(SalesForecastDto.ForecastPeriod::getForecastedRevenue)
-                .filter(Objects::nonNull)
+        BigDecimal nextQuarter = forecast.stream().limit(3).map(SalesForecastDto.ForecastPeriod::getForecastedRevenue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal avgGrowth = historical.stream()
-                .map(SalesForecastDto.ForecastPeriod::getGrowthRate)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
-        long growthCount = historical.stream().filter(p -> p.getGrowthRate() != null).count();
-        if (growthCount > 0) {
-            avgGrowth = avgGrowth.divide(BigDecimal.valueOf(growthCount), 2, RoundingMode.HALF_UP);
-        }
-
-        String trend = avgGrowth.compareTo(BigDecimal.valueOf(2)) > 0 ? "UP" 
-                : avgGrowth.compareTo(BigDecimal.valueOf(-2)) < 0 ? "DOWN" : "STABLE";
-
-        return new SalesForecastDto.ForecastSummary(
-                avgMonthly, nextMonth, nextQuarter, avgGrowth, trend, BigDecimal.valueOf(75)
-        );
+        return new SalesForecastDto(history, forecast, new SalesForecastDto.ForecastSummary(
+                average, nextMonth, nextQuarter, monthlyTrend, direction,
+                BigDecimal.valueOf(confidence).setScale(1, RoundingMode.HALF_UP),
+                "Lineare Regression über " + n + " abgeschlossene Monate"));
     }
 
-    private KpiDashboardDto.FinancialKpis calculateFinancialKpis() {
-        LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).toLocalDate().atStartOfDay();
-        LocalDateTime startOfLastMonth = startOfMonth.minusMonths(1);
-        LocalDateTime endOfLastMonth = startOfMonth.minusNanos(1);
+    // ------------------------------------------------------------------
+    // KPI-Dashboard
+    // ------------------------------------------------------------------
 
-        BigDecimal totalRevenue = orderRepository.getTotalAmountByStatus(OrderStatus.DELIVERED);
-        BigDecimal revenueThisMonth = orderRepository.getTotalRevenueInPeriod(startOfMonth, LocalDateTime.now());
-        BigDecimal revenueLastMonth = orderRepository.getTotalRevenueInPeriod(startOfLastMonth, endOfLastMonth);
-
-        totalRevenue = totalRevenue != null ? totalRevenue : BigDecimal.ZERO;
-        revenueThisMonth = revenueThisMonth != null ? revenueThisMonth : BigDecimal.ZERO;
-        revenueLastMonth = revenueLastMonth != null ? revenueLastMonth : BigDecimal.ZERO;
-
-        BigDecimal revenueGrowth = revenueLastMonth.compareTo(BigDecimal.ZERO) > 0
-                ? revenueThisMonth.subtract(revenueLastMonth)
-                    .multiply(BigDecimal.valueOf(100))
-                    .divide(revenueLastMonth, 2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-
-        long orderCount = orderRepository.count();
-        BigDecimal avgOrderValue = orderCount > 0
-                ? totalRevenue.divide(BigDecimal.valueOf(orderCount), 2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-
-        long customerCount = customerRepository.count();
-        BigDecimal revenuePerCustomer = customerCount > 0
-                ? totalRevenue.divide(BigDecimal.valueOf(customerCount), 2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-
-        return new KpiDashboardDto.FinancialKpis(
-                totalRevenue, revenueThisMonth, revenueLastMonth, revenueGrowth,
-                avgOrderValue, BigDecimal.valueOf(35), revenuePerCustomer
-        );
+    public KpiDashboardDto getKpiDashboard() {
+        LocalDate today = LocalDate.now();
+        return new KpiDashboardDto(
+                financialKpis(today),
+                operationalKpis(today),
+                customerKpis(today),
+                inventoryKpis(today),
+                revenueTrend(today),
+                orderTrend(today));
     }
 
-    private KpiDashboardDto.OperationalKpis calculateOperationalKpis() {
+    private KpiDashboardDto.FinancialKpis financialKpis(LocalDate today) {
+        LocalDate monthStart = today.withDayOfMonth(1);
+        LocalDate lastMonthStart = monthStart.minusMonths(1);
+        LocalDate yearAgo = today.minusMonths(12).plusDays(1);
+
+        BigDecimal revenue12m = invoiceRepository.sumNetRevenue(yearAgo, today);
+        BigDecimal thisMonth = invoiceRepository.sumNetRevenue(monthStart, today);
+        BigDecimal lastMonth = invoiceRepository.sumNetRevenue(lastMonthStart, monthStart.minusDays(1));
+        // Vergleich mit dem gleichen Zeitraum des Vormonats, sonst wirkt jeder laufende Monat wie ein Einbruch.
+        LocalDate lastMonthSamePeriodEnd = lastMonthStart.plusDays(Math.min(today.getDayOfMonth(), lastMonthStart.lengthOfMonth()) - 1);
+        BigDecimal lastMonthSamePeriod = invoiceRepository.sumNetRevenue(lastMonthStart, lastMonthSamePeriodEnd);
+        BigDecimal growth = lastMonthSamePeriod.signum() > 0
+                ? thisMonth.subtract(lastMonthSamePeriod).multiply(HUNDRED).divide(lastMonthSamePeriod, 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        BigDecimal ytd = invoiceRepository.sumNetRevenue(today.withDayOfYear(1), today);
+
+        long billedOrders = invoiceRepository.countBilledOrders(yearAgo, today);
+        BigDecimal avgOrderValue = billedOrders > 0
+                ? revenue12m.divide(BigDecimal.valueOf(billedOrders), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+
+        BigDecimal cost12m = invoiceRepository.sumCost(yearAgo, today);
+        BigDecimal margin = revenue12m.subtract(cost12m);
+        BigDecimal marginPercent = revenue12m.signum() > 0 ? percent(margin, revenue12m) : BigDecimal.ZERO;
+
+        long billedCustomers = invoiceRepository.countBilledCustomers(yearAgo, today);
+        BigDecimal revenuePerCustomer = billedCustomers > 0
+                ? revenue12m.divide(BigDecimal.valueOf(billedCustomers), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+
+        List<Invoice> openItems = invoiceRepository.findOpenItems();
+        BigDecimal open = openItems.stream().map(Invoice::getGrossAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal overdue = openItems.stream().filter(i -> i.isOverdue(today))
+                .map(Invoice::getGrossAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal gross90 = invoiceRepository.sumGrossRevenue(today.minusDays(89), today);
+        BigDecimal dso = gross90.signum() > 0
+                ? open.multiply(BigDecimal.valueOf(90)).divide(gross90, 1, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+
+        return new KpiDashboardDto.FinancialKpis(revenue12m, thisMonth, lastMonth, growth, ytd, avgOrderValue,
+                margin, marginPercent, revenuePerCustomer, open, overdue, dso);
+    }
+
+    private KpiDashboardDto.OperationalKpis operationalKpis(LocalDate today) {
+        LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
         long totalOrders = orderRepository.count();
-        
-        LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).toLocalDate().atStartOfDay();
-        long ordersThisMonth = orderRepository.findByOrderDateBetween(startOfMonth, LocalDateTime.now()).size();
+        long ordersThisMonth = orderRepository.countByOrderDateBetween(monthStart, today.plusDays(1).atStartOfDay());
 
-        long pendingOrders = orderRepository.countByStatus(OrderStatus.PENDING);
-        long processingOrders = orderRepository.countByStatus(OrderStatus.PROCESSING);
-        long shippedOrders = orderRepository.countByStatus(OrderStatus.SHIPPED);
-        long deliveredOrders = orderRepository.countByStatus(OrderStatus.DELIVERED);
-        long cancelledOrders = orderRepository.countByStatus(OrderStatus.CANCELLED);
+        BigDecimal intakeThisMonth = orderRepository.getMonthlyOrderIntake(monthStart).stream()
+                .filter(r -> ((Number) r[0]).intValue() == today.getYear() && ((Number) r[1]).intValue() == today.getMonthValue())
+                .map(r -> toBigDecimal(r[3]))
+                .findFirst().orElse(BigDecimal.ZERO);
 
-        BigDecimal fulfillmentRate = totalOrders > 0
-                ? BigDecimal.valueOf(deliveredOrders * 100.0 / totalOrders).setScale(2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
+        long open = orderRepository.countByStatus(OrderStatus.OPEN);
+        long inProcess = orderRepository.countByStatus(OrderStatus.IN_PROCESS);
+        long completed = orderRepository.countByStatus(OrderStatus.COMPLETED);
+        long cancelled = orderRepository.countByStatus(OrderStatus.CANCELLED);
+        long creditBlocked = orderRepository.findByStatusIn(List.of(OrderStatus.OPEN, OrderStatus.IN_PROCESS)).stream()
+                .filter(o -> o.getCreditStatus() == CreditStatus.BLOCKED).count();
+
+        List<Delivery> recentDeliveries = deliveryRepository.findByStatusAndGoodsIssueDateGreaterThanEqual(
+                Delivery.Status.GOODS_ISSUED, today.minusDays(90).atStartOfDay());
+        long onTime = recentDeliveries.stream()
+                .filter(d -> d.getOrder().getRequestedDeliveryDate() == null
+                        || !d.getGoodsIssueDate().toLocalDate().isAfter(d.getOrder().getRequestedDeliveryDate()))
+                .count();
+        BigDecimal onTimeRate = recentDeliveries.isEmpty() ? BigDecimal.ZERO
+                : percent(BigDecimal.valueOf(onTime), BigDecimal.valueOf(recentDeliveries.size()));
+        double avgLeadTime = recentDeliveries.stream()
+                .mapToLong(d -> ChronoUnit.DAYS.between(d.getOrder().getOrderDate().toLocalDate(), d.getGoodsIssueDate().toLocalDate()))
+                .average().orElse(0);
 
         BigDecimal cancellationRate = totalOrders > 0
-                ? BigDecimal.valueOf(cancelledOrders * 100.0 / totalOrders).setScale(2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
+                ? percent(BigDecimal.valueOf(cancelled), BigDecimal.valueOf(totalOrders)) : BigDecimal.ZERO;
+        BigDecimal perDay = BigDecimal.valueOf(ordersThisMonth)
+                .divide(BigDecimal.valueOf(today.getDayOfMonth()), 2, RoundingMode.HALF_UP);
 
-        int daysInMonth = LocalDateTime.now().getDayOfMonth();
-        BigDecimal avgOrdersPerDay = daysInMonth > 0
-                ? BigDecimal.valueOf(ordersThisMonth).divide(BigDecimal.valueOf(daysInMonth), 2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-
-        return new KpiDashboardDto.OperationalKpis(
-                totalOrders, ordersThisMonth, pendingOrders, processingOrders,
-                shippedOrders, deliveredOrders, cancelledOrders,
-                fulfillmentRate, cancellationRate, avgOrdersPerDay
-        );
+        return new KpiDashboardDto.OperationalKpis(totalOrders, ordersThisMonth, intakeThisMonth, open, inProcess,
+                completed, cancelled, creditBlocked, onTimeRate,
+                BigDecimal.valueOf(avgLeadTime).setScale(1, RoundingMode.HALF_UP), cancellationRate, perDay);
     }
 
-    private KpiDashboardDto.CustomerKpis calculateCustomerKpis() {
-        long totalCustomers = customerRepository.count();
-        
-        LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).toLocalDate().atStartOfDay();
-        long newCustomersThisMonth = customerRepository.countByCreatedAtAfter(startOfMonth);
-        
-        // Aktive Kunden = Kunden mit mindestens einer Bestellung in den letzten 6 Monaten
-        LocalDateTime sixMonthsAgo = LocalDateTime.now().minusMonths(6);
-        long activeCustomers = customerRepository.countActiveCustomers(sixMonthsAgo);
+    private KpiDashboardDto.CustomerKpis customerKpis(LocalDate today) {
+        long total = customerRepository.count();
+        long newThisMonth = customerRepository.countByCreatedAtAfter(today.withDayOfMonth(1).atStartOfDay());
+        long active = customerRepository.countActiveCustomers(today.minusMonths(6).atStartOfDay());
+        BigDecimal activeRate = total > 0 ? percent(BigDecimal.valueOf(active), BigDecimal.valueOf(total)) : BigDecimal.ZERO;
 
-        BigDecimal retentionRate = totalCustomers > 0
-                ? BigDecimal.valueOf(activeCustomers * 100.0 / totalCustomers).setScale(2, RoundingMode.HALF_UP)
+        LocalDate yearAgo = today.minusMonths(12).plusDays(1);
+        long billedCustomers12m = invoiceRepository.countBilledCustomers(yearAgo, today);
+        long billedOrders12m = invoiceRepository.countBilledOrders(yearAgo, today);
+        BigDecimal frequency = billedCustomers12m > 0
+                ? BigDecimal.valueOf(billedOrders12m).divide(BigDecimal.valueOf(billedCustomers12m), 2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
-        Map<String, Long> customersByCountry = customerRepository.countByCountry();
+        long billedCustomersTotal = invoiceRepository.countBilledCustomersTotal();
+        BigDecimal clv = billedCustomersTotal > 0
+                ? invoiceRepository.sumNetRevenueTotal().divide(BigDecimal.valueOf(billedCustomersTotal), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
 
-        return new KpiDashboardDto.CustomerKpis(
-                totalCustomers, newCustomersThisMonth, activeCustomers,
-                retentionRate, BigDecimal.valueOf(2.5), BigDecimal.valueOf(450),
-                customersByCountry
-        );
+        return new KpiDashboardDto.CustomerKpis(total, newThisMonth, active, activeRate, frequency, clv,
+                customerRepository.countByCountry());
     }
 
-    private KpiDashboardDto.InventoryKpis calculateInventoryKpis() {
-        long totalProducts = productRepository.count();
-        long activeProducts = productRepository.countActiveProducts();
-        long lowStockItems = productRepository.countLowStockProducts();
-        long outOfStockItems = productRepository.countOutOfStockProducts();
+    private KpiDashboardDto.InventoryKpis inventoryKpis(LocalDate today) {
+        List<Product> products = productRepository.findAll();
+        long activeProducts = products.stream().filter(p -> Boolean.TRUE.equals(p.getActive())).count();
+        long outOfStock = products.stream().filter(p -> Boolean.TRUE.equals(p.getActive()) && p.getStockQuantity() == 0).count();
 
-        List<Object[]> inventoryData = productRepository.getInventoryAnalysis();
-        BigDecimal totalInventoryValue = inventoryData.stream()
-                .map(row -> (BigDecimal) row[3])
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        Map<String, BigDecimal> inventoryByCategory = inventoryData.stream()
-                .collect(Collectors.toMap(
-                        row -> row[0] != null ? (String) row[0] : "Keine Kategorie",
-                        row -> (BigDecimal) row[3],
-                        BigDecimal::add
-                ));
-
-        return new KpiDashboardDto.InventoryKpis(
-                totalProducts, activeProducts, totalInventoryValue,
-                lowStockItems, outOfStockItems, BigDecimal.valueOf(4.2),
-                BigDecimal.valueOf(50), inventoryByCategory
-        );
-    }
-
-    private List<KpiDashboardDto.TrendData> calculateRevenueTrend() {
-        LocalDateTime startDate = LocalDateTime.now().minusMonths(6).withDayOfMonth(1).toLocalDate().atStartOfDay();
-        List<Object[]> monthlyData = orderRepository.getMonthlySalesData(startDate);
-
-        List<KpiDashboardDto.TrendData> trend = new ArrayList<>();
-        BigDecimal previousValue = null;
-
-        for (Object[] row : monthlyData) {
-            int year = ((Number) row[0]).intValue();
-            int month = ((Number) row[1]).intValue();
-            BigDecimal value = row[2] != null ? (BigDecimal) row[2] : BigDecimal.ZERO;
-
-            BigDecimal change = previousValue != null && previousValue.compareTo(BigDecimal.ZERO) > 0
-                    ? value.subtract(previousValue).multiply(BigDecimal.valueOf(100))
-                        .divide(previousValue, 2, RoundingMode.HALF_UP)
-                    : null;
-
-            trend.add(new KpiDashboardDto.TrendData(
-                    String.format("%d-%02d", year, month),
-                    value, previousValue, change
-            ));
-
-            previousValue = value;
+        Map<String, BigDecimal> byCategory = new TreeMap<>();
+        BigDecimal inventoryValue = BigDecimal.ZERO;
+        for (Product p : products) {
+            BigDecimal value = p.getValuationPrice().multiply(BigDecimal.valueOf(p.getStockQuantity()));
+            inventoryValue = inventoryValue.add(value);
+            byCategory.merge(p.getCategory() != null ? p.getCategory() : "Ohne Warengruppe", value, BigDecimal::add);
         }
 
-        return trend;
+        BigDecimal cogs12m = invoiceRepository.sumCost(today.minusMonths(12).plusDays(1), today);
+        BigDecimal turnover = inventoryValue.signum() > 0
+                ? cogs12m.divide(inventoryValue, 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal daysOfSupply = turnover.signum() > 0
+                ? BigDecimal.valueOf(365).divide(turnover, 0, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+
+        return new KpiDashboardDto.InventoryKpis(products.size(), activeProducts, inventoryValue,
+                stockRepository.findLowStockItems().size(), outOfStock, turnover, daysOfSupply,
+                orderItemRepository.findBacklogItems().size(), byCategory);
     }
 
-    private List<KpiDashboardDto.TrendData> calculateOrderTrend() {
-        LocalDateTime startDate = LocalDateTime.now().minusMonths(6).withDayOfMonth(1).toLocalDate().atStartOfDay();
-        List<Object[]> monthlyData = orderRepository.getMonthlyOrderCount(startDate);
-
-        List<KpiDashboardDto.TrendData> trend = new ArrayList<>();
-        BigDecimal previousValue = null;
-
-        for (Object[] row : monthlyData) {
-            int year = ((Number) row[0]).intValue();
-            int month = ((Number) row[1]).intValue();
-            BigDecimal value = BigDecimal.valueOf(((Number) row[2]).longValue());
-
-            BigDecimal change = previousValue != null && previousValue.compareTo(BigDecimal.ZERO) > 0
-                    ? value.subtract(previousValue).multiply(BigDecimal.valueOf(100))
-                        .divide(previousValue, 2, RoundingMode.HALF_UP)
-                    : null;
-
-            trend.add(new KpiDashboardDto.TrendData(
-                    String.format("%d-%02d", year, month),
-                    value, previousValue, change
-            ));
-
-            previousValue = value;
+    private List<KpiDashboardDto.TrendData> revenueTrend(LocalDate today) {
+        YearMonth current = YearMonth.from(today);
+        YearMonth first = current.minusMonths(11);
+        Map<YearMonth, BigDecimal> values = new HashMap<>();
+        for (Object[] row : invoiceRepository.getMonthlyRevenue(first.atDay(1))) {
+            values.put(YearMonth.of(((Number) row[0]).intValue(), ((Number) row[1]).intValue()), toBigDecimal(row[2]));
         }
+        return trend(first, current, values);
+    }
 
-        return trend;
+    private List<KpiDashboardDto.TrendData> orderTrend(LocalDate today) {
+        YearMonth current = YearMonth.from(today);
+        YearMonth first = current.minusMonths(11);
+        Map<YearMonth, BigDecimal> values = new HashMap<>();
+        for (Object[] row : orderRepository.getMonthlyOrderIntake(first.atDay(1).atStartOfDay())) {
+            values.put(YearMonth.of(((Number) row[0]).intValue(), ((Number) row[1]).intValue()),
+                    BigDecimal.valueOf(((Number) row[2]).longValue()));
+        }
+        return trend(first, current, values);
+    }
+
+    private List<KpiDashboardDto.TrendData> trend(YearMonth first, YearMonth last, Map<YearMonth, BigDecimal> values) {
+        List<KpiDashboardDto.TrendData> result = new ArrayList<>();
+        BigDecimal previous = null;
+        for (YearMonth m = first; !m.isAfter(last); m = m.plusMonths(1)) {
+            BigDecimal value = values.getOrDefault(m, BigDecimal.ZERO);
+            BigDecimal change = previous != null && previous.signum() > 0
+                    ? value.subtract(previous).multiply(HUNDRED).divide(previous, 2, RoundingMode.HALF_UP) : null;
+            result.add(new KpiDashboardDto.TrendData(m.toString(), value, previous, change));
+            previous = value;
+        }
+        return result;
+    }
+
+    // ------------------------------------------------------------------
+
+    private static BigDecimal toBigDecimal(Object value) {
+        if (value == null) return BigDecimal.ZERO;
+        if (value instanceof BigDecimal bd) return bd;
+        return new BigDecimal(value.toString());
+    }
+
+    private static BigDecimal percent(BigDecimal part, BigDecimal total) {
+        if (total.signum() == 0) return BigDecimal.ZERO;
+        return part.multiply(HUNDRED).divide(total, 2, RoundingMode.HALF_UP);
+    }
+
+    private static BigDecimal revenue(List<AbcAnalysisDto.AbcItem> items) {
+        return items == null ? BigDecimal.ZERO
+                : items.stream().map(AbcAnalysisDto.AbcItem::getRevenue).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private static int size(List<?> list) {
+        return list == null ? 0 : list.size();
     }
 }

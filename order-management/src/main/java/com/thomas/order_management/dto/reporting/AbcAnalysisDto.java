@@ -21,6 +21,7 @@ public class AbcAnalysisDto {
     @AllArgsConstructor
     public static class AbcItem {
         private Long id;
+        private String number;
         private String name;
         private String category;
         private BigDecimal revenue;
@@ -31,18 +32,17 @@ public class AbcAnalysisDto {
         private Integer quantitySold;
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class AbcSummary {
-        private int aClassCount;
-        private int bClassCount;
-        private int cClassCount;
-        private BigDecimal aClassRevenue;
-        private BigDecimal bClassRevenue;
-        private BigDecimal cClassRevenue;
-        private BigDecimal aClassPercentage;
-        private BigDecimal bClassPercentage;
-        private BigDecimal cClassPercentage;
+    /** Als Record, damit die JSON-Namen aClassCount usw. lauten (Lombok-Getter ergäben "aclassCount"). */
+    public record AbcSummary(
+            int aClassCount,
+            int bClassCount,
+            int cClassCount,
+            BigDecimal aClassRevenue,
+            BigDecimal bClassRevenue,
+            BigDecimal cClassRevenue,
+            BigDecimal aClassPercentage,
+            BigDecimal bClassPercentage,
+            BigDecimal cClassPercentage
+    ) {
     }
 }

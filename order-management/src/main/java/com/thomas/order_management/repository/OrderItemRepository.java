@@ -3,34 +3,63 @@ package com.thomas.order_management.repository;
 import com.thomas.order_management.model.OrderItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
-    
-    List<OrderItem> findByOrderId(Long orderId);
-    
-    List<OrderItem> findByProductId(Long productId);
-    
-    @Query("SELECT oi FROM OrderItem oi WHERE oi.order.id = :orderId")
-    List<OrderItem> findOrderItemsByOrderId(Long orderId);
-    
-    @Query("SELECT SUM(oi.quantity) FROM OrderItem oi WHERE oi.product.id = :productId")
-    Long getTotalQuantitySoldForProduct(Long productId);
 
-    // ABC-Analyse: Produkt-Umsatzdaten
-    @Query(value = """
-        SELECT p.id, p.name, p.category, 
-               COALESCE(SUM(oi.unit_price * oi.quantity), 0) as revenue,
-               COUNT(DISTINCT oi.order_id) as order_count,
-               COALESCE(SUM(oi.quantity), 0) as quantity_sold
-        FROM products p
-        LEFT JOIN order_items oi ON p.id = oi.product_id
-        LEFT JOIN orders o ON oi.order_id = o.id AND o.status = 'DELIVERED'
-        GROUP BY p.id, p.name, p.category
-        ORDER BY revenue DESC
-        """, nativeQuery = true)
-    List<Object[]> getProductSalesData();
+    List<OrderItem> findByOrderId(Long orderId);
+
+    List<OrderItem> findByProductId(Long productId);
+
+    /** Für Aufträge reservierte Menge: bestätigt, aber noch nicht in eine Lieferung übernommen. */
+    @Query("""
+        SELECT COALESCE(SUM(oi.confirmedQuantity - oi.deliveredQuantity), 0)
+        FROM OrderItem oi
+        WHERE oi.product.id = :productId
+          AND oi.rejectionReason IS NULL
+          AND oi.confirmedQuantity > oi.deliveredQuantity
+          AND (:excludeItemId IS NULL OR oi.id <> :excludeItemId)
+        """)
+    long sumOpenConfirmedQuantity(@Param("productId") Long productId, @Param("excludeItemId") Long excludeItemId);
+
+    /** Nicht bestätigte Restmengen offener Positionen (Rückstand). */
+    @Query("""
+        SELECT oi FROM OrderItem oi
+        WHERE oi.rejectionReason IS NULL
+          AND oi.confirmedQuantity < oi.quantity
+          AND oi.order.status IN (com.thomas.order_management.model.OrderStatus.OPEN,
+                                  com.thomas.order_management.model.OrderStatus.IN_PROCESS)
+        ORDER BY oi.order.orderDate ASC
+        """)
+    List<OrderItem> findBacklogItems();
+
+    /** Nicht bestätigte Restmengen offener Aufträge je Material: Material-ID, Menge. */
+    @Query("""
+        SELECT oi.product.id, SUM(oi.quantity - oi.confirmedQuantity) FROM OrderItem oi
+        WHERE oi.rejectionReason IS NULL
+          AND oi.confirmedQuantity < oi.quantity
+          AND oi.order.status IN (com.thomas.order_management.model.OrderStatus.OPEN,
+                                  com.thomas.order_management.model.OrderStatus.IN_PROCESS)
+        GROUP BY oi.product.id
+        """)
+    List<Object[]> sumBacklogQuantityByProduct();
+
+    @Query("SELECT COUNT(oi) FROM OrderItem oi WHERE oi.order.id = :orderId AND oi.rejectionReason IS NULL AND oi.confirmedQuantity > oi.deliveredQuantity")
+    long countDeliverable(@Param("orderId") Long orderId);
+
+    /** Fakturierte Käufe: Material-ID, Debitor-ID, Positions-ID, Auftragsdatum. */
+    @Query("SELECT oi.product.id, oi.order.customer.id, oi.id, oi.order.orderDate FROM OrderItem oi WHERE oi.billedQuantity > 0")
+    List<Object[]> findBilledPurchases();
+
+    @Query("""
+        SELECT oi FROM OrderItem oi
+        WHERE oi.rejectionReason IS NULL
+          AND oi.order.status IN (com.thomas.order_management.model.OrderStatus.OPEN,
+                                  com.thomas.order_management.model.OrderStatus.IN_PROCESS)
+        """)
+    List<OrderItem> findItemsOfOpenOrders();
 }

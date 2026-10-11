@@ -1,0 +1,67 @@
+:host {
+  display: block;
+  height: 100vh;
+}
+
+ui5-navigation-layout {
+  height: 100%;
+}
+
+.shell-content {
+  height: 100%;
+  overflow: auto;
+}
+
+ui5-shellbar-branding {
+  cursor: pointer;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  background: var(--sapBrandColor, #0070f2);
+  color: var(--sapContent_ContrastTextColor, #fff);
+  font-family: var(--sapFontBoldFamily, var(--sapFontFamily));
+  font-weight: bold;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+.message-popover {
+  max-width: 28rem;
+}
+
+.message-empty {
+  padding: 1rem;
+  color: var(--sapContent_LabelColor);
+}
+
+.message-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.25rem 0.5rem;
+}
+
+.message-box {
+  max-width: 32rem;
+  padding: 0.5rem 0.25rem;
+}
+
+.message-box p {
+  margin: 0 0 0.5rem;
+  line-height: 1.4;
+}
+
+.message-box ul {
+  margin: 0 0 0.5rem;
+  padding-left: 1.25rem;
+}
+
+.message-id {
+  color: var(--sapContent_LabelColor);
+  font-size: var(--sapFontSmallSize);
+}

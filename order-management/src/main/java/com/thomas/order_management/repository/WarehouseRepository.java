@@ -25,7 +25,7 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
         SELECT w.id, w.code, w.name, 
                COUNT(ws.id) as product_count,
                COALESCE(SUM(ws.quantity), 0) as total_stock,
-               COALESCE(SUM(ws.quantity * p.price), 0) as inventory_value
+               COALESCE(SUM(ws.quantity * COALESCE(p.cost_price, p.price)), 0) as inventory_value
         FROM warehouses w
         LEFT JOIN warehouse_stocks ws ON w.id = ws.warehouse_id
         LEFT JOIN products p ON ws.product_id = p.id
