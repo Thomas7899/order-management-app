@@ -3,7 +3,7 @@
 # 📦 Order Management – Auftragsabwicklung im SAP-Stil
 
 [![Java](https://img.shields.io/badge/Java-25-orange?style=for-the-badge&logo=openjdk)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen?style=for-the-badge&logo=springboot)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-brightgreen?style=for-the-badge&logo=springboot)](https://spring.io/projects/spring-boot)
 [![Angular](https://img.shields.io/badge/Angular-22-red?style=for-the-badge&logo=angular)](https://angular.dev/)
 [![UI5](https://img.shields.io/badge/UI5%20Web%20Components-Horizon-0a6ed1?style=for-the-badge)](https://sap.github.io/ui5-webcomponents/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%2B%20pgvector-blue?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
@@ -101,8 +101,8 @@ Die Demo-Bewertungen stammen aus einem eingecheckten Textbaukasten mit warengrup
 
 | Bereich | Technologie |
 |---------|-------------|
-| Backend | Java 25 (virtuelle Threads), Spring Boot 3.5, Spring Data JPA, Spring Security (OAuth2 Resource Server, JWT), Flyway, MapStruct, Lombok, OpenPDF |
-| KI | Spring AI 1.0 mit OpenAI (Chat: `gpt-4o-mini`, Embeddings mit 1536 Dimensionen), pgvector |
+| Backend | Java 25 (virtuelle Threads), Spring Boot 4.1 (Spring Framework 7, Jackson 3, Hibernate 7), Spring Data JPA, Spring Security 7 (OAuth2 Resource Server, JWT), Flyway, MapStruct, Lombok, OpenPDF |
+| KI | Spring AI 2.0 mit OpenAI-Java-SDK (Chat: `gpt-4o-mini`, Embeddings mit 1536 Dimensionen), pgvector |
 | Datenbank | PostgreSQL 16 mit pgvector |
 | Frontend | Angular 22 (Standalone, Signals), UI5 Web Components 2 (Fiori Horizon), ECharts |
 | Tests | JUnit 5, Spring Boot Test (Backend); Karma/Jasmine (Frontend) |

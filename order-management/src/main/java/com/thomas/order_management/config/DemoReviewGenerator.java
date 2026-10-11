@@ -1,7 +1,7 @@
 package com.thomas.order_management.config;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import com.thomas.order_management.model.Customer;
 import com.thomas.order_management.model.Product;
 import org.springframework.core.io.ClassPathResource;
@@ -59,7 +59,7 @@ public class DemoReviewGenerator {
         this.random = random;
         this.today = today;
         try (InputStream in = new ClassPathResource("demo/review-corpus.json").getInputStream()) {
-            this.corpus = new ObjectMapper().readTree(in);
+            this.corpus = JsonMapper.shared().readTree(in);
         } catch (IOException e) {
             throw new UncheckedIOException("Textbaukasten für Demo-Bewertungen nicht lesbar", e);
         }
@@ -304,7 +304,7 @@ public class DemoReviewGenerator {
         if (array == null || !array.isArray() || array.isEmpty()) {
             throw new IllegalStateException("Leerer Abschnitt im Textbaukasten für Demo-Bewertungen");
         }
-        return array.get(random.nextInt(array.size())).asText();
+        return array.get(random.nextInt(array.size())).asString();
     }
 
     private static double clamp(double v, double min, double max) {

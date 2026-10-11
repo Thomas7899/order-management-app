@@ -3,8 +3,7 @@ package com.thomas.order_management.exception;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.retry.NonTransientAiException;
-import org.springframework.ai.retry.TransientAiException;
+import com.openai.errors.OpenAIException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -89,8 +88,8 @@ public class GlobalExceptionHandler {
     }
 
     /** KI-Dienst nicht erreichbar oder Schlüssel ungültig: kein interner Fehler der Anwendung. */
-    @ExceptionHandler({NonTransientAiException.class, TransientAiException.class})
-    public ProblemDetail handleAiUnavailable(RuntimeException ex) {
+    @ExceptionHandler(OpenAIException.class)
+    public ProblemDetail handleAiUnavailable(OpenAIException ex) {
         logger.warn("KI-Dienst nicht verfügbar: {}", ex.getMessage());
         return problem(HttpStatus.SERVICE_UNAVAILABLE, "KI-Dienst nicht verfügbar",
                 "Der KI-Dienst ist derzeit nicht verfügbar. Bitte API-Schlüssel und Kontingent prüfen.");

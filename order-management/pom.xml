@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.15</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
@@ -19,23 +19,8 @@
         <java.version>25</java.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <lombok.version>1.18.48</lombok.version>
-        <spring.ai.version>1.0.7</spring.ai.version>
-        <springdoc.version>2.8.17</springdoc.version>
-        <tomcat.version>10.1.60</tomcat.version>
-        <spring-framework.version>6.2.19</spring-framework.version>
-        <spring-security.version>6.5.11</spring-security.version>
-        <jackson-bom.version>2.18.10</jackson-bom.version>
-        <postgresql.version>42.7.12</postgresql.version>
-        <snakeyaml.version>2.4</snakeyaml.version>
-        <assertj.version>3.27.7</assertj.version>
-        <commons-lang3.version>3.18.0</commons-lang3.version>
-        <micrometer.version>1.15.12</micrometer.version>
-        <json-smart.version>2.5.2</json-smart.version>
-        <spring-data-commons.version>3.5.12</spring-data-commons.version>
-        <spring-hateoas.version>2.5.3</spring-hateoas.version>
-        <spring-retry.version>2.0.13</spring-retry.version>
-        <logback.version>1.5.34</logback.version>
-        <log4j2.version>2.26.1</log4j2.version>
+        <spring.ai.version>2.0.1</spring.ai.version>
+        <springdoc.version>3.1.1</springdoc.version>
     </properties>
 
     <dependencyManagement>
@@ -55,12 +40,24 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-openai</artifactId>
+            <exclusions>
+                <!-- Nur für die Anmeldung bei Azure OpenAI nötig; zieht Netty mit nativen Bibliotheken für alle Plattformen nach -->
+                <exclusion>
+                    <groupId>com.azure</groupId>
+                    <artifactId>azure-identity</artifactId>
+                </exclusion>
+                <!-- Das OpenAI-SDK nutzt OkHttp; WebClient mit Reactor Netty (inkl. HTTP/3-Bibliotheken) wird nicht gebraucht -->
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-webclient</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Spring Boot Core -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
         <!-- /actuator/health für den Prüfschritt nach dem Deploy -->
@@ -81,7 +78,7 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
         </dependency>
 
         <dependency>
@@ -98,7 +95,6 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>${postgresql.version}</version>
             <scope>runtime</scope>
         </dependency>
 
@@ -109,10 +105,10 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Flyway für Datenbank-Migrationen -->
+        <!-- Flyway für Datenbank-Migrationen (seit Boot 4 ein eigener Starter) -->
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
 
         <dependency>
@@ -154,9 +150,22 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Seit Boot 4 bringen die Test-Starter je Modul ihre Test-Unterstützung mit (MockMvc, @DataJpaTest, Security) -->
         <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-test</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -226,18 +235,4 @@
         </plugins>
     </build>
 
-    <repositories>
-        <repository>
-            <id>maven-central</id>
-            <url>https://repo.maven.apache.org/maven2</url>
-        </repository>
-
-        <repository>
-            <id>spring-milestones</id>
-            <url>https://repo.spring.io/milestone</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
 </project>

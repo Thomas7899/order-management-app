@@ -1,7 +1,6 @@
 package com.thomas.order_management.service.reviews;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.thomas.order_management.dto.reviews.ReviewInsightDtos.*;
 import com.thomas.order_management.dto.sales.CodeText;
 import com.thomas.order_management.model.*;
@@ -10,7 +9,6 @@ import com.thomas.order_management.repository.ProductReviewRepository;
 import com.thomas.order_management.repository.ReviewInsightRepository;
 import com.thomas.order_management.service.ai.StructuredAi;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -81,7 +79,7 @@ public class ReviewAnalyticsService {
     public ReviewAnalyticsService(ProductReviewRepository reviewRepository, ReviewInsightRepository insightRepository,
                                   ProductRepository productRepository, RuleBasedReviewClassifier rules,
                                   ReviewInsightService insightService, StructuredAi ai,
-                                  @Qualifier("aiObjectMapper") ObjectMapper objectMapper) {
+                                  ObjectMapper objectMapper) {
         this.reviewRepository = reviewRepository;
         this.insightRepository = insightRepository;
         this.productRepository = productRepository;
@@ -650,11 +648,7 @@ public class ReviewAnalyticsService {
     }
 
     private String json(Object value) {
-        try {
-            return objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException(e);
-        }
+        return objectMapper.writeValueAsString(value);
     }
 
     // ------------------------------------------------------------------

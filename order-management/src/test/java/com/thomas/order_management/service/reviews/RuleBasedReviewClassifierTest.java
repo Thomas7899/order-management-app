@@ -1,7 +1,7 @@
 package com.thomas.order_management.service.reviews;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import com.thomas.order_management.model.ReviewAspect;
 import com.thomas.order_management.model.ReviewSentiment;
 import com.thomas.order_management.model.ReviewTheme;
@@ -85,28 +85,28 @@ class RuleBasedReviewClassifierTest {
     static List<Labeled> labeledCorpus() throws Exception {
         JsonNode corpus;
         try (InputStream in = new ClassPathResource("demo/review-corpus.json").getInputStream()) {
-            corpus = new ObjectMapper().readTree(in);
+            corpus = JsonMapper.shared().readTree(in);
         }
         List<Labeled> result = new ArrayList<>();
-        corpus.path("categories").forEach(category -> category.fields().forEachRemaining(aspect ->
+        corpus.path("categories").forEach(category -> category.properties().forEach(aspect ->
                 addAll(result, aspect.getValue(), Set.of(ReviewTheme.valueOf(aspect.getKey())))));
-        corpus.path("generic").fields().forEachRemaining(aspect ->
+        corpus.path("generic").properties().forEach(aspect ->
                 addAll(result, aspect.getValue(), Set.of(ReviewTheme.valueOf(aspect.getKey()))));
         JsonNode scenarios = corpus.path("scenarios");
-        scenarios.path("incident").forEach(t -> result.add(new Labeled(t.asText(),
+        scenarios.path("incident").forEach(t -> result.add(new Labeled(t.asString(),
                 Set.of(ReviewTheme.FUNCTION, ReviewTheme.DURABILITY), ReviewSentiment.NEGATIVE)));
-        scenarios.path("incidentService").forEach(t -> result.add(new Labeled(t.asText(),
+        scenarios.path("incidentService").forEach(t -> result.add(new Labeled(t.asString(),
                 Set.of(ReviewTheme.SERVICE), ReviewSentiment.NEGATIVE)));
-        scenarios.path("decline").forEach(t -> result.add(new Labeled(t.asText(),
+        scenarios.path("decline").forEach(t -> result.add(new Labeled(t.asString(),
                 Set.of(ReviewTheme.QUALITY, ReviewTheme.DURABILITY), ReviewSentiment.NEGATIVE)));
-        scenarios.path("deliveryIncident").forEach(t -> result.add(new Labeled(t.asText(),
+        scenarios.path("deliveryIncident").forEach(t -> result.add(new Labeled(t.asString(),
                 Set.of(ReviewTheme.DELIVERY), ReviewSentiment.NEGATIVE)));
         return result;
     }
 
     private static void addAll(List<Labeled> result, JsonNode tones, Set<ReviewTheme> themes) {
-        tones.path("POS").forEach(t -> result.add(new Labeled(t.asText(), themes, ReviewSentiment.POSITIVE)));
-        tones.path("NEG").forEach(t -> result.add(new Labeled(t.asText(), themes, ReviewSentiment.NEGATIVE)));
-        tones.path("NEU").forEach(t -> result.add(new Labeled(t.asText(), themes, ReviewSentiment.NEUTRAL)));
+        tones.path("POS").forEach(t -> result.add(new Labeled(t.asString(), themes, ReviewSentiment.POSITIVE)));
+        tones.path("NEG").forEach(t -> result.add(new Labeled(t.asString(), themes, ReviewSentiment.NEGATIVE)));
+        tones.path("NEU").forEach(t -> result.add(new Labeled(t.asString(), themes, ReviewSentiment.NEUTRAL)));
     }
 }

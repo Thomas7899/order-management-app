@@ -1,12 +1,12 @@
 package com.thomas.order_management.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.thomas.order_management.service.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -35,8 +35,8 @@ class SecurityIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         JsonNode json = objectMapper.readTree(body);
-        assertThat(json.get("user").get("username").asText()).isEqualTo(username);
-        return "Bearer " + json.get("token").asText();
+        assertThat(json.get("user").get("username").asString()).isEqualTo(username);
+        return "Bearer " + json.get("token").asString();
     }
 
     @Test

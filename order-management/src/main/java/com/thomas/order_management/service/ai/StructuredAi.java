@@ -66,7 +66,7 @@ public class StructuredAi {
         try {
             var request = chatClient.prompt().user(prompt);
             if (maxTokens != null) {
-                request = request.options(OpenAiChatOptions.builder().maxTokens(maxTokens).build());
+                request = request.options(OpenAiChatOptions.builder().maxTokens(maxTokens));
             }
             T result = request.call().entity(type);
             if (result != null && useCache) {
