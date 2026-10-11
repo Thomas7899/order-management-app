@@ -13,6 +13,11 @@ import com.thomas.order_management.repository.CustomerRepository;
 import com.thomas.order_management.repository.OrderItemRepository;
 import com.thomas.order_management.repository.ProductRepository;
 import com.thomas.order_management.repository.ProductReviewRepository;
+import com.thomas.order_management.repository.ReviewInsightRepository;
+import com.thomas.order_management.model.ReviewInsight;
+import com.thomas.order_management.service.reviews.ReviewReplyService;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import com.thomas.order_management.service.ReviewEmbeddingService;
 import com.thomas.order_management.service.ai.AiAvailability;
 import com.thomas.order_management.service.reviews.ReviewInsightService;
@@ -25,6 +30,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/reviews")
@@ -39,6 +47,8 @@ public class ReviewController {
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
     private final OrderItemRepository orderItemRepository;
+    private final ReviewInsightRepository insightRepository;
+    private final ReviewReplyService replyService;
 
     @GetMapping("/similar")
     public SearchResult findSimilarReviews(@RequestParam String query,
@@ -69,42 +79,61 @@ public class ReviewController {
         if (aiAvailability.isAvailable()) {
             embeddingService.embed(List.of(saved));
         }
-        return toDto(saved);
+        return toDtos(List.of(saved)).get(0);
+    }
+
+    /** Kritische Bewertungen (1–2 Sterne) der letzten Tage, die noch keine Antwort haben. */
+    @GetMapping("/open-critical")
+    public OpenCritical openCritical(@RequestParam(defaultValue = "30") int days) {
+        List<ProductReview> open = reviewRepository.findOpenCritical(LocalDateTime.now().minusDays(Math.max(1, days)));
+        return new OpenCritical(open.size(), toDtos(open.stream().limit(50).toList()));
+    }
+
+    /** Antwortvorschlag (KI, sonst Vorlage); gespeichert wird erst der geprüfte Text. */
+    @PostMapping("/{id}/reply-suggestion")
+    public ReviewReplyService.Suggestion suggestReply(@PathVariable Long id) {
+        return replyService.suggest(id);
+    }
+
+    @PutMapping("/{id}/reply")
+    public ReviewDTO reply(@PathVariable Long id, @Valid @RequestBody ReplyRequest request) {
+        return toDtos(List.of(replyService.reply(id, request.text()))).get(0);
     }
 
     @GetMapping("/product/{productId}")
     public List<ReviewDTO> getByProduct(@PathVariable Long productId) {
-        return reviewRepository.findByProductIdOrderByCreatedAtDesc(productId)
-                .stream()
-                .map(this::toDto)
-                .toList();
+        return toDtos(reviewRepository.findByProductIdOrderByCreatedAtDesc(productId));
     }
 
     @GetMapping("/customer/{customerId}")
     public List<ReviewDTO> getByCustomer(@PathVariable Long customerId) {
-        return reviewRepository.findByCustomerIdOrderByCreatedAtDesc(customerId)
-                .stream()
-                .map(this::toDto)
-                .toList();
+        return toDtos(reviewRepository.findByCustomerIdOrderByCreatedAtDesc(customerId));
     }
 
     @GetMapping("/order/{orderId}")
     public List<ReviewDTO> getByOrder(@PathVariable Long orderId) {
-        return reviewRepository.findByOrderId(orderId)
-                .stream()
-                .map(this::toDto)
-                .toList();
+        return toDtos(reviewRepository.findByOrderId(orderId));
     }
 
     @GetMapping("/order-item/{orderItemId}")
     public List<ReviewDTO> getByOrderItem(@PathVariable Long orderItemId) {
-        return reviewRepository.findByOrderItemId(orderItemId)
-                .stream()
-                .map(this::toDto)
-                .toList();
+        return toDtos(reviewRepository.findByOrderItemId(orderItemId));
     }
 
-    private ReviewDTO toDto(ProductReview r) {
+    public record OpenCritical(long count, List<ReviewDTO> reviews) {
+    }
+
+    public record ReplyRequest(@NotBlank @Size(max = 2000) String text) {
+    }
+
+    private List<ReviewDTO> toDtos(List<ProductReview> reviews) {
+        Map<Long, ReviewInsight> insights = reviews.isEmpty() ? Map.of()
+                : insightRepository.findWithAspectsByReviewIdIn(reviews.stream().map(ProductReview::getId).toList()).stream()
+                .collect(Collectors.toMap(ReviewInsight::getReviewId, Function.identity()));
+        return reviews.stream().map(r -> toDto(r, insights.get(r.getId()))).toList();
+    }
+
+    private ReviewDTO toDto(ProductReview r, ReviewInsight insight) {
         Product p = r.getProduct();
         Customer c = r.getCustomer();
         OrderItem oi = r.getOrderItem();
@@ -123,7 +152,12 @@ public class ReviewController {
                 c != null ? c.getId() : null,
                 c != null ? c.getFirstName() + " " + c.getLastName() : null,
                 orderId,
-                orderItemId
+                orderItemId,
+                insight != null ? insight.getSentiment().name() : null,
+                insight != null ? insight.getAspects().stream().map(a -> a.getTheme().getDisplayName()).distinct().toList() : List.of(),
+                r.getReplyText(),
+                r.getRepliedAt(),
+                r.getRepliedBy()
         );
     }
 }

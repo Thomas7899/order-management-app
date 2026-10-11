@@ -544,6 +544,11 @@
       }
     }
   },
+  "replies": [
+    "Guten Tag {vorname}, vielen Dank für Ihre offene Rückmeldung. Es tut uns leid, dass Sie nicht zufrieden waren. Bitte melden Sie sich mit Ihrer Bestellnummer bei unserem Kundenservice, damit wir Umtausch oder Reparatur prüfen können. Ihr Kundenservice der OM Handels GmbH",
+    "Hallo {vorname}, danke, dass Sie sich die Zeit für Ihre Bewertung genommen haben. Ihre Hinweise haben wir an unseren Einkauf weitergegeben. Für eine Lösung im Einzelfall wenden Sie sich bitte mit Ihrer Bestellnummer an unseren Kundenservice. Ihr Kundenservice der OM Handels GmbH",
+    "Guten Tag {vorname}, das hätte nicht passieren dürfen, und wir bedauern die Unannehmlichkeiten. Wir haben Ihren Fall aufgenommen und melden uns bei Ihnen, sobald wir eine Lösung haben. Ihr Kundenservice der OM Handels GmbH"
+  ],
   "scenarios": {
     "incident": [
       "Seit dem letzten Firmware-Update verliert das Set ständig die Verbindung zur App.",

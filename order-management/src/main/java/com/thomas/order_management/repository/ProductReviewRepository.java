@@ -88,4 +88,13 @@ public interface ProductReviewRepository extends JpaRepository<ProductReview, Lo
     Long countByCustomerId(Long customerId);
 
     List<ProductReview> findByCustomerIdAndProductId(Long customerId, Long productId);
+
+    /** Bewertungen mit 1–2 Sternen seit einem Zeitpunkt, die noch keine Antwort haben (neueste zuerst). */
+    @EntityGraph(attributePaths = {"product", "customer", "orderItem", "orderItem.order"})
+    @Query("""
+        SELECT r FROM ProductReview r
+        WHERE r.rating <= 2 AND r.replyText IS NULL AND r.createdAt >= :since
+        ORDER BY r.createdAt DESC
+    """)
+    List<ProductReview> findOpenCritical(@Param("since") LocalDateTime since);
 }

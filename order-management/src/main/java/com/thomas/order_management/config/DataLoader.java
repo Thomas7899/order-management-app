@@ -484,8 +484,8 @@ public class DataLoader implements CommandLineRunner {
         List<DemoReviewGenerator.Purchase> purchases = orderItemRepository.findBilledPurchases().stream()
                 .map(row -> new DemoReviewGenerator.Purchase((Long) row[0], (Long) row[1], (Long) row[2], (LocalDateTime) row[3]))
                 .toList();
-        List<DemoReviewGenerator.Draft> drafts = new DemoReviewGenerator(random, LocalDate.now())
-                .generate(products, customers, purchases, trendingUpProducts, trendingDownProducts);
+        DemoReviewGenerator generator = new DemoReviewGenerator(random, LocalDate.now());
+        List<DemoReviewGenerator.Draft> drafts = generator.generate(products, customers, purchases, trendingUpProducts, trendingDownProducts);
 
         List<ProductReview> reviews = drafts.stream().map(draft -> {
             ProductReview review = new ProductReview();
@@ -497,6 +497,11 @@ public class DataLoader implements CommandLineRunner {
             review.setRating(draft.rating());
             review.setComment(draft.comment());
             review.setCreatedAt(draft.createdAt());
+            generator.reply(draft).ifPresent(reply -> {
+                review.setReplyText(reply.text());
+                review.setRepliedAt(reply.at());
+                review.setRepliedBy("MREUTER");
+            });
             return review;
         }).toList();
         List<ProductReview> saved = reviewRepository.saveAll(reviews);

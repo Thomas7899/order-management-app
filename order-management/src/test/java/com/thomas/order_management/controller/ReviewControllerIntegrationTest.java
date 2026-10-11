@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -54,6 +55,7 @@ class ReviewControllerIntegrationTest {
     private Product product;
     private Long orderId;
     private Long orderItemId;
+    private Long reviewId;
 
     @BeforeEach
     void setUp() {
@@ -85,13 +87,17 @@ class ReviewControllerIntegrationTest {
         review.setRating(2);
         review.setComment("Ging nach einer Woche kaputt");
         review.setCreatedAt(LocalDateTime.now());
-        reviewRepository.save(review);
+        reviewId = reviewRepository.save(review).getId();
     }
 
     private String login() throws Exception {
+        return login("SWEBER");
+    }
+
+    private String login(String username) throws Exception {
         String body = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"SWEBER\",\"password\":\"" + UserService.DEMO_PASSWORD + "\"}"))
+                        .content("{\"username\":\"" + username + "\",\"password\":\"" + UserService.DEMO_PASSWORD + "\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return "Bearer " + objectMapper.readTree(body).get("token").asString();
@@ -117,5 +123,41 @@ class ReviewControllerIntegrationTest {
         mockMvc.perform(get("/api/reviews/order-item/" + orderItemId).header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].orderId").value(orderId));
+    }
+
+    @Test
+    @DisplayName("Vertrieb beantwortet eine kritische Bewertung mit Vorschlag; Controlling darf nicht antworten")
+    void shouldReplyToCriticalReview() throws Exception {
+        String sales = login("MREUTER");
+        mockMvc.perform(get("/api/reviews/open-critical").header("Authorization", sales))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reviews[?(@.id == " + reviewId + ")]").exists());
+
+        mockMvc.perform(post("/api/reviews/" + reviewId + "/reply-suggestion").header("Authorization", sales))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.source").value("REGELN"))
+                .andExpect(jsonPath("$.text").value(org.hamcrest.Matchers.containsString(product.getName())));
+
+        String reply = "{\"text\":\"Guten Tag Rita, das tut uns leid. Bitte melden Sie sich bei unserem Kundenservice.\"}";
+        mockMvc.perform(put("/api/reviews/" + reviewId + "/reply").header("Authorization", login())
+                        .contentType(MediaType.APPLICATION_JSON).content(reply))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/reviews/" + reviewId + "/reply").header("Authorization", sales)
+                        .contentType(MediaType.APPLICATION_JSON).content(reply))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.repliedBy").value("MREUTER"))
+                .andExpect(jsonPath("$.replyText").value(org.hamcrest.Matchers.startsWith("Guten Tag Rita")));
+
+        mockMvc.perform(get("/api/reviews/open-critical").header("Authorization", sales))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reviews[?(@.id == " + reviewId + ")]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("Qualitätsauffälligkeiten sind für alle angemeldeten Benutzer abrufbar")
+    void shouldListQualityAlerts() throws Exception {
+        mockMvc.perform(get("/api/reviews/insights/quality-alerts").header("Authorization", login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
     }
 }

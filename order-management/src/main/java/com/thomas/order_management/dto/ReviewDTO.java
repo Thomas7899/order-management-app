@@ -3,6 +3,7 @@ package com.thomas.order_management.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record ReviewDTO(
         Long id,
@@ -18,5 +19,12 @@ public record ReviewDTO(
         String customerName,
 
         Long orderId,
-        Long orderItemId
+        Long orderItemId,
+
+        // Einordnung (Stimmung, Themen) und Antwort des Kundenservice
+        String sentiment,
+        List<String> themes,
+        String replyText,
+        LocalDateTime repliedAt,
+        String repliedBy
 ) {}

@@ -46,6 +46,16 @@ public class ProductReview {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    /** Antwort des Kundenservice (öffentlich sichtbar unter der Bewertung). */
+    @Column(name = "reply_text", columnDefinition = "TEXT")
+    private String replyText;
+
+    @Column(name = "replied_at")
+    private LocalDateTime repliedAt;
+
+    @Column(name = "replied_by", length = 50)
+    private String repliedBy;
+
     // Vollständiger Konstruktor für Bewertungen zu einem gekauften Produkt
     public ProductReview(Product product,
                          Customer customer,
