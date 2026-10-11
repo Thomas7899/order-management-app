@@ -158,10 +158,14 @@ public class ReviewSentimentServiceV2 {
         RuleBasedScore ruleScore = calculateRuleBasedScore(review);
         
         // 2. LLM-Analyse für Details
-        String prompt = buildSentimentPrompt(review, ruleScore);
-        String aiResponse = chatClient.prompt().user(prompt).call().content();
-        
-        return parseSentimentResponse(aiResponse, review.getId(), ruleScore);
+        try {
+            String prompt = buildSentimentPrompt(review, ruleScore);
+            String aiResponse = chatClient.prompt().user(prompt).call().content();
+            return parseSentimentResponse(aiResponse, review.getId(), ruleScore);
+        } catch (Exception e) {
+            log.warn("Sentiment analysis for review {} failed, using fallback: {}", review.getId(), e.getMessage());
+            return createFallbackSentiment(review.getId(), ruleScore);
+        }
     }
 
     private List<EnhancedSentiment> batchAnalyzeSentiments(List<ProductReview> reviews) {

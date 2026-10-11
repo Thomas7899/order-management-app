@@ -2,26 +2,28 @@
 package com.thomas.order_management.ai.anomaly;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thomas.order_management.dto.AnomalyReportDTO;
+import com.thomas.order_management.dto.ProductAnomalyDTO;
 import com.thomas.order_management.model.Product;
 import com.thomas.order_management.model.ProductReview;
+import com.thomas.order_management.repository.ProductRepository;
 import com.thomas.order_management.repository.ProductReviewRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClient.CallResponseSpec;
 import org.springframework.ai.chat.client.ChatClient.ChatClientRequestSpec;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -29,15 +31,21 @@ import static org.mockito.Mockito.*;
 
 /**
  * Unit-Tests für ReviewAnomalyServiceV2.
- * Testet statistische Anomalie-Erkennung und LLM-Verfeinerung.
+ * Testet statistische Vorfilterung, Keyword-Erkennung, LLM-Analyse und Fallback.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ReviewAnomalyServiceV2 Tests")
 class ReviewAnomalyServiceV2Test {
 
+    private static final LocalDate START = LocalDate.of(2026, 1, 1);
+    private static final LocalDate END = LocalDate.of(2026, 1, 31);
+
+    @Mock
+    private ProductRepository productRepository;
+
     @Mock
     private ProductReviewRepository reviewRepository;
-    
+
     @Mock
     private ChatClient chatClient;
 
@@ -47,19 +55,16 @@ class ReviewAnomalyServiceV2Test {
     @Mock
     private CallResponseSpec responseSpec;
 
-    private ObjectMapper objectMapper;
     private ReviewAnomalyServiceV2 service;
+
+    private long nextReviewId = 1;
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
+        ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
-        
-        service = new ReviewAnomalyServiceV2(
-                reviewRepository,
-                chatClient,
-                objectMapper
-        );
+
+        service = new ReviewAnomalyServiceV2(productRepository, reviewRepository, chatClient, objectMapper);
     }
 
     @Nested
@@ -67,270 +72,164 @@ class ReviewAnomalyServiceV2Test {
     class DetectAnomaliesTests {
 
         @Test
-        @DisplayName("sollte keine Anomalien erkennen bei normaler Verteilung")
-        void shouldNotDetectAnomaliesInNormalDistribution() {
-            // Given
-            Long productId = 1L;
-            List<ProductReview> reviews = createNormalDistributionReviews(productId, 4.0, 0.5, 50);
-            
-            when(reviewRepository.findByProductId(productId)).thenReturn(reviews);
+        @DisplayName("sollte leeren Report ohne LLM-Aufruf liefern, wenn keine Reviews vorliegen")
+        void shouldReturnEmptyReportWithoutReviews() {
+            when(productRepository.findAll()).thenReturn(List.of(product(1L)));
+            when(reviewRepository.findByCreatedAtBetween(any(), any())).thenReturn(List.of());
 
-            // When
-            List<ReviewAnomalyServiceV2.AnomalyResult> results = service.detectAnomalies(productId);
+            AnomalyReportDTO report = service.detectAnomalies(START, END);
 
-            // Then
-            assertThat(results).isEmpty();
+            assertThat(report.anomalies).isEmpty();
+            assertThat(report.windowStart).isEqualTo(START);
+            assertThat(report.windowEnd).isEqualTo(END);
             verify(chatClient, never()).prompt();
         }
 
         @Test
-        @DisplayName("sollte Anomalien bei Ausreißern erkennen")
-        void shouldDetectAnomaliesWithOutliers() {
-            // Given
-            Long productId = 1L;
-            List<ProductReview> reviews = createNormalDistributionReviews(productId, 4.5, 0.3, 20);
-            
-            // Anomalie hinzufügen: 1-Stern bei durchschnittlich 4.5 Sternen
-            ProductReview anomaly = createReview(100L, productId, 1, "Katastrophe! Alles kaputt!");
-            reviews.add(anomaly);
-            
-            String mockLlmResponse = """
-                {
-                  "anomalyScore": 0.9,
-                  "classification": "CRITICAL",
-                  "reasoning": "Rating deutlich unter Durchschnitt, kritische Schlüsselwörter",
-                  "suggestedAction": "Sofortige Überprüfung erforderlich"
-                }
-                """;
-            
-            when(reviewRepository.findByProductId(productId)).thenReturn(reviews);
-            mockChatClient(mockLlmResponse);
+        @DisplayName("sollte bei unauffälligen Produkten keine Anomalien melden")
+        void shouldNotDetectAnomaliesForInconspicuousProducts() {
+            Product p1 = product(1L);
+            Product p2 = product(2L);
+            List<ProductReview> reviews = new ArrayList<>();
+            reviews.addAll(reviews(p1, 4, 10, "Gutes Produkt"));
+            reviews.addAll(reviews(p2, 5, 10, "Sehr zufrieden"));
 
-            // When
-            List<ReviewAnomalyServiceV2.AnomalyResult> results = service.detectAnomalies(productId);
+            when(productRepository.findAll()).thenReturn(List.of(p1, p2));
+            when(reviewRepository.findByCreatedAtBetween(any(), any())).thenReturn(reviews);
 
-            // Then
-            assertThat(results).isNotEmpty();
-            assertThat(results.get(0).getReviewId()).isEqualTo(100L);
-            assertThat(results.get(0).getClassification()).isEqualTo("CRITICAL");
-        }
+            AnomalyReportDTO report = service.detectAnomalies(START, END);
 
-        @Test
-        @DisplayName("sollte zu wenige Reviews ignorieren")
-        void shouldIgnoreTooFewReviews() {
-            // Given
-            Long productId = 1L;
-            List<ProductReview> reviews = List.of(
-                    createReview(1L, productId, 5, "Super!"),
-                    createReview(2L, productId, 1, "Schrecklich!")
-            );
-            
-            when(reviewRepository.findByProductId(productId)).thenReturn(reviews);
-
-            // When
-            List<ReviewAnomalyServiceV2.AnomalyResult> results = service.detectAnomalies(productId);
-
-            // Then
-            assertThat(results).isEmpty();
+            assertThat(report.anomalies).isEmpty();
             verify(chatClient, never()).prompt();
         }
-    }
 
-    @Nested
-    @DisplayName("Z-Score Berechnung Tests")
-    class ZScoreTests {
-
-        @ParameterizedTest
-        @ValueSource(doubles = {2.1, 2.5, 3.0})
-        @DisplayName("sollte nur Reviews mit Z-Score > 2.0 markieren")
-        void shouldOnlyFlagReviewsWithHighZScore(double zScoreThreshold) {
-            // Given
-            Long productId = 1L;
-            // 50 Reviews mit Durchschnitt 4.0 und Standardabweichung 0.5
-            List<ProductReview> reviews = createNormalDistributionReviews(productId, 4.0, 0.5, 50);
-            
-            // Bewertung mit Rating = mean - (zScoreThreshold * stdDev)
-            // Sollte gerade so die Schwelle erreichen
-            double targetRating = 4.0 - (zScoreThreshold * 0.5);
-            int roundedRating = Math.max(1, (int) Math.round(targetRating));
-            
-            ProductReview edgeCase = createReview(100L, productId, roundedRating, "Grenzfall");
-            reviews.add(edgeCase);
-            
-            when(reviewRepository.findByProductId(productId)).thenReturn(reviews);
-            
-            // LLM nur mocken wenn wir Anomalien erwarten
-            mockChatClient("""
-                {"anomalyScore": 0.7, "classification": "POTENTIAL", "reasoning": "Grenzfall", "suggestedAction": "Beobachten"}
-                """);
-
-            // When
-            List<ReviewAnomalyServiceV2.AnomalyResult> results = service.detectAnomalies(productId);
-
-            // Then
-            // Z-Score threshold im Service ist 2.0, also nur Werte darüber werden gefunden
-            if (zScoreThreshold >= 2.0 && roundedRating <= 2) {
-                assertThat(results).isNotEmpty();
+        @Test
+        @DisplayName("sollte statistischen Ausreißer per LLM bewerten lassen")
+        void shouldAnalyzeStatisticalOutlierWithLlm() {
+            Product bad = product(1L);
+            List<Product> products = new ArrayList<>(List.of(bad));
+            List<ProductReview> reviews = new ArrayList<>(reviews(bad, 1, 5, "Enttäuschend"));
+            for (long id = 2; id <= 4; id++) {
+                Product good = product(id);
+                products.add(good);
+                reviews.addAll(reviews(good, 5, 10, "Top"));
             }
-        }
-    }
 
-    @Nested
-    @DisplayName("Kritische Keywords Tests")
-    class CriticalKeywordsTests {
+            when(productRepository.findAll()).thenReturn(products);
+            when(reviewRepository.findByCreatedAtBetween(any(), any())).thenReturn(reviews);
+            mockChatClient("""
+                    ```json
+                    [{"productId": 1, "productName": "Test Produkt 1",
+                      "reason": "Durchgehend 1-Stern-Bewertungen",
+                      "avgRating": 1.0, "reviewCount": 5, "negativeKeywords": []}]
+                    ```
+                    """);
 
-        @Test
-        @DisplayName("sollte kritische Keywords als Anomalie markieren")
-        void shouldFlagCriticalKeywords() {
-            // Given
-            Long productId = 1L;
-            List<ProductReview> reviews = createNormalDistributionReviews(productId, 3.5, 0.8, 30);
-            
-            // Review mit kritischem Keyword (auch wenn Rating ok ist)
-            ProductReview criticalReview = createReview(100L, productId, 3, 
-                    "Das Produkt ist gesundheitsgefährdend! Enthält schädliche Stoffe.");
-            reviews.add(criticalReview);
-            
-            String mockLlmResponse = """
-                {
-                  "anomalyScore": 0.95,
-                  "classification": "CRITICAL",
-                  "reasoning": "Keyword 'gesundheitsgefährdend' erfordert sofortige Aufmerksamkeit",
-                  "suggestedAction": "Produkt temporär sperren, Qualitätskontrolle"
-                }
-                """;
-            
-            when(reviewRepository.findByProductId(productId)).thenReturn(reviews);
-            mockChatClient(mockLlmResponse);
+            AnomalyReportDTO report = service.detectAnomalies(START, END);
 
-            // When
-            List<ReviewAnomalyServiceV2.AnomalyResult> results = service.detectAnomalies(productId);
-
-            // Then
-            assertThat(results).anyMatch(r -> 
-                    r.getReviewId().equals(100L) && "CRITICAL".equals(r.getClassification()));
+            assertThat(report.anomalies)
+                    .singleElement()
+                    .satisfies(a -> {
+                        assertThat(a.productId()).isEqualTo(1L);
+                        assertThat(a.reason()).isEqualTo("Durchgehend 1-Stern-Bewertungen");
+                    });
+            verify(chatClient).prompt();
         }
 
         @Test
-        @DisplayName("sollte verschiedene kritische Keywords erkennen")
-        void shouldDetectVariousCriticalKeywords() {
-            // Given
-            Long productId = 1L;
-            List<ProductReview> baseReviews = createNormalDistributionReviews(productId, 4.0, 0.5, 20);
-            
-            // Reviews mit verschiedenen kritischen Keywords
-            List<String> criticalComments = List.of(
-                    "Betrug! Fake Produkt!",
-                    "Lebensgefährlich! Bitte entfernen!",
-                    "Das ist reine Fälschung",
-                    "Rechtswidrig, werde Anwalt einschalten"
-            );
-            
-            for (int i = 0; i < criticalComments.size(); i++) {
-                baseReviews.add(createReview(100L + i, productId, 1, criticalComments.get(i)));
+        @DisplayName("sollte kritische Keywords auch bei ordentlicher Bewertung als Kandidat erkennen")
+        void shouldTreatCriticalKeywordsAsCandidate() {
+            Product p1 = product(1L);
+            Product p2 = product(2L);
+            List<ProductReview> reviews = new ArrayList<>();
+            reviews.addAll(reviews(p1, 4, 9, "Gutes Produkt"));
+            reviews.add(review(p1, 4, "Funktioniert, aber das Kabel wurde heiß und es kam Rauch"));
+            reviews.addAll(reviews(p2, 4, 10, "Gutes Produkt"));
+
+            when(productRepository.findAll()).thenReturn(List.of(p1, p2));
+            when(reviewRepository.findByCreatedAtBetween(any(), any())).thenReturn(reviews);
+            mockChatClient("""
+                    [{"productId": 1, "productName": "Test Produkt 1",
+                      "reason": "Sicherheitsrelevanter Hinweis auf Rauchentwicklung",
+                      "avgRating": 4.0, "reviewCount": 10, "negativeKeywords": ["rauch"]}]
+                    """);
+
+            AnomalyReportDTO report = service.detectAnomalies(START, END);
+
+            assertThat(report.anomalies).extracting(ProductAnomalyDTO::productId).containsExactly(1L);
+            assertThat(report.anomalies.get(0).negativeKeywords()).containsExactly("rauch");
+        }
+
+        @Test
+        @DisplayName("sollte bei LLM-Fehler regelbasierte Anomalien liefern")
+        void shouldFallBackToRuleBasedAnomaliesOnLlmError() {
+            Product bad = product(1L);
+            List<Product> products = new ArrayList<>(List.of(bad));
+            List<ProductReview> reviews = new ArrayList<>(reviews(bad, 1, 5, "Sofort defekt"));
+            for (long id = 2; id <= 4; id++) {
+                Product good = product(id);
+                products.add(good);
+                reviews.addAll(reviews(good, 5, 10, "Top"));
             }
-            
-            when(reviewRepository.findByProductId(productId)).thenReturn(baseReviews);
-            mockChatClient("""
-                {"anomalyScore": 0.9, "classification": "CRITICAL", "reasoning": "Kritisches Keyword", "suggestedAction": "Prüfen"}
-                """);
 
-            // When
-            List<ReviewAnomalyServiceV2.AnomalyResult> results = service.detectAnomalies(productId);
-
-            // Then
-            // Alle kritischen Reviews sollten markiert sein
-            assertThat(results.size()).isGreaterThanOrEqualTo(criticalComments.size());
-        }
-    }
-
-    @Nested
-    @DisplayName("detectAllProductAnomalies Tests")
-    class DetectAllProductAnomaliesTests {
-
-        @Test
-        @DisplayName("sollte Anomalien für alle Produkte gruppiert zurückgeben")
-        void shouldReturnGroupedAnomaliesForAllProducts() {
-            // Given
-            List<ProductReview> allReviews = new ArrayList<>();
-            allReviews.addAll(createNormalDistributionReviews(1L, 4.0, 0.5, 15));
-            allReviews.addAll(createNormalDistributionReviews(2L, 4.5, 0.3, 15));
-            
-            // Anomalie für Produkt 1
-            allReviews.add(createReview(100L, 1L, 1, "Katastrophe!"));
-            
-            when(reviewRepository.findAll()).thenReturn(allReviews);
-            mockChatClient("""
-                {"anomalyScore": 0.85, "classification": "POTENTIAL", "reasoning": "Ausreißer", "suggestedAction": "Beobachten"}
-                """);
-
-            // When
-            Map<Long, List<ReviewAnomalyServiceV2.AnomalyResult>> results = 
-                    service.detectAllProductAnomalies();
-
-            // Then
-            assertThat(results).isNotEmpty();
-            assertThat(results.containsKey(1L) || results.containsKey(2L)).isTrue();
-        }
-    }
-
-    @Nested
-    @DisplayName("LLM Verfeinerung Tests")
-    class LlmRefinementTests {
-
-        @Test
-        @DisplayName("sollte LLM-Klassifikation verwenden")
-        void shouldUseLlmClassification() {
-            // Given
-            Long productId = 1L;
-            List<ProductReview> reviews = createNormalDistributionReviews(productId, 4.0, 0.5, 25);
-            reviews.add(createReview(100L, productId, 1, "Sehr enttäuscht"));
-            
-            String mockLlmResponse = """
-                {
-                  "anomalyScore": 0.6,
-                  "classification": "LOW_PRIORITY",
-                  "reasoning": "Typische negative Bewertung, keine kritischen Inhalte",
-                  "suggestedAction": "Keine sofortige Aktion erforderlich"
-                }
-                """;
-            
-            when(reviewRepository.findByProductId(productId)).thenReturn(reviews);
-            mockChatClient(mockLlmResponse);
-
-            // When
-            List<ReviewAnomalyServiceV2.AnomalyResult> results = service.detectAnomalies(productId);
-
-            // Then
-            assertThat(results).isNotEmpty();
-            ReviewAnomalyServiceV2.AnomalyResult result = results.stream()
-                    .filter(r -> r.getReviewId().equals(100L))
-                    .findFirst()
-                    .orElse(null);
-            
-            assertThat(result).isNotNull();
-            assertThat(result.getClassification()).isEqualTo("LOW_PRIORITY");
-            assertThat(result.getSuggestedAction()).contains("Keine sofortige Aktion");
-        }
-
-        @Test
-        @DisplayName("sollte auf Fallback zurückgreifen bei LLM-Fehler")
-        void shouldFallbackOnLlmError() {
-            // Given
-            Long productId = 1L;
-            List<ProductReview> reviews = createNormalDistributionReviews(productId, 4.0, 0.5, 25);
-            reviews.add(createReview(100L, productId, 1, "Problem"));
-            
-            when(reviewRepository.findByProductId(productId)).thenReturn(reviews);
+            when(productRepository.findAll()).thenReturn(products);
+            when(reviewRepository.findByCreatedAtBetween(any(), any())).thenReturn(reviews);
             when(chatClient.prompt()).thenThrow(new RuntimeException("API nicht erreichbar"));
 
-            // When
-            List<ReviewAnomalyServiceV2.AnomalyResult> results = service.detectAnomalies(productId);
+            AnomalyReportDTO report = service.detectAnomalies(START, END);
 
-            // Then
-            // Fallback: Anomalie basierend auf Z-Score ohne LLM-Verfeinerung
-            assertThat(results).isNotEmpty();
-            assertThat(results.get(0).getClassification()).isEqualTo("STATISTICAL_OUTLIER");
+            assertThat(report.anomalies)
+                    .singleElement()
+                    .satisfies(a -> {
+                        assertThat(a.productId()).isEqualTo(1L);
+                        assertThat(a.reason()).startsWith("Niedrige Bewertung");
+                        assertThat(a.reviewCount()).isEqualTo(5);
+                        assertThat(a.negativeKeywords()).containsExactly("defekt");
+                    });
+        }
+    }
+
+    @Nested
+    @DisplayName("analyzeProduct Tests")
+    class AnalyzeProductTests {
+
+        @Test
+        @DisplayName("sollte leer bleiben für unbekanntes Produkt")
+        void shouldReturnEmptyForUnknownProduct() {
+            when(productRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThat(service.analyzeProduct(99L, START, END)).isEmpty();
+            verifyNoInteractions(reviewRepository, chatClient);
+        }
+
+        @Test
+        @DisplayName("sollte gut bewertetes Produkt ohne kritische Keywords nicht analysieren")
+        void shouldSkipWellRatedProductWithoutKeywords() {
+            Product p = product(1L);
+            when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+            when(reviewRepository.findByProductIdAndCreatedAtBetween(eq(1L), any(), any()))
+                    .thenReturn(reviews(p, 5, 5, "Super"));
+
+            assertThat(service.analyzeProduct(1L, START, END)).isEmpty();
+            verify(chatClient, never()).prompt();
+        }
+
+        @Test
+        @DisplayName("sollte schlecht bewertetes Produkt per LLM analysieren")
+        void shouldAnalyzePoorlyRatedProduct() {
+            Product p = product(1L);
+            when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+            when(reviewRepository.findByProductIdAndCreatedAtBetween(eq(1L), any(), any()))
+                    .thenReturn(reviews(p, 2, 4, "Nicht gut"));
+            mockChatClient("""
+                    [{"productId": 1, "productName": "Test Produkt 1", "reason": "Schwache Bewertungen",
+                      "avgRating": 2.0, "reviewCount": 4, "negativeKeywords": []}]
+                    """);
+
+            Optional<ProductAnomalyDTO> result = service.analyzeProduct(1L, START, END);
+
+            assertThat(result).isPresent();
+            assertThat(result.get().reason()).isEqualTo("Schwache Bewertungen");
         }
     }
 
@@ -343,42 +242,28 @@ class ReviewAnomalyServiceV2Test {
         when(responseSpec.content()).thenReturn(response);
     }
 
-    private ProductReview createReview(Long id, Long productId, int rating, String comment) {
+    private Product product(Long id) {
         Product product = new Product();
-        product.setId(productId);
-        product.setName("Test Produkt " + productId);
+        product.setId(id);
+        product.setName("Test Produkt " + id);
+        return product;
+    }
 
+    private List<ProductReview> reviews(Product product, int rating, int count, String comment) {
+        List<ProductReview> reviews = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            reviews.add(review(product, rating, comment));
+        }
+        return reviews;
+    }
+
+    private ProductReview review(Product product, int rating, String comment) {
         ProductReview review = new ProductReview();
-        review.setId(id);
+        review.setId(nextReviewId++);
         review.setProduct(product);
         review.setRating(rating);
         review.setComment(comment);
-        review.setCreatedAt(LocalDateTime.now());
-
+        review.setCreatedAt(LocalDateTime.of(2026, 1, 15, 12, 0));
         return review;
-    }
-
-    /**
-     * Erstellt Reviews mit annähernd normalverteilten Ratings.
-     */
-    private List<ProductReview> createNormalDistributionReviews(Long productId, double mean, double stdDev, int count) {
-        List<ProductReview> reviews = new ArrayList<>();
-        java.util.Random random = new java.util.Random(42); // Seed für Reproduzierbarkeit
-        
-        for (int i = 0; i < count; i++) {
-            // Box-Muller Transform für Normalverteilung
-            double u1 = random.nextDouble();
-            double u2 = random.nextDouble();
-            double z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
-            double rating = mean + z * stdDev;
-            
-            // Auf 1-5 begrenzen
-            int clampedRating = Math.max(1, Math.min(5, (int) Math.round(rating)));
-            
-            reviews.add(createReview((long) i, productId, clampedRating, 
-                    "Standardbewertung " + clampedRating + " Sterne"));
-        }
-        
-        return reviews;
     }
 }

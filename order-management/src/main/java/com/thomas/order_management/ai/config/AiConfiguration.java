@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.retry.annotation.EnableRetry;
 
 /**
@@ -76,6 +77,17 @@ public class AiConfiguration {
                         .maxTokens(maxTokens)
                         .build())
                 .build();
+    }
+
+    /**
+     * Sobald ein eigenes ObjectMapper-Bean existiert, legt Spring Boot keinen eigenen mehr an.
+     * Ohne dieses Bean würde die REST-API die spring.jackson.*-Einstellungen verlieren
+     * (z. B. Datumswerte als Arrays statt als ISO-Strings).
+     */
+    @Bean
+    @Primary
+    public ObjectMapper objectMapper(Jackson2ObjectMapperBuilder builder) {
+        return builder.build();
     }
 
     /**
