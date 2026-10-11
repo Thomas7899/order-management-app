@@ -46,6 +46,14 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    @DisplayName("Health-Check ist ohne Anmeldung erreichbar")
+    void shouldExposeHealthCheck() throws Exception {
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
+    }
+
+    @Test
     @DisplayName("Demo-Zugänge sind ohne Anmeldung abrufbar")
     void shouldListDemoUsers() throws Exception {
         mockMvc.perform(get("/api/auth/demo-users"))
