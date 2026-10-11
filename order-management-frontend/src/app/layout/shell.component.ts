@@ -67,9 +67,9 @@ export class ShellComponent {
       text: 'Analyse',
       items: [
         { text: 'Kennzahlen', icon: 'kpi-corporate-performance', route: '/reporting' },
-        { text: 'Bewertungen', icon: 'feedback', route: '/reviews' },
-        { text: 'KI-Trends', icon: 'ai', route: '/ki-trends' },
-        { text: 'KI-Bestandsanalyse', icon: 'lightbulb', route: '/inventory-ai' }
+        { text: 'Bewertungsanalyse', icon: 'ai', route: '/review-analysis' },
+        { text: 'Bewertungssuche', icon: 'feedback', route: '/reviews' },
+        { text: 'Bestandsanalyse', icon: 'lightbulb', route: '/inventory-ai' }
       ]
     }
   ];
