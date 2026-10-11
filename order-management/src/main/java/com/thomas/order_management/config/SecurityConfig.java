@@ -92,8 +92,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAnyRole(WAREHOUSE, ADMIN)
 
                 // KI-Läufe und Wartung verursachen Kosten bei OpenAI
-                .requestMatchers(HttpMethod.POST, "/api/reviews/maintenance/**", "/api/reviews/trends/analyze",
-                        "/api/reviews/sentiment/**").hasAnyRole(CONTROLLING, ADMIN)
+                .requestMatchers(HttpMethod.POST, "/api/reviews/maintenance/**", "/api/reviews/insights/**")
+                        .hasAnyRole(CONTROLLING, ADMIN)
                 .requestMatchers(HttpMethod.POST, "/reviews/**", "/api/reviews/**").hasAnyRole(SALES, ADMIN)
 
                 .anyRequest().authenticated()

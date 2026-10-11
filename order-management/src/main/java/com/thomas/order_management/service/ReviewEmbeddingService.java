@@ -1,100 +1,78 @@
-// order-management/src/main/java/com/thomas/order_management/service/ReviewEmbeddingService.java
-// order-management/src/main/java/com/thomas/order_management/service/ReviewEmbeddingService.java
 package com.thomas.order_management.service;
 
 import com.thomas.order_management.model.ProductReview;
-import com.thomas.order_management.repository.ProductReviewRepository;
 import com.thomas.order_management.repository.ReviewEmbeddingRepository;
-import lombok.RequiredArgsConstructor;
+import com.thomas.order_management.repository.ReviewEmbeddingRepository.SimilarReview;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.openai.OpenAiEmbeddingModel;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
+/**
+ * Embeddings der Bewertungen für die semantische Suche (pgvector, Kosinus-Ähnlichkeit).
+ */
+@Slf4j
 @Service
-@RequiredArgsConstructor
-@Transactional
 public class ReviewEmbeddingService {
 
-    private final ProductReviewRepository reviewRepository;
+    private static final int BATCH_SIZE = 100;
+
     private final ReviewEmbeddingRepository embeddingRepository;
     private final OpenAiEmbeddingModel embeddingModel;
 
-    @Value("${app.similarity.top-k:50}")
-    private int defaultTopK;
-
-    /**
-     * Erstellt ein Embedding für eine neue Review.
-     */
-    public ProductReview createEmbedding(ProductReview review) {
-        ProductReview saved = reviewRepository.save(review);
-
-        String enrichedText = buildEmbeddingText(saved);
-        float[] embedding = embeddingModel.embed(enrichedText);
-
-        List<Double> normalized = normalize(embedding);
-        embeddingRepository.upsertEmbedding(saved.getId(), normalized);
-
-        return saved;
+    public ReviewEmbeddingService(ReviewEmbeddingRepository embeddingRepository, OpenAiEmbeddingModel embeddingModel) {
+        this.embeddingRepository = embeddingRepository;
+        this.embeddingModel = embeddingModel;
     }
 
-    /**
-     * Findet ähnliche Reviews basierend auf Embedding-Similarity.
-     */
-    public List<ProductReview> findSimilar(String query, int limit) {
-        float[] queryEmbedding = embeddingModel.embed(query);
-        List<Double> vector = normalize(queryEmbedding);
-
-        int topK = limit > 0 ? limit : defaultTopK;
-
-        List<Long> ids = embeddingRepository.findSimilarReviewIds(vector, topK);
-
-        if (ids.isEmpty()) return List.of();
-
-        return reviewRepository.findAllByIdWithProductAndCustomer(ids);
-    }
-
-    /**
-     * Baut erweiterten Text für verbesserte Embeddings.
-     */
-    private String buildEmbeddingText(ProductReview review) {
-        StringBuilder sb = new StringBuilder();
-
-        if (review.getProduct() != null) {
-            sb.append("Produkt: ").append(review.getProduct().getName()).append("\n");
-
-            if (review.getProduct().getCategory() != null) {
-                sb.append("Kategorie: ").append(review.getProduct().getCategory()).append("\n");
+    /** Erzeugt Embeddings blockweise (ein API-Aufruf je 100 Bewertungen). Gibt die Anzahl der erfolgreichen zurück. */
+    public int embed(List<ProductReview> reviews) {
+        int done = 0;
+        for (int from = 0; from < reviews.size(); from += BATCH_SIZE) {
+            List<ProductReview> batch = reviews.subList(from, Math.min(reviews.size(), from + BATCH_SIZE));
+            List<String> texts = batch.stream().map(ReviewEmbeddingService::embeddingText).toList();
+            try {
+                List<float[]> vectors = embeddingModel.embed(texts);
+                for (int i = 0; i < batch.size(); i++) {
+                    embeddingRepository.upsertEmbedding(batch.get(i).getId(), texts.get(i), normalize(vectors.get(i)));
+                }
+                done += batch.size();
+            } catch (RuntimeException ex) {
+                log.warn("Embeddings für {} Bewertungen fehlgeschlagen: {}", batch.size(), ex.getMessage());
             }
         }
+        return done;
+    }
 
-        sb.append("Rating: ").append(review.getRating()).append("/5").append("\n");
-        sb.append("Kommentar: ").append(review.getComment());
+    /** Kandidaten der Vektorsuche, absteigend nach Ähnlichkeit. */
+    public List<SimilarReview> findSimilar(String query, int candidates) {
+        return embeddingRepository.findSimilar(normalize(embeddingModel.embed(query)), candidates);
+    }
 
+    /**
+     * Text, der eingebettet wird: Material, Warengruppe und Kommentar. Die Sternezahl bleibt bewusst
+     * draußen, damit die Suche nach Inhalt und nicht nach Bewertungshöhe trifft.
+     */
+    static String embeddingText(ProductReview review) {
+        StringBuilder sb = new StringBuilder();
+        if (review.getProduct() != null) {
+            sb.append("Produkt: ").append(review.getProduct().getName()).append('\n');
+            if (review.getProduct().getCategory() != null) {
+                sb.append("Warengruppe: ").append(review.getProduct().getCategory()).append('\n');
+            }
+        }
+        sb.append("Bewertung: ").append(review.getComment());
         return sb.toString();
     }
 
-    /**
-     * Normalisiert Embedding auf Länge 1.
-     */
-    private List<Double> normalize(float[] arr) {
-    double sum = 0;
-
-    for (float v : arr) {
-        sum += v * v;
+    private static List<Double> normalize(float[] values) {
+        double sum = 0;
+        for (float v : values) sum += v * v;
+        double norm = sum == 0 ? 1 : Math.sqrt(sum);
+        List<Double> result = new ArrayList<>(values.length);
+        for (float v : values) result.add(v / norm);
+        return result;
     }
-
-    double norm = Math.sqrt(sum);
-    if (norm == 0) norm = 1;
-
-    List<Double> result = new java.util.ArrayList<>(arr.length);
-    for (float v : arr) {
-        result.add(v / norm);
-    }
-    return result;
-}
 }

@@ -1,0 +1,578 @@
+{
+  "openers": {
+    "POS": [
+      "Bin rundum zufrieden.",
+      "Klare Kaufempfehlung.",
+      "Hat meine Erwartungen übertroffen.",
+      "Nach drei Wochen im Einsatz kann ich sagen: gute Wahl.",
+      "Zweiter Kauf bei diesem Händler und wieder zufrieden.",
+      "Genau das, was ich gesucht habe."
+    ],
+    "NEU": [
+      "Gemischte Gefühle.",
+      "Solide, aber nicht überragend.",
+      "Für den Alltag in Ordnung.",
+      "Nach einigen Wochen ein ehrliches Fazit."
+    ],
+    "NEG": [
+      "Leider ein Fehlkauf.",
+      "Ich bin enttäuscht.",
+      "So nicht empfehlenswert.",
+      "Hatte mir deutlich mehr erhofft."
+    ]
+  },
+  "closers": {
+    "POS": [
+      "Würde ich jederzeit wieder kaufen.",
+      "Fünf Sterne von mir.",
+      "Kann ich guten Gewissens weiterempfehlen.",
+      "Danke für die schnelle Abwicklung."
+    ],
+    "NEU": [
+      "Für den Preis geht es in Ordnung.",
+      "Mal sehen, wie es sich auf Dauer schlägt."
+    ],
+    "NEG": [
+      "Das Gerät geht zurück.",
+      "Würde ich so nicht noch einmal kaufen.",
+      "Schade um das Geld."
+    ]
+  },
+  "generic": {
+    "DELIVERY": {
+      "POS": [
+        "Die Lieferung kam schon am nächsten Tag, gut verpackt.",
+        "Versand war schnell und die Verpackung tadellos.",
+        "Pünktlich geliefert, der Zusteller hat sogar vorher angerufen."
+      ],
+      "NEG": [
+        "Die Lieferung hat fast zwei Wochen gedauert.",
+        "Der Karton war beschädigt und eine Ecke eingedrückt.",
+        "Das Paket wurde trotz Zustellversuch einfach beim Nachbarn abgestellt, ohne Benachrichtigung."
+      ],
+      "NEU": [
+        "Lieferung im angekündigten Zeitraum."
+      ]
+    },
+    "PRICE": {
+      "POS": [
+        "Preis-Leistung stimmt absolut.",
+        "Für diesen Preis bekommt man woanders deutlich weniger.",
+        "Im Angebot gekauft und ein echtes Schnäppchen."
+      ],
+      "NEG": [
+        "Für den Preis hätte ich mehr erwartet.",
+        "Ehrlich gesagt überteuert für das, was man bekommt.",
+        "Bei der Konkurrenz gibt es Vergleichbares deutlich günstiger."
+      ],
+      "NEU": [
+        "Der Preis ist im üblichen Rahmen."
+      ]
+    },
+    "SERVICE": {
+      "POS": [
+        "Der Kundenservice hat meine Frage innerhalb eines Tages freundlich beantwortet.",
+        "Umtausch lief über den Kundendienst völlig unkompliziert.",
+        "Die Hotline war erreichbar und kompetent."
+      ],
+      "NEG": [
+        "Auf meine Reklamation habe ich nach zwei Wochen immer noch keine Rückmeldung.",
+        "Der Kundenservice ist kaum erreichbar, die Hotline hängt ständig in der Warteschleife.",
+        "Die Rücksendung war umständlich und die Erstattung dauert ewig."
+      ],
+      "NEU": [
+        "Mit dem Service hatte ich bisher keinen Kontakt."
+      ]
+    }
+  },
+  "categories": {
+    "Elektronik": {
+      "FUNCTION": {
+        "POS": [
+          "Der Akku hält locker zwei Tage durch.",
+          "Die Leistung ist beeindruckend, alles läuft flüssig.",
+          "Der Klang ist klar und kräftig, auch bei hoher Lautstärke.",
+          "Bluetooth-Verbindung steht stabil, auch über mehrere Räume."
+        ],
+        "NEG": [
+          "Der Akku ist schon nach wenigen Stunden leer.",
+          "Die Bluetooth-Verbindung bricht ständig ab.",
+          "Das Display hat einen deutlichen Gelbstich.",
+          "Die App stürzt regelmäßig ab und die Software wirkt unfertig."
+        ],
+        "NEU": [
+          "Die Leistung ist für den Alltag ausreichend."
+        ]
+      },
+      "QUALITY": {
+        "POS": [
+          "Die Verarbeitung ist hochwertig, nichts knarzt.",
+          "Das Gehäuse fühlt sich wertig und stabil an."
+        ],
+        "NEG": [
+          "Die Verarbeitung wirkt billig, das Gehäuse knarzt.",
+          "Für ein Markenprodukt ist das Material erstaunlich minderwertig."
+        ],
+        "NEU": [
+          "Die Verarbeitung ist ordentlich, aber nicht besonders."
+        ]
+      },
+      "DURABILITY": {
+        "POS": [
+          "Läuft seit Monaten ohne ein einziges Problem.",
+          "Robust gebaut, hat auch einen Sturz vom Tisch überlebt."
+        ],
+        "NEG": [
+          "Nach drei Wochen war das Gerät defekt und lässt sich nicht mehr einschalten.",
+          "Der Ladeanschluss ist nach kurzer Zeit kaputt gegangen.",
+          "Nach zwei Monaten ist die Taste abgebrochen."
+        ],
+        "NEU": [
+          "Wie haltbar es ist, kann ich noch nicht sagen."
+        ]
+      },
+      "USABILITY": {
+        "POS": [
+          "Die Einrichtung war in fünf Minuten erledigt.",
+          "Die Bedienung ist intuitiv, auch ohne Anleitung."
+        ],
+        "NEG": [
+          "Die Einrichtung ist kompliziert und die Anleitung unverständlich.",
+          "Die Bedienung über die App ist umständlich."
+        ],
+        "NEU": [
+          "Die Bedienung braucht etwas Eingewöhnung."
+        ]
+      },
+      "DESIGN": {
+        "POS": [
+          "Das Design ist schlicht und edel.",
+          "Sieht auf dem Schreibtisch richtig schick aus."
+        ],
+        "NEG": [
+          "Die Farbe sieht ganz anders aus als auf den Produktbildern."
+        ],
+        "NEU": [
+          "Optisch unauffällig."
+        ]
+      }
+    },
+    "Möbel": {
+      "FUNCTION": {
+        "POS": [
+          "Sitzt sich sehr bequem, auch nach Stunden.",
+          "Viel Stauraum, alles findet seinen Platz.",
+          "Die Höhenverstellung funktioniert leicht und präzise."
+        ],
+        "NEG": [
+          "Nach einer Stunde Sitzen tut der Rücken weh, die Polsterung ist zu dünn.",
+          "Die Schubladen klemmen und laufen schwer.",
+          "Die Höhenverstellung funktioniert nicht richtig und rutscht ab."
+        ],
+        "NEU": [
+          "Bequem ist es, aber nichts Besonderes."
+        ]
+      },
+      "QUALITY": {
+        "POS": [
+          "Massiv und stabil, da wackelt nichts.",
+          "Die Verarbeitung ist hochwertig, die Kanten sind sauber."
+        ],
+        "NEG": [
+          "Das Material ist dünner als erwartet und wackelt.",
+          "Die Oberfläche hatte schon beim Auspacken Kratzer.",
+          "Die Verarbeitung ist schlampig, die Bohrungen passen nicht genau."
+        ],
+        "NEU": [
+          "Verarbeitung für den Preis in Ordnung."
+        ]
+      },
+      "DURABILITY": {
+        "POS": [
+          "Nach einem halben Jahr täglicher Nutzung sieht es aus wie neu."
+        ],
+        "NEG": [
+          "Nach wenigen Wochen hat sich ein Riss im Holz gebildet.",
+          "Die Naht am Bezug ist nach einem Monat aufgegangen."
+        ],
+        "NEU": [
+          "Wie gut es auf Dauer hält, wird sich zeigen."
+        ]
+      },
+      "USABILITY": {
+        "POS": [
+          "Der Aufbau hat zu zweit keine Stunde gedauert.",
+          "Die Montageanleitung ist klar und alle Schrauben sind beschriftet."
+        ],
+        "NEG": [
+          "Die Montage war ein Albtraum, es fehlten Schrauben.",
+          "Die Aufbauanleitung ist unverständlich, ich habe drei Stunden gebraucht."
+        ],
+        "NEU": [
+          "Der Aufbau ist machbar, man braucht aber etwas Geduld."
+        ]
+      },
+      "DESIGN": {
+        "POS": [
+          "Optisch ein echter Hingucker im Wohnzimmer.",
+          "Die Farbe passt perfekt zu unserer Einrichtung, sieht edel aus."
+        ],
+        "NEG": [
+          "Die Farbe wirkt in echt deutlich dunkler als auf den Fotos."
+        ],
+        "NEU": [
+          "Das Design ist schlicht."
+        ]
+      }
+    },
+    "Beleuchtung": {
+      "FUNCTION": {
+        "POS": [
+          "Das Licht ist angenehm warm und lässt sich stufenlos dimmen.",
+          "Die Helligkeit reicht locker für das ganze Zimmer.",
+          "Die Steuerung per App funktioniert zuverlässig."
+        ],
+        "NEG": [
+          "Das Licht flackert beim Dimmen.",
+          "Viel zu dunkel, die Helligkeit reicht nicht mal für den Flur.",
+          "Die Verbindung zur App bricht immer wieder ab."
+        ],
+        "NEU": [
+          "Die Helligkeit ist in Ordnung."
+        ]
+      },
+      "QUALITY": {
+        "POS": [
+          "Die Leuchte ist hochwertig verarbeitet, das Metall fühlt sich wertig an."
+        ],
+        "NEG": [
+          "Das Material wirkt billig, der Schirm ist aus dünnem Plastik."
+        ],
+        "NEU": [
+          "Verarbeitung solide."
+        ]
+      },
+      "DURABILITY": {
+        "POS": [
+          "Leuchtet seit über einem Jahr ohne Ausfall."
+        ],
+        "NEG": [
+          "Nach zwei Wochen ist die Hälfte der LEDs ausgefallen.",
+          "Der Schalter ist nach kurzer Zeit kaputt gegangen."
+        ],
+        "NEU": [
+          "Zur Haltbarkeit kann ich noch nichts sagen."
+        ]
+      },
+      "USABILITY": {
+        "POS": [
+          "Die Montage an der Decke war in zehn Minuten erledigt.",
+          "Die Einrichtung in der App war kinderleicht."
+        ],
+        "NEG": [
+          "Die Montage ist umständlich, die Anleitung hilft kaum."
+        ],
+        "NEU": [
+          "Die Installation braucht etwas Geschick."
+        ]
+      },
+      "DESIGN": {
+        "POS": [
+          "Das Design ist modern und sieht auch ausgeschaltet schick aus.",
+          "Optisch sehr elegant, wird oft darauf angesprochen."
+        ],
+        "NEG": [
+          "Sieht in echt deutlich billiger aus als auf den Bildern."
+        ],
+        "NEU": [
+          "Optisch neutral."
+        ]
+      }
+    },
+    "Bürobedarf": {
+      "FUNCTION": {
+        "POS": [
+          "Funktioniert genau wie beschrieben, auch bei dickem Papier.",
+          "Der Druck ist scharf und das Gerät arbeitet leise."
+        ],
+        "NEG": [
+          "Das Papier verklemmt sich ständig.",
+          "Funktioniert nur bei dünnem Papier, alles andere bleibt hängen."
+        ],
+        "NEU": [
+          "Erfüllt seinen Zweck."
+        ]
+      },
+      "QUALITY": {
+        "POS": [
+          "Stabile Verarbeitung, wirkt langlebig.",
+          "Hochwertiges Material, nichts wackelt."
+        ],
+        "NEG": [
+          "Das Plastik wirkt billig und biegt sich schon beim Auspacken.",
+          "Die Verarbeitung ist minderwertig, die Kanten sind scharf."
+        ],
+        "NEU": [
+          "Verarbeitung im Rahmen."
+        ]
+      },
+      "DURABILITY": {
+        "POS": [
+          "Im Büro seit Monaten im Dauereinsatz und hält."
+        ],
+        "NEG": [
+          "Nach einem Monat ist der Mechanismus kaputt.",
+          "Der Hebel ist nach wenigen Wochen abgebrochen."
+        ],
+        "NEU": [
+          "Wie lange es hält, muss sich zeigen."
+        ]
+      },
+      "USABILITY": {
+        "POS": [
+          "Die Handhabung ist einfach und selbsterklärend."
+        ],
+        "NEG": [
+          "Die Bedienung ist umständlich, man braucht viel Kraft."
+        ],
+        "NEU": [
+          "Die Bedienung ist gewöhnungsbedürftig."
+        ]
+      },
+      "DESIGN": {
+        "POS": [
+          "Schlichtes Design, passt gut ins Büro."
+        ],
+        "NEG": [
+          "Die Farbe weicht deutlich vom Foto ab."
+        ],
+        "NEU": [
+          "Optisch unauffällig, ein typisches Büroprodukt."
+        ]
+      }
+    },
+    "Sport & Fitness": {
+      "FUNCTION": {
+        "POS": [
+          "Liegt beim Training gut in der Hand und erfüllt seinen Zweck perfekt.",
+          "Die Messung ist genau, ich habe mit einem Brustgurt verglichen.",
+          "Der Widerstand lässt sich fein einstellen."
+        ],
+        "NEG": [
+          "Rutscht beim Training ständig weg.",
+          "Die Messung ist ungenau, die Werte schwanken stark.",
+          "Der Widerstand ist viel zu schwach für ernsthaftes Training."
+        ],
+        "NEU": [
+          "Für Einsteiger ausreichend."
+        ]
+      },
+      "QUALITY": {
+        "POS": [
+          "Robust verarbeitet, das Material macht einen hochwertigen Eindruck."
+        ],
+        "NEG": [
+          "Das Material riecht stark nach Chemie und wirkt billig.",
+          "Die Nähte sind schlecht verarbeitet."
+        ],
+        "NEU": [
+          "Verarbeitung ordentlich."
+        ]
+      },
+      "DURABILITY": {
+        "POS": [
+          "Hält auch intensives Training seit Monaten problemlos aus."
+        ],
+        "NEG": [
+          "Nach drei Wochen ist das Band gerissen.",
+          "Nach kurzer Zeit löst sich die Beschichtung ab."
+        ],
+        "NEU": [
+          "Bisher hält es."
+        ]
+      },
+      "USABILITY": {
+        "POS": [
+          "Der Aufbau ist einfach und die Anleitung hilfreich."
+        ],
+        "NEG": [
+          "Die Montage ist kompliziert, die Anleitung besteht nur aus Bildern."
+        ],
+        "NEU": [
+          "Die Handhabung ist in Ordnung."
+        ]
+      },
+      "DESIGN": {
+        "POS": [
+          "Sieht sportlich und modern aus."
+        ],
+        "NEG": [
+          "Die Farbe ist deutlich greller als auf dem Foto."
+        ],
+        "NEU": [
+          "Optisch Standard."
+        ]
+      }
+    },
+    "Haushalt & Küche": {
+      "FUNCTION": {
+        "POS": [
+          "Heizt schnell auf und hält die Temperatur konstant.",
+          "Die Saugleistung ist stark, auch auf Teppich.",
+          "Die Programme funktionieren zuverlässig und das Ergebnis ist top."
+        ],
+        "NEG": [
+          "Das Gerät ist extrem laut, eine Unterhaltung daneben ist unmöglich.",
+          "Heizt sehr ungleichmäßig, das Ergebnis ist an einer Seite verbrannt.",
+          "Die Saugleistung lässt schon nach kurzer Zeit nach."
+        ],
+        "NEU": [
+          "Die Leistung ist durchschnittlich."
+        ]
+      },
+      "QUALITY": {
+        "POS": [
+          "Hochwertige Verarbeitung, der Edelstahl ist schön massiv."
+        ],
+        "NEG": [
+          "Das Material wirkt billig, der Deckel schließt nicht richtig.",
+          "Die Beschichtung ist schon nach dem ersten Spülen verkratzt."
+        ],
+        "NEU": [
+          "Verarbeitung ist in Ordnung."
+        ]
+      },
+      "DURABILITY": {
+        "POS": [
+          "Täglich im Einsatz und seit Monaten ohne Probleme."
+        ],
+        "NEG": [
+          "Nach sechs Wochen ist der Motor ausgefallen.",
+          "Das Gerät ist undicht, nach kurzer Zeit tropft es unten heraus."
+        ],
+        "NEU": [
+          "Zur Haltbarkeit kann ich noch nichts sagen."
+        ]
+      },
+      "USABILITY": {
+        "POS": [
+          "Die Reinigung ist einfach, alle Teile sind spülmaschinenfest.",
+          "Die Bedienung ist selbsterklärend."
+        ],
+        "NEG": [
+          "Die Reinigung ist umständlich, überall bleiben Reste hängen.",
+          "Die Bedienung über die vielen Tasten ist kompliziert."
+        ],
+        "NEU": [
+          "Die Reinigung geht so."
+        ]
+      },
+      "DESIGN": {
+        "POS": [
+          "Sieht in der Küche sehr edel aus."
+        ],
+        "NEG": [
+          "Optisch wirkt es billiger als auf den Fotos."
+        ],
+        "NEU": [
+          "Das Design ist zeitlos."
+        ]
+      }
+    },
+    "Garten & Outdoor": {
+      "FUNCTION": {
+        "POS": [
+          "Die Leistung reicht problemlos für unseren großen Garten.",
+          "Der Akku schafft den ganzen Rasen mit einer Ladung.",
+          "Die Reichweite ist größer als angegeben."
+        ],
+        "NEG": [
+          "Die Leistung reicht nicht einmal für einen kleinen Garten.",
+          "Der Akku ist nach zwanzig Minuten leer.",
+          "Die App verliert ständig die Verbindung zum Gerät."
+        ],
+        "NEU": [
+          "Die Leistung ist für kleine Flächen ausreichend."
+        ]
+      },
+      "QUALITY": {
+        "POS": [
+          "Wetterfest und robust verarbeitet.",
+          "Das Material ist massiv und hochwertig."
+        ],
+        "NEG": [
+          "Das Material ist dünn und wirkt instabil.",
+          "Die Verarbeitung ist billig, bei Wind wackelt alles."
+        ],
+        "NEU": [
+          "Verarbeitung für den Garten ausreichend."
+        ]
+      },
+      "DURABILITY": {
+        "POS": [
+          "Hat den ganzen Sommer draußen gestanden und sieht aus wie neu."
+        ],
+        "NEG": [
+          "Schon nach einem Regen hat sich Rost gebildet.",
+          "Nach wenigen Wochen ist der Kunststoff in der Sonne rissig geworden."
+        ],
+        "NEU": [
+          "Wie es den Winter übersteht, wird sich zeigen."
+        ]
+      },
+      "USABILITY": {
+        "POS": [
+          "Der Aufbau war in einer halben Stunde erledigt."
+        ],
+        "NEG": [
+          "Der Aufbau ist umständlich und die Anleitung lückenhaft."
+        ],
+        "NEU": [
+          "Der Aufbau ist mit etwas Geduld machbar."
+        ]
+      },
+      "DESIGN": {
+        "POS": [
+          "Sieht auf der Terrasse richtig gut aus."
+        ],
+        "NEG": [
+          "Die Farbe ist in echt viel blasser als auf den Bildern."
+        ],
+        "NEU": [
+          "Optisch unauffällig."
+        ]
+      }
+    }
+  },
+  "scenarios": {
+    "incident": [
+      "Seit dem letzten Firmware-Update verliert das Set ständig die Verbindung zur App.",
+      "Nach dem Update flackern alle Lampen und reagieren nicht mehr auf die App.",
+      "Die Bridge ist seit dem Update nicht mehr erreichbar, nichts funktioniert.",
+      "Drei von vier Lampen sind nach dem Firmware-Update ausgefallen.",
+      "Die Verbindung bricht nach dem Update alle paar Minuten ab, völlig unbrauchbar.",
+      "Seit dem Update geht das Licht nachts von selbst an und flackert."
+    ],
+    "incidentService": [
+      "Der Kundenservice verweist nur auf ein kommendes Update, eine Lösung gibt es nicht.",
+      "Auf meine Reklamation kam nur eine Standardantwort."
+    ],
+    "decline": [
+      "Die aktuelle Charge ist deutlich schlechter verarbeitet als mein erstes Exemplar.",
+      "Das Material wirkt inzwischen viel billiger, offenbar wurde beim Hersteller gespart.",
+      "Mein Ersatzgerät hatte nach kurzer Zeit denselben Defekt.",
+      "Früher war die Qualität besser, das neue Modell wackelt und knarzt."
+    ],
+    "rising": [
+      "Die neue Version ist spürbar besser als die alte.",
+      "Seit der Überarbeitung ein echtes Top-Produkt.",
+      "Hatte wegen älterer Bewertungen Bedenken, aber das aktuelle Modell überzeugt."
+    ],
+    "deliveryIncident": [
+      "Das Paket kam mit über einer Woche Verspätung, die Sendungsverfolgung zeigte tagelang nichts.",
+      "Der Karton war völlig durchnässt und eingedrückt, das Produkt hatte zum Glück nichts abbekommen.",
+      "Die Lieferung wurde zweimal verschoben, ohne dass ich informiert wurde.",
+      "Die Zustellung hat zwei Wochen gedauert, der Versanddienstleister war nicht erreichbar."
+    ]
+  }
+}
