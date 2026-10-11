@@ -39,3 +39,7 @@ jobs:
       - name: Build
         working-directory: order-management-frontend
         run: npx ng build
+
+      - name: Tests
+        working-directory: order-management-frontend
+        run: npx ng test --watch=false --browsers=ChromeHeadless
