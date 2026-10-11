@@ -7,30 +7,29 @@ version: '3.8'
 services:
   # PostgreSQL Database für Development & Testing
   postgres-dev:
-    image: postgres:15-alpine
+    # pgvector wird für die semantische Suche benötigt; Zugangsdaten wie in application.properties
+    image: pgvector/pgvector:pg16
     container_name: order-management-postgres-dev
     restart: unless-stopped
     environment:
-      POSTGRES_DB: order_management_dev
+      POSTGRES_DB: order_management
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: dev123
-      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
-      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     networks:
       - order-management-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d order_management_dev"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d order_management"]
       interval: 30s
       timeout: 10s
       retries: 3
 
   # PostgreSQL für Production-like Testing
   postgres-prod:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg16
     container_name: order-management-postgres-prod
     restart: unless-stopped
     environment:

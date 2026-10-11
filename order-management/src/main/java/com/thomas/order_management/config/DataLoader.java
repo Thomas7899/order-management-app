@@ -602,7 +602,8 @@ public class DataLoader implements CommandLineRunner {
         log.info("Seeded {} reviews (including anomalies and trends)", savedReviews.size());
 
         if (generateEmbeddings) {
-            if (openAiApiKey == null || openAiApiKey.isBlank() || openAiApiKey.contains("${")) {
+            if (openAiApiKey == null || openAiApiKey.isBlank() || openAiApiKey.contains("${")
+                    || "not-configured".equals(openAiApiKey)) {
                 log.warn("Embeddings werden übersprungen: kein gültiger OpenAI API Key konfiguriert.");
                 return;
             }

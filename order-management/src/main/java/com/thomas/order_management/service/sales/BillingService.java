@@ -29,6 +29,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Fakturierung (angelehnt an VF01/VF11) und Zahlungseingang (vereinfacht, F-28).
@@ -287,17 +288,22 @@ public class BillingService {
         BigDecimal expected = invoice.getGrossAmount().subtract(discount);
         BigDecimal paid = amount != null ? amount.setScale(2, RoundingMode.HALF_UP) : expected;
         if (paid.compareTo(expected) < 0) {
-            throw new BusinessException("F5", "702", "Zahlbetrag " + paid + " EUR reicht nicht zum Ausgleich; erwartet "
-                    + expected + " EUR" + (discount.signum() > 0 ? " (nach " + discount + " EUR Skonto)" : ""));
+            throw new BusinessException("F5", "702", "Zahlbetrag " + eur(paid) + " reicht nicht zum Ausgleich; erwartet "
+                    + eur(expected) + (discount.signum() > 0 ? " (nach " + eur(discount) + " Skonto)" : ""));
         }
 
         invoice.setStatus(Invoice.Status.PAID);
         invoice.setPaidAt(paymentDate);
         invoice.setPaidAmount(paid);
         invoice.setCashDiscountAmount(discount);
+        // Zeitpunkt für den Änderungsbeleg: heute jetzt, sonst Mittag, aber nie vor dem Anlegen der Rechnung
+        LocalDateTime clearedAt = paymentDate.equals(LocalDate.now()) ? LocalDateTime.now() : paymentDate.atTime(12, 0);
+        if (invoice.getCreatedAt() != null && clearedAt.isBefore(invoice.getCreatedAt())) {
+            clearedAt = invoice.getCreatedAt();
+        }
         changeDocuments.logEvent(ObjectClass.INVOICE, invoice.getId(), invoice.getInvoiceNumber(), ChangeType.EVENT,
-                "Zahlungseingang " + paid + " EUR" + (discount.signum() > 0 ? ", Skonto " + discount + " EUR" : ""),
-                paymentDate.atTime(12, 0));
+                "Zahlungseingang " + eur(paid) + (discount.signum() > 0 ? ", Skonto " + eur(discount) : ""),
+                clearedAt);
         return invoiceRepository.save(invoice);
     }
 
@@ -340,5 +346,10 @@ public class BillingService {
             if (c.dateTo() != null) predicates.add(cb.lessThanOrEqualTo(root.get("billingDate"), c.dateTo()));
             return cb.and(predicates.toArray(Predicate[]::new));
         };
+    }
+
+    /** Betrag für Meldungstexte, z. B. "1.517,87 EUR". */
+    private static String eur(BigDecimal amount) {
+        return String.format(Locale.GERMANY, "%,.2f EUR", amount);
     }
 }
