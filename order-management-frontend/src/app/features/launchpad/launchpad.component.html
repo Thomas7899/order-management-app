@@ -1,0 +1,141 @@
+<div class="launchpad">
+  <header class="welcome">
+    <div>
+      <ui5-title level="H2">{{ greeting() }}</ui5-title>
+      <div class="om-subtle">{{ auth.user()?.roles?.[0]?.text }} · Werk 1000 München · {{ today | date: 'EEEE, d. MMMM y' }}</div>
+    </div>
+    <ui5-button icon="refresh" design="Transparent" tooltip="Aktualisieren" (click)="load()"></ui5-button>
+  </header>
+
+  @if (loading() && !stats()) {
+    <div class="om-loading"><ui5-busy-indicator active size="L"></ui5-busy-indicator></div>
+  }
+
+  @if (stats(); as s) {
+    <section class="space">
+      <ui5-title level="H4" class="space-title">Vertrieb</ui5-title>
+      <div class="tiles">
+        <om-tile title="Kundenaufträge" subtitle="Offen und in Bearbeitung" icon="sales-order" link="/orders"
+          [query]="{ status: 'OPEN,IN_PROCESS' }" [value]="openOrders()" unit="Aufträge"
+          [footer]="'Auftragsbestand ' + (s.openOrderValue | currency: 'EUR' : 'symbol' : '1.0-0')" state="Information" />
+        @if (auth.hasAnyRole('SALES')) {
+          <om-tile title="Kundenauftrag anlegen" subtitle="VA01" icon="add" link="/orders/new" footer="Mit Preis- und Verfügbarkeitsprüfung" />
+        }
+        <om-tile title="Kreditsperren" subtitle="Aufträge mit Kreditlimit-Überschreitung" icon="payment-approval" link="/orders"
+          [query]="{ creditStatus: 'BLOCKED' }" [value]="s.creditBlockedOrders" unit="Aufträge"
+          [state]="s.creditBlockedOrders > 0 ? 'Negative' : 'Positive'" footer="Freigabe durch Kreditmanagement" />
+        <om-tile title="Rückstand" subtitle="Nicht bestätigte Positionen" icon="pending" link="/orders"
+          [query]="{ status: 'OPEN,IN_PROCESS' }" [value]="s.backlogItems" unit="Pos."
+          [state]="s.backlogItems > 0 ? 'Critical' : 'Positive'" footer="Rückstandsbearbeitung V_RA" />
+        <om-tile title="Debitoren" subtitle="Kundenstamm" icon="customer" link="/customers"
+          [value]="s.totalCustomers" footer="Stammdaten, Kreditlimit, Obligo" />
+      </div>
+    </section>
+
+    <section class="space">
+      <ui5-title level="H4" class="space-title">Logistik</ui5-title>
+      <div class="tiles">
+        <om-tile title="Auslieferungen" subtitle="Ohne Warenausgang" icon="shipping-status" link="/deliveries"
+          [query]="{ status: 'CREATED' }" [value]="s.openDeliveries" unit="Lieferungen"
+          [state]="s.openDeliveries > 0 ? 'Information' : 'Neutral'" footer="Kommissionierung und Warenausgang" />
+        <om-tile title="Bestandsübersicht" subtitle="Unter Meldebestand" icon="inventory" link="/stock"
+          [value]="s.lowStockProductsCount" unit="Lagerorte"
+          [state]="s.lowStockProductsCount > 0 ? 'Critical' : 'Positive'" footer="MMBE · Bestand je Lagerort" />
+        <om-tile title="Materialbelege" subtitle="Warenbewegungen" icon="log" link="/movements" footer="MB51 · Buchen und Stornieren" />
+        <om-tile title="Materialien" subtitle="Aktive Materialien" icon="product" link="/materials"
+          [value]="s.totalProducts" footer="Materialstamm" />
+      </div>
+    </section>
+
+    <section class="space">
+      <ui5-title level="H4" class="space-title">Fakturierung &amp; Debitorenbuchhaltung</ui5-title>
+      <div class="tiles">
+        <om-tile title="Fakturavorrat" subtitle="Lieferungen zur Fakturierung" icon="pending" link="/billing-due"
+          [value]="s.billingDueCount" unit="Lieferungen"
+          [state]="s.billingDueCount > 0 ? 'Information' : 'Neutral'" footer="VF04" />
+        <om-tile title="Offene Posten" subtitle="Noch nicht bezahlt" icon="money-bills" link="/invoices"
+          [query]="{ status: 'OPEN' }" [value]="compact(s.openReceivables)" [unit]="compactUnit(s.openReceivables)"
+          [footer]="s.openReceivablesCount + ' Rechnungen'" />
+        <om-tile title="Überfällige Posten" subtitle="Fälligkeit überschritten" icon="warning" link="/invoices"
+          [query]="{ overdue: 'true' }" [value]="compact(s.overdueReceivables)" [unit]="compactUnit(s.overdueReceivables)"
+          [state]="s.overdueReceivablesCount > 0 ? 'Negative' : 'Positive'" [footer]="s.overdueReceivablesCount + ' Rechnungen · Mahnwesen'" />
+        <om-tile title="Umsatz laufender Monat" subtitle="Fakturiert, netto" icon="line-chart" link="/reporting"
+          [value]="compact(s.monthRevenue)" [unit]="compactUnit(s.monthRevenue)" state="Positive"
+          [footer]="'Heute ' + (s.todayRevenue | currency: 'EUR' : 'symbol' : '1.0-0')" />
+      </div>
+    </section>
+
+    <section class="space">
+      <ui5-title level="H4" class="space-title">Analyse</ui5-title>
+      <div class="tiles">
+        <om-tile title="Kennzahlen" subtitle="Umsatz, Marge, ABC, Prognose" icon="kpi-corporate-performance" link="/reporting"
+          [value]="compact(s.totalRevenue)" [unit]="compactUnit(s.totalRevenue)" footer="Nettoumsatz gesamt" />
+        <om-tile title="Bewertungen" subtitle="Semantische Suche" icon="feedback" link="/reviews" footer="pgvector + OpenAI Embeddings" />
+        <om-tile title="KI-Trends" subtitle="Trends und Anomalien" icon="ai" link="/ki-trends" footer="Qualitätsprobleme früh erkennen" />
+        <om-tile title="KI-Bestandsanalyse" subtitle="Prognose und Nachschub" icon="lightbulb" link="/inventory-ai" footer="Bedarfsprognose per LLM" />
+      </div>
+    </section>
+
+    @if (activity(); as a) {
+      <div class="om-grid-2 cards">
+        <div class="om-section">
+          <div class="om-section-header">
+            <ui5-title level="H5">Neueste Kundenaufträge</ui5-title>
+            <ui5-link href="/orders" (click)="$event.preventDefault(); router.navigateByUrl('/orders')">Alle anzeigen</ui5-link>
+          </div>
+          <ui5-table overflow-mode="Popin" (row-click)="openOrder($event)" no-data-text="Keine Aufträge">
+            <ui5-table-header-row slot="headerRow">
+              <ui5-table-header-cell>Auftrag</ui5-table-header-cell>
+              <ui5-table-header-cell>Auftraggeber</ui5-table-header-cell>
+              <ui5-table-header-cell class="om-num" horizontal-align="End">Nettowert</ui5-table-header-cell>
+              <ui5-table-header-cell>Status</ui5-table-header-cell>
+            </ui5-table-header-row>
+            @for (o of a.recentOrders; track o.id) {
+              <ui5-table-row interactive [attr.row-key]="o.id">
+                <ui5-table-cell>
+                  <div class="om-cell-stack">
+                    <span class="om-strong">{{ o.orderNumber }}</span>
+                    <span class="om-subtle">{{ o.orderDate | date: 'dd.MM.yyyy HH:mm' }}</span>
+                  </div>
+                </ui5-table-cell>
+                <ui5-table-cell>{{ o.customer.name }}</ui5-table-cell>
+                <ui5-table-cell class="om-num" horizontal-align="End">{{ o.netAmount | currency: 'EUR' }}</ui5-table-cell>
+                <ui5-table-cell><om-status [status]="o.status" /></ui5-table-cell>
+              </ui5-table-row>
+            }
+          </ui5-table>
+        </div>
+
+        <div class="om-section">
+          <div class="om-section-header">
+            <ui5-title level="H5">Bestandsengpässe</ui5-title>
+            <ui5-link href="/stock" (click)="$event.preventDefault(); router.navigateByUrl('/stock')">Bestandsübersicht</ui5-link>
+          </div>
+          <ui5-table overflow-mode="Popin" (row-click)="openMaterial($event)" no-data-text="Keine Engpässe – alle Lagerorte über Meldebestand">
+            <ui5-table-header-row slot="headerRow">
+              <ui5-table-header-cell>Material</ui5-table-header-cell>
+              <ui5-table-header-cell>Lagerort</ui5-table-header-cell>
+              <ui5-table-header-cell class="om-num" horizontal-align="End">Bestand / Melde</ui5-table-header-cell>
+              <ui5-table-header-cell>Status</ui5-table-header-cell>
+            </ui5-table-header-row>
+            @for (st of a.lowStockItems; track st.id) {
+              <ui5-table-row interactive [attr.row-key]="st.productId">
+                <ui5-table-cell>
+                  <div class="om-cell-stack">
+                    <span class="om-strong">{{ st.productName }}</span>
+                    <span class="om-subtle">{{ st.materialNumber }}</span>
+                  </div>
+                </ui5-table-cell>
+                <ui5-table-cell>{{ st.warehouseCode }} {{ st.warehouseName }}</ui5-table-cell>
+                <ui5-table-cell class="om-num" horizontal-align="End">{{ st.quantity | number }} / {{ st.minStock | number }} {{ st.unitOfMeasure }}</ui5-table-cell>
+                <ui5-table-cell>
+                  <ui5-tag [attr.design]="semanticOf(st.stockStatus)">{{ stockStatusText[st.stockStatus] }}</ui5-tag>
+                </ui5-table-cell>
+              </ui5-table-row>
+            }
+          </ui5-table>
+        </div>
+      </div>
+    }
+  }
+</div>

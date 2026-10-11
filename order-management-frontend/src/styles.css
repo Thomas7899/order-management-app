@@ -1,177 +1,287 @@
-/* order-management-frontend/src/styles.css */
+/* order-management-frontend/src/styles.css
+ *
+ * Globale Styles im SAP-Fiori-Stil. Farben, Schriften und Abstände kommen aus den
+ * Theming-Parametern von SAP Horizon (CSS-Variablen --sap…), damit helles und dunkles
+ * Theme ohne eigene Farbwerte funktionieren.
+ */
 
-/* ===== DARK MODE DESIGN SYSTEM ===== */
-html, body {
+html,
+body {
+  margin: 0;
   height: 100%;
-  background: #0e1a22 !important;
+  background: var(--sapBackgroundColor, #f5f6f7);
+  color: var(--sapTextColor, #1d2d3e);
+  font-family: var(--sapFontFamily, "72", "72full", Arial, Helvetica, sans-serif);
+  font-size: var(--sapFontSize, 0.875rem);
 }
 
-:root {
-  /* Breakpoints (Beibehalten) */
-  --breakpoint-mobile: 320px;
-  --breakpoint-tablet: 768px;
-  --breakpoint-desktop: 1024px;
-  --breakpoint-wide: 1440px;
-
-  /* Spacing System (Beibehalten) */
-  --spacing-xs: 0.25rem;  /* 4px */
-  --spacing-sm: 0.5rem;   /* 8px */
-  --spacing-md: 1rem;     /* 16px */
-  --spacing-lg: 1.5rem;   /* 24px */
-  --spacing-xl: 2rem;     /* 32px */
-  --spacing-2xl: 3rem;    /* 48px */
-  --spacing-3xl: 4rem;    /* 64px */
-
-  /* Typography Scale (Beibehalten) */
-  --font-size-xs: 0.75rem;   /* 12px */
-  --font-size-sm: 0.875rem;  /* 14px */
-  --font-size-base: 1rem;    /* 16px */
-  --font-size-lg: 1.125rem;  /* 18px */
-  --font-size-xl: 1.25rem;   /* 20px */
-  --font-size-2xl: 1.5rem;   /* 24px */
-  --font-size-3xl: 1.875rem; /* 30px */
-
-  /* ===== FARBEN (KORRIGIERT FÜR DARK THEME) ===== */
-  
-  /* Farben */
-  --color-primary: #00c8ff;
-  --color-success: #00d084;
-  --color-warning: #ffd65c;
-  --color-error: #ff5c5c;
-  
-  /* Hintergrundfarben */
-  --bg-primary: #0e1a22;    /* Dunkelster Hintergrund (für body) */
-  --bg-secondary: #122b39; /* Karten & Container-Hintergrund */
-  --bg-border: #1f3a4a;   /* Ränder */
-  
-  /* Textfarben */
-  --text-primary: #e0f0ff;    /* Heller Haupttext */
-  --text-secondary: #89a6b8;  /* Gedämpfter Text */
-  --text-muted: #6c757d;
-  
-  /* Border */
-  --border-color: #1f3a4a;
-  --border-radius: 0.375rem;
-  
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-}
-
-/* ===== RESET & BASE STYLES (KORRIGIERT) ===== */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: var(--font-size-base);
-  line-height: 1.5;
-  color: var(--text-primary);
-  background-color: var(--bg-primary); /* <-- HIER IST DER WICHTIGE FIX */
+a {
+  color: var(--sapLinkColor);
 }
 
-/* ===== RESPONSIVE CONTAINER (Beibehalten) ===== */
-.container {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--spacing-md);
+/* ---------------------------------------------------------------------------
+ * Seitenlayout
+ * ------------------------------------------------------------------------- */
+
+.om-page {
+  display: block;
+  height: 100%;
 }
 
-@media (min-width: 768px) {
-  .container {
-    padding: 0 var(--spacing-lg);
+.om-content {
+  padding: 1rem 2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (max-width: 600px) {
+  .om-content {
+    padding: 0.75rem 1rem 1.5rem;
   }
 }
 
-@media (min-width: 1024px) {
-  .container {
-    padding: 0 var(--spacing-xl);
-  }
+/* Reiterinhalte sollen nicht die fette Schrift der Reiterleiste erben */
+ui5-tab {
+  font-family: var(--sapFontFamily);
 }
 
-/* ===== RESPONSIVE GRID (Beibehalten) ===== */
-.row {
+.om-section {
+  background: var(--sapGroup_ContentBackground, #fff);
+  border: 1px solid var(--sapGroup_ContentBorderColor, #d9d9d9);
+  border-radius: var(--sapElement_BorderCornerRadius, 0.75rem);
+  padding: 1rem;
+}
+
+.om-section > ui5-title,
+.om-section-title {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.om-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.om-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+}
+
+.om-grid-2 {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+}
+
+/* ---------------------------------------------------------------------------
+ * Filterleiste (List Report)
+ * ------------------------------------------------------------------------- */
+
+.om-filterbar {
   display: flex;
   flex-wrap: wrap;
-  margin: 0 calc(var(--spacing-sm) / -2);
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
 }
 
-.col {
-  flex: 1;
-  padding: 0 calc(var(--spacing-sm) / 2);
-  min-width: 0; /* Prevents flex items from overflowing */
+.om-filterbar .om-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 12rem;
 }
 
-/* Mobile-first columns */
-.col-12 { flex: 0 0 100%; }
-.col-6 { flex: 0 0 50%; }
-.col-4 { flex: 0 0 33.333333%; }
-.col-3 { flex: 0 0 25%; }
-
-/* Tablet columns */
-@media (min-width: 768px) {
-  .col-md-12 { flex: 0 0 100%; }
-  .col-md-8 { flex: 0 0 66.666667%; }
-  .col-md-6 { flex: 0 0 50%; }
-  .col-md-4 { flex: 0 0 33.333333%; }
-  .col-md-3 { flex: 0 0 25%; }
+.om-filterbar .om-filter.wide {
+  min-width: 18rem;
 }
 
-/* Desktop columns */
-@media (min-width: 1024px) {
-  .col-lg-12 { flex: 0 0 100%; }
-  .col-lg-9 { flex: 0 0 75%; }
-  .col-lg-8 { flex: 0 0 66.666667%; }
-  .col-lg-6 { flex: 0 0 50%; }
-  .col-lg-4 { flex: 0 0 33.333333%; }
-  .col-lg-3 { flex: 0 0 25%; }
+.om-filterbar .om-filter-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
 }
 
-/* ===== UTILITY CLASSES (Beibehalten) ===== */
+/* ---------------------------------------------------------------------------
+ * Objektkopf (Object Page Header)
+ * ------------------------------------------------------------------------- */
 
-/* Display utilities */
-.d-none { display: none !important; }
-.d-block { display: block !important; }
-.d-flex { display: flex !important; }
-
-@media (max-width: 767px) {
-  .d-mobile-none { display: none !important; }
+.om-header-facets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem 3rem;
+  padding: 0.25rem 0;
 }
 
-@media (min-width: 768px) {
-  .d-tablet-block { display: block !important; }
-  .d-mobile-only { display: none !important; }
+.om-facet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 8rem;
 }
 
-/* Spacing utilities */
-.m-0 { margin: 0 !important; }
-.mb-sm { margin-bottom: var(--spacing-sm) !important; }
-.mb-md { margin-bottom: var(--spacing-md) !important; }
-.mb-lg { margin-bottom: var(--spacing-lg) !important; }
-
-.p-sm { padding: var(--spacing-sm) !important; }
-.p-md { padding: var(--spacing-md) !important; }
-.p-lg { padding: var(--spacing-lg) !important; }
-
-/* Text utilities */
-.text-center { text-align: center; }
-.text-left { text-align: left; }
-.text-right { text-align: right; }
-
-@media (max-width: 767px) {
-  .text-mobile-center { text-align: center; }
+.om-facet-label {
+  color: var(--sapContent_LabelColor, #556b82);
+  font-size: var(--sapFontSmallSize, 0.75rem);
 }
 
-/* Flexbox utilities */
-.justify-center { justify-content: center; }
-.justify-between { justify-content: space-between; }
-.align-center { align-items: center; }
-.flex-column { flex-direction: column; }
+.om-facet-value {
+  font-size: var(--sapFontLargeSize, 1rem);
+  color: var(--sapTextColor);
+}
 
-@media (max-width: 767px) {
-  .flex-mobile-column { flex-direction: column; }
+.om-facet-value.kpi {
+  font-size: var(--sapFontHeader3Size, 1.5rem);
+  font-family: var(--sapFontLightFamily, var(--sapFontFamily));
+}
+
+.om-attributes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.75rem 1.5rem;
+}
+
+.om-attribute {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.om-attribute .label {
+  color: var(--sapContent_LabelColor);
+  font-size: var(--sapFontSmallSize, 0.75rem);
+}
+
+.om-attribute .value {
+  color: var(--sapTextColor);
+  overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------------------
+ * Tabellenhilfen
+ * ------------------------------------------------------------------------- */
+
+.om-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+ui5-table-header-cell.om-num,
+ui5-table-cell.om-num {
+  justify-content: flex-end;
+}
+
+.om-cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.om-subtle {
+  color: var(--sapContent_LabelColor);
+  font-size: var(--sapFontSmallSize, 0.75rem);
+}
+
+.om-positive {
+  color: var(--sapPositiveTextColor, #256f3a);
+}
+
+.om-negative {
+  color: var(--sapNegativeTextColor, #aa0808);
+}
+
+.om-critical {
+  color: var(--sapCriticalTextColor, #b44f00);
+}
+
+.om-strong {
+  font-family: var(--sapFontBoldFamily, var(--sapFontFamily));
+  font-weight: bold;
+}
+
+.om-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+.om-table-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0 0;
+  color: var(--sapContent_LabelColor);
+  font-size: var(--sapFontSmallSize);
+}
+
+/* ---------------------------------------------------------------------------
+ * Dialoge und Formulare
+ * ------------------------------------------------------------------------- */
+
+.om-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.25rem 0;
+}
+
+.om-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem 1rem;
+  padding: 0.5rem 0;
+}
+
+.om-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.om-field.span-2 {
+  grid-column: span 2;
+}
+
+@media (max-width: 600px) {
+  .om-field.span-2 {
+    grid-column: auto;
+  }
+}
+
+.om-field ui5-input,
+.om-field ui5-select,
+.om-field ui5-combobox,
+.om-field ui5-date-picker,
+.om-field ui5-textarea,
+.om-field ui5-step-input,
+.om-field ui5-multi-combobox {
+  width: 100%;
+}
+
+.om-loading {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.om-chart {
+  width: 100%;
+  height: 18rem;
+}
+
+.om-chart.tall {
+  height: 22rem;
 }

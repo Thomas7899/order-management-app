@@ -1,0 +1,96 @@
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Auslieferungen</ui5-title>
+    <ui5-title slot="snappedHeading" level="H5">Auslieferungen ({{ total() }})</ui5-title>
+    <div slot="subheading" class="om-subtle">Kommissionierung und Warenausgang (VL02N, VL06O)</div>
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <div class="om-filterbar">
+      <div class="om-filter wide">
+        <ui5-label show-colon>Suche</ui5-label>
+        <ui5-input [(ngModel)]="search" placeholder="Lieferung, Auftrag, Debitor" show-clear-icon (keydown.enter)="go()">
+          <ui5-icon slot="icon" name="search"></ui5-icon>
+        </ui5-input>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Status</ui5-label>
+        <ui5-select [(ngModel)]="status">
+          @for (o of statusOptions; track o.code) {
+            <ui5-option [value]="o.code" [selected]="status === o.code">{{ o.text }}</ui5-option>
+          }
+        </ui5-select>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Faktura</ui5-label>
+        <ui5-select [(ngModel)]="billingStatus">
+          @for (o of billingOptions; track o.code) {
+            <ui5-option [value]="o.code" [selected]="billingStatus === o.code">{{ o.text }}</ui5-option>
+          }
+        </ui5-select>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Lagerort</ui5-label>
+        <ui5-select [(ngModel)]="warehouseId">
+          <ui5-option value="" [selected]="!warehouseId">Alle</ui5-option>
+          @for (w of warehouses(); track w.id) {
+            <ui5-option [value]="'' + w.id" [selected]="warehouseId === '' + w.id">{{ w.code }} {{ w.name }}</ui5-option>
+          }
+        </ui5-select>
+      </div>
+      <div class="om-filter-actions">
+        <ui5-button design="Transparent" (click)="reset()">Zurücksetzen</ui5-button>
+        <ui5-button design="Emphasized" (click)="go()">Start</ui5-button>
+      </div>
+    </div>
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    <div class="om-section">
+      <ui5-title level="H5" class="om-section-title">Lieferungen ({{ total() }})</ui5-title>
+      <ui5-table overflow-mode="Popin" [loading]="loading()" (row-click)="open($event)" no-data-text="Keine Lieferungen gefunden">
+        <ui5-table-header-row slot="headerRow" sticky>
+          <ui5-table-header-cell min-width="9rem">Lieferung</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="12rem">Warenempfänger</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="8rem">Auftrag</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="10rem" popin-text="Lagerort">Lagerort</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="8rem" popin-text="Warenausgang">Warenausgang</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="6rem" class="om-num" horizontal-align="End">Menge</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="10rem">Status</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="9rem" importance="-1" popin-text="Faktura">Faktura</ui5-table-header-cell>
+        </ui5-table-header-row>
+        @for (d of rows(); track d.id) {
+          <ui5-table-row interactive [attr.row-key]="d.id">
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <span class="om-strong">{{ d.deliveryNumber }}</span>
+                <span class="om-subtle">{{ d.createdAt | date: 'dd.MM.yyyy' }} · {{ d.createdBy }}</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <span>{{ d.shipTo.name }}</span>
+                <span class="om-subtle">{{ d.shipTo.customerNumber }} · {{ d.shipTo.city }}</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>{{ d.orderNumber }}</ui5-table-cell>
+            <ui5-table-cell>{{ d.warehouseCode }} {{ d.warehouseName }}</ui5-table-cell>
+            <ui5-table-cell>
+              @if (d.goodsIssueDate) {
+                {{ d.goodsIssueDate | date: 'dd.MM.yyyy' }}
+              } @else {
+                <span class="om-subtle">geplant {{ d.plannedGoodsIssueDate | date: 'dd.MM.yyyy' }}</span>
+              }
+            </ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">{{ d.totalQuantity | number }}</ui5-table-cell>
+            <ui5-table-cell><om-status [status]="d.status" /></ui5-table-cell>
+            <ui5-table-cell><om-status [status]="d.billingStatus" /></ui5-table-cell>
+          </ui5-table-row>
+        }
+        @if (rows().length < total()) {
+          <ui5-table-growing slot="features" mode="Button" text="Mehr" [attr.subtext]="'[' + rows().length + ' / ' + total() + ']'" (load-more)="more()"></ui5-table-growing>
+        }
+      </ui5-table>
+    </div>
+  </div>
+</ui5-dynamic-page>

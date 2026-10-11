@@ -1,0 +1,99 @@
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Bewertungen</ui5-title>
+    <div slot="subheading" class="om-subtle">Semantische Suche: findet Bewertungen nach Bedeutung, nicht nur nach Stichwort (OpenAI-Embeddings + pgvector)</div>
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <div class="search">
+      <ui5-input [(ngModel)]="query" placeholder="Wonach suchen Kunden? z. B. „ging sofort kaputt“" show-clear-icon (keydown.enter)="search()">
+        <ui5-icon slot="icon" name="search"></ui5-icon>
+      </ui5-input>
+      <ui5-select [(ngModel)]="limit">
+        <ui5-option value="20" [selected]="limit === '20'">20 Treffer</ui5-option>
+        <ui5-option value="50" [selected]="limit === '50'">50 Treffer</ui5-option>
+        <ui5-option value="100" [selected]="limit === '100'">100 Treffer</ui5-option>
+      </ui5-select>
+      <ui5-button design="Emphasized" [disabled]="loading() || !query.trim()" (click)="search()">Suchen</ui5-button>
+    </div>
+    <div class="examples">
+      <span class="om-subtle">Beispiele:</span>
+      @for (e of examples; track e) {
+        <ui5-tag design="Information" interactive (click)="useExample(e)">{{ e }}</ui5-tag>
+      }
+    </div>
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    @if (loading()) {
+      <div class="om-loading"><ui5-busy-indicator active size="L" text="Ähnliche Bewertungen werden gesucht …"></ui5-busy-indicator></div>
+    }
+
+    @if (failed()) {
+      <ui5-message-strip design="Negative" hide-close-button>
+        Die semantische Suche ist fehlgeschlagen. Ist im Backend ein gültiger OpenAI-API-Schlüssel konfiguriert?
+      </ui5-message-strip>
+    }
+
+    @if (!loading() && searched() && !failed() && reviews().length === 0) {
+      <div class="om-section">
+        <ui5-illustrated-message name="NoSearchResults" title-text="Keine passenden Bewertungen"
+          subtitle-text="Für die semantische Suche müssen Embeddings erzeugt sein (OpenAI-Schlüssel im Backend)."></ui5-illustrated-message>
+      </div>
+    }
+
+    @if (!loading() && reviews().length) {
+      <div class="om-section">
+        <div class="om-header-facets">
+          <div class="om-facet">
+            <span class="om-facet-label">Treffer</span>
+            <span class="om-facet-value kpi">{{ reviews().length }}</span>
+          </div>
+          <div class="om-facet">
+            <span class="om-facet-label">Durchschnittsbewertung</span>
+            <ui5-rating-indicator readonly [value]="average()"></ui5-rating-indicator>
+            <span class="om-subtle">{{ average() | number: '1.1-1' }} von 5</span>
+          </div>
+          <div class="om-facet">
+            <span class="om-facet-label">Stimmung</span>
+            <ui5-tag [attr.design]="sentiment().design">{{ sentiment().text }}</ui5-tag>
+          </div>
+          <div class="om-facet">
+            <span class="om-facet-label">Häufige Begriffe</span>
+            <div class="keywords">
+              @for (w of topWords(); track w) {
+                <ui5-tag design="Neutral">{{ w }}</ui5-tag>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cards">
+        @for (r of reviews(); track r.id) {
+          <div class="card">
+            <div class="card-head">
+              <ui5-rating-indicator readonly [value]="r.rating"></ui5-rating-indicator>
+              <span class="om-subtle">{{ r.createdAt | date: 'dd.MM.yyyy' }}</span>
+            </div>
+            <p class="comment">„{{ r.comment }}“</p>
+            <div class="om-subtle">
+              @if (r.productId) {
+                <a [routerLink]="['/materials', r.productId]">{{ r.productName }}</a>
+                @if (r.productPrice) {
+                  · {{ r.productPrice | currency: 'EUR' }}
+                }
+              }
+              @if (r.userName) {
+                · {{ r.userName }}
+              }
+              @if (r.orderId) {
+                · <a [routerLink]="['/orders', r.orderId]">verifizierter Kauf</a>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</ui5-dynamic-page>

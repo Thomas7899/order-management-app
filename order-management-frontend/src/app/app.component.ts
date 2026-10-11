@@ -1,20 +1,10 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
-
+// order-management-frontend/src/app/app.component.ts
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { NavigationComponent } from './navigation/navigation.component';
-import { ToastComponent } from './shared/toast.component';
 
 @Component({
-    selector: 'app-root',
-    imports: [
-    RouterOutlet,
-    NavigationComponent,
-    ToastComponent
-],
-    templateUrl: './app.component.html',
-    changeDetection: ChangeDetectionStrategy.Eager,
-    styleUrls: ['./app.component.css']
+  selector: 'app-root',
+  imports: [RouterOutlet],
+  template: `<router-outlet />`
 })
-export class AppComponent {
-  title = 'Order Management System';
-}
+export class AppComponent {}

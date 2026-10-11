@@ -1,0 +1,148 @@
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">KI-Bestandsanalyse</ui5-title>
+    <div slot="subheading" class="om-subtle">
+      Bedarfsprognose und Nachschubempfehlungen aus Warenausgängen (601) der letzten 90 Tage und Bewertungsstimmung
+    </div>
+    <ui5-toolbar slot="actionsBar" design="Transparent">
+      <ui5-toolbar-button text="Neu analysieren" icon="refresh" [disabled]="loading()" (click)="load()"></ui5-toolbar-button>
+    </ui5-toolbar>
+  </ui5-dynamic-page-title>
+
+  <div class="om-content">
+    @if (loading()) {
+      <div class="om-section om-loading">
+        <ui5-busy-indicator active size="L" text="Das Sprachmodell analysiert den Bestand – das dauert bis zu 30 Sekunden."></ui5-busy-indicator>
+      </div>
+    }
+
+    @if (failed()) {
+      <div class="om-section">
+        <ui5-illustrated-message name="UnableToLoad" title-text="KI-Analyse nicht verfügbar"
+          subtitle-text="Der KI-Dienst hat nicht geantwortet. Ist im Backend ein gültiger OpenAI-API-Schlüssel konfiguriert?">
+          <ui5-button design="Emphasized" (click)="load()">Erneut versuchen</ui5-button>
+        </ui5-illustrated-message>
+      </div>
+    }
+
+    @if (report(); as r) {
+      <div class="om-grid-2">
+        <div class="om-section">
+          <ui5-title level="H5" class="om-section-title">Zusammenfassung</ui5-title>
+          <p class="summary">{{ r.executiveSummary }}</p>
+          <p class="om-subtle">Erstellt am {{ r.generatedAt | date: 'dd.MM.yyyy' }}</p>
+          @if (r.actionItems?.length) {
+            <ui5-title level="H6">Empfohlene Maßnahmen</ui5-title>
+            <ul>
+              @for (a of r.actionItems; track a) {
+                <li>{{ a }}</li>
+              }
+            </ul>
+          }
+        </div>
+        @if (r.healthScore; as h) {
+          <div class="om-section">
+            <ui5-title level="H5" class="om-section-title">Bestandsgesundheit</ui5-title>
+            <div class="scores">
+              <div class="score">
+                <span class="om-subtle">Gesamt</span>
+                <span class="grade">{{ h.grade }}</span>
+                <span class="om-subtle">{{ h.overallScore }} von 100</span>
+              </div>
+              <div class="score">
+                <span class="om-subtle">Verfügbarkeit</span>
+                <ui5-progress-indicator [value]="h.stockAvailabilityScore" [attr.value-state]="scoreState(h.stockAvailabilityScore)"></ui5-progress-indicator>
+                <span class="om-subtle">Umschlag</span>
+                <ui5-progress-indicator [value]="h.turnoverScore" [attr.value-state]="scoreState(h.turnoverScore)"></ui5-progress-indicator>
+                <span class="om-subtle">Inventurgenauigkeit</span>
+                <ui5-progress-indicator [value]="h.accuracyScore" [attr.value-state]="scoreState(h.accuracyScore)"></ui5-progress-indicator>
+              </div>
+            </div>
+            <div class="om-grid">
+              @if (h.strengths?.length) {
+                <div><ui5-title level="H6">Stärken</ui5-title><ul>@for (s of h.strengths; track s) {<li>{{ s }}</li>}</ul></div>
+              }
+              @if (h.weaknesses?.length) {
+                <div><ui5-title level="H6">Schwächen</ui5-title><ul>@for (s of h.weaknesses; track s) {<li>{{ s }}</li>}</ul></div>
+              }
+              @if (h.opportunities?.length) {
+                <div><ui5-title level="H6">Chancen</ui5-title><ul>@for (s of h.opportunities; track s) {<li>{{ s }}</li>}</ul></div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="om-section">
+        <ui5-title level="H5" class="om-section-title">Nachschubempfehlungen ({{ r.reorderRecommendations.length }})</ui5-title>
+        <ui5-table overflow-mode="Popin" no-data-text="Keine Nachbestellung erforderlich">
+          <ui5-table-header-row slot="headerRow">
+            <ui5-table-header-cell min-width="14rem">Material</ui5-table-header-cell>
+            <ui5-table-header-cell min-width="7rem">Dringlichkeit</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="6rem">Bestand</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="7rem">Bestellmenge</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="7rem" importance="-1" popin-text="Kosten">Kosten</ui5-table-header-cell>
+            <ui5-table-header-cell min-width="14rem" importance="-1" popin-text="Begründung">Begründung</ui5-table-header-cell>
+          </ui5-table-header-row>
+          @for (rec of r.reorderRecommendations; track rec.productId) {
+            <ui5-table-row>
+              <ui5-table-cell>
+                <div class="om-cell-stack">
+                  <a [routerLink]="['/materials', rec.productId]">{{ rec.productName }}</a>
+                  <span class="om-subtle">{{ rec.category }} · Reichweite {{ rec.daysUntilStockout }} Tage</span>
+                </div>
+              </ui5-table-cell>
+              <ui5-table-cell><ui5-tag [attr.design]="urgencyDesign(rec.urgency)">{{ urgencyText(rec.urgency) }}</ui5-tag></ui5-table-cell>
+              <ui5-table-cell class="om-num" horizontal-align="End">{{ rec.currentStock | number }}</ui5-table-cell>
+              <ui5-table-cell class="om-num om-strong" horizontal-align="End">{{ rec.recommendedOrderQuantity | number }}</ui5-table-cell>
+              <ui5-table-cell class="om-num" horizontal-align="End">{{ rec.estimatedCost | currency: 'EUR' : 'symbol' : '1.0-0' }}</ui5-table-cell>
+              <ui5-table-cell>{{ rec.reason }}</ui5-table-cell>
+            </ui5-table-row>
+          }
+        </ui5-table>
+      </div>
+
+      <div class="om-section">
+        <ui5-title level="H5" class="om-section-title">Bedarfsprognose ({{ r.demandForecasts.length }})</ui5-title>
+        <ui5-table overflow-mode="Popin" no-data-text="Keine Prognosen">
+          <ui5-table-header-row slot="headerRow">
+            <ui5-table-header-cell min-width="14rem">Material</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="6rem">Bestand</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="5rem">7 Tage</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="5rem">30 Tage</ui5-table-header-cell>
+            <ui5-table-header-cell min-width="6rem">Trend</ui5-table-header-cell>
+            <ui5-table-header-cell min-width="16rem" importance="-1" popin-text="Einschätzung">Einschätzung</ui5-table-header-cell>
+          </ui5-table-header-row>
+          @for (f of r.demandForecasts; track f.productId) {
+            <ui5-table-row>
+              <ui5-table-cell>
+                <div class="om-cell-stack">
+                  <a [routerLink]="['/materials', f.productId]">{{ f.productName }}</a>
+                  <span class="om-subtle">Konfidenz {{ f.confidenceScore | number: '1.0-0' }} %</span>
+                </div>
+              </ui5-table-cell>
+              <ui5-table-cell class="om-num" horizontal-align="End">{{ f.currentStock | number }}</ui5-table-cell>
+              <ui5-table-cell class="om-num" horizontal-align="End">{{ f.predictedDemand7Days | number }}</ui5-table-cell>
+              <ui5-table-cell class="om-num" horizontal-align="End">{{ f.predictedDemand30Days | number }}</ui5-table-cell>
+              <ui5-table-cell>
+                <ui5-tag [attr.design]="f.trendDirection === 'RISING' ? 'Positive' : f.trendDirection === 'FALLING' ? 'Negative' : 'Neutral'">{{ trendText(f.trendDirection) }}</ui5-tag>
+              </ui5-table-cell>
+              <ui5-table-cell>{{ f.aiInsight }}</ui5-table-cell>
+            </ui5-table-row>
+          }
+        </ui5-table>
+      </div>
+
+      @if (r.anomalies.length) {
+        <div class="om-section">
+          <ui5-title level="H5" class="om-section-title">Auffälligkeiten ({{ r.anomalies.length }})</ui5-title>
+          @for (a of r.anomalies; track a.description) {
+            <ui5-message-strip hide-close-button [attr.design]="a.severity === 'HIGH' ? 'Negative' : a.severity === 'MEDIUM' ? 'Critical' : 'Information'">
+              <span class="om-strong">{{ a.productName }}</span> ({{ a.warehouseName }}): {{ a.description }} – {{ a.suggestedAction }}
+            </ui5-message-strip>
+          }
+        </div>
+      }
+    }
+  </div>
+</ui5-dynamic-page>

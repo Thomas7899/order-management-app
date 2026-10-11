@@ -1,0 +1,149 @@
+@if (delivery(); as d) {
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Auslieferung {{ d.deliveryNumber }}</ui5-title>
+    <ui5-title slot="snappedHeading" level="H5">Auslieferung {{ d.deliveryNumber }} · {{ d.shipTo.name }}</ui5-title>
+    <div slot="subheading" class="om-subtle">
+      Lieferart {{ d.deliveryType }} · zu Auftrag <a [routerLink]="['/orders', d.orderId]">{{ d.orderNumber }}</a>
+    </div>
+    <om-status [status]="d.status" />
+    <ui5-toolbar slot="actionsBar" design="Transparent">
+      @if (auth.hasAnyRole('WAREHOUSE')) {
+        @if (canPostGoodsIssue()) {
+          <ui5-toolbar-button text="Warenausgang buchen" design="Emphasized" icon="journey-depart" (click)="openDialog('gi')"></ui5-toolbar-button>
+          <ui5-toolbar-button text="Lieferung stornieren" design="Transparent" icon="decline" (click)="cancel()"></ui5-toolbar-button>
+        }
+        @if (canReverse()) {
+          <ui5-toolbar-button text="Warenausgang stornieren" design="Transparent" icon="journey-arrive" (click)="reverseGoodsIssue()"></ui5-toolbar-button>
+        }
+      }
+      @if (canBill() && auth.hasAnyRole('BILLING')) {
+        <ui5-toolbar-button text="Fakturieren" design="Emphasized" icon="receipt" (click)="openDialog('invoice')"></ui5-toolbar-button>
+      }
+      <ui5-toolbar-button text="Lieferschein drucken" design="Transparent" icon="print" (click)="print()"></ui5-toolbar-button>
+    </ui5-toolbar>
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <div class="om-header-facets">
+      <div class="om-facet">
+        <span class="om-facet-label">Warenempfänger</span>
+        <a [routerLink]="['/customers', d.shipTo.id]" class="om-facet-value">{{ d.shipTo.name }}</a>
+        <span class="om-subtle">{{ d.shipTo.customerNumber }}</span>
+      </div>
+      <div class="om-facet">
+        <span class="om-facet-label">Lagerort</span>
+        <span class="om-facet-value">{{ d.warehouseCode }} {{ d.warehouseName }}</span>
+        <span class="om-subtle">Werk 1000</span>
+      </div>
+      <div class="om-facet">
+        <span class="om-facet-label">Geplanter Warenausgang</span>
+        <span class="om-facet-value">{{ d.plannedGoodsIssueDate | date: 'dd.MM.yyyy' }}</span>
+        <span class="om-facet-label">Ist-Warenausgang</span>
+        <span class="om-facet-value">{{ d.goodsIssueDate ? (d.goodsIssueDate | date: 'dd.MM.yyyy HH:mm') : '–' }}</span>
+      </div>
+      <div class="om-facet">
+        <span class="om-facet-label">Materialbeleg</span>
+        @if (d.goodsIssueDocument) {
+          <a [routerLink]="['/movements']" [queryParams]="{ search: d.goodsIssueDocument }" class="om-facet-value">{{ d.goodsIssueDocument }}</a>
+        } @else {
+          <span class="om-facet-value">–</span>
+        }
+        <span class="om-facet-label">Fakturastatus</span>
+        <om-status [status]="d.billingStatus" />
+      </div>
+      <div class="om-facet">
+        <span class="om-facet-label">Gesamtmenge</span>
+        <span class="om-facet-value kpi">{{ d.totalQuantity | number }}</span>
+      </div>
+    </div>
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    <div class="om-section">
+      <ui5-title level="H5" class="om-section-title">Positionen (Kommissionierliste)</ui5-title>
+      <ui5-table overflow-mode="Popin">
+        <ui5-table-header-row slot="headerRow">
+          <ui5-table-header-cell width="4rem">Pos.</ui5-table-header-cell>
+          <ui5-table-header-cell width="6rem">Auftr.-Pos.</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="14rem">Material</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="7rem">Lagerplatz</ui5-table-header-cell>
+          <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="6rem">Liefermenge</ui5-table-header-cell>
+        </ui5-table-header-row>
+        @for (i of d.items; track i.itemNumber) {
+          <ui5-table-row>
+            <ui5-table-cell>{{ i.itemNumber }}</ui5-table-cell>
+            <ui5-table-cell>{{ i.orderItemNumber }}</ui5-table-cell>
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <a [routerLink]="['/materials', i.productId]">{{ i.productName }}</a>
+                <span class="om-subtle">{{ i.materialNumber }}</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell><span class="om-mono">{{ i.binLocation || '–' }}</span></ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">{{ i.quantity | number }} {{ i.unitOfMeasure }}</ui5-table-cell>
+          </ui5-table-row>
+        }
+      </ui5-table>
+      <div class="print-note om-subtle">Lieferadresse: {{ d.shippingAddress }}</div>
+    </div>
+
+    <div class="om-grid-2">
+      <div class="om-section">
+        <ui5-title level="H5" class="om-section-title">Fakturen</ui5-title>
+        @if (invoices().length === 0) {
+          <span class="om-subtle">Noch nicht fakturiert.</span>
+        }
+        @for (inv of invoices(); track inv.id) {
+          <div class="om-attribute">
+            <a [routerLink]="['/invoices', inv.id]">{{ inv.billingType.text }} {{ inv.invoiceNumber }}</a>
+            <span class="om-subtle">{{ inv.billingDate | date: 'dd.MM.yyyy' }} · <om-status [status]="inv.status" /></span>
+          </div>
+        }
+      </div>
+      <div class="om-section">
+        <ui5-title level="H5" class="om-section-title">Änderungen</ui5-title>
+        <ui5-timeline layout="Vertical" class="timeline-host">
+          @for (c of changes(); track c.id) {
+            <ui5-timeline-item [attr.title-text]="changeText(c)" icon="history"
+              [attr.subtitle-text]="(c.changedAt | date: 'dd.MM.yyyy HH:mm') + ' · ' + c.changedBy"></ui5-timeline-item>
+          }
+        </ui5-timeline>
+      </div>
+    </div>
+  </div>
+</ui5-dynamic-page>
+
+<ui5-dialog header-text="Warenausgang buchen" [open]="dialog() === 'gi'" (close)="dialog.set(null)">
+  <div class="om-form-grid">
+    <div class="om-field span-2">
+      <ui5-message-strip design="Information" hide-close-button>
+        Bucht Bewegungsart 601 aus Lagerort {{ d.warehouseCode }} und reduziert den Bestand. Danach ist die Lieferung fakturierbar.
+      </ui5-message-strip>
+    </div>
+    <div class="om-field">
+      <ui5-label show-colon required>Buchungsdatum</ui5-label>
+      <ui5-date-picker placeholder="TT.MM.JJJJ" [(ngModel)]="postingDate" value-format="yyyy-MM-dd" display-format="dd.MM.yyyy"></ui5-date-picker>
+    </div>
+  </div>
+  <div slot="footer" class="om-dialog-footer">
+    <ui5-button design="Emphasized" [disabled]="busy()" (click)="postGoodsIssue()">Buchen</ui5-button>
+    <ui5-button design="Transparent" (click)="dialog.set(null)">Abbrechen</ui5-button>
+  </div>
+</ui5-dialog>
+
+<ui5-dialog header-text="Faktura anlegen" [open]="dialog() === 'invoice'" (close)="dialog.set(null)">
+  <div class="om-form-grid">
+    <div class="om-field">
+      <ui5-label show-colon required>Fakturadatum</ui5-label>
+      <ui5-date-picker placeholder="TT.MM.JJJJ" [(ngModel)]="billingDate" value-format="yyyy-MM-dd" display-format="dd.MM.yyyy"></ui5-date-picker>
+    </div>
+  </div>
+  <div slot="footer" class="om-dialog-footer">
+    <ui5-button design="Emphasized" [disabled]="busy()" (click)="createInvoice()">Fakturieren</ui5-button>
+    <ui5-button design="Transparent" (click)="dialog.set(null)">Abbrechen</ui5-button>
+  </div>
+</ui5-dialog>
+} @else {
+  <div class="om-loading"><ui5-busy-indicator active size="L"></ui5-busy-indicator></div>
+}

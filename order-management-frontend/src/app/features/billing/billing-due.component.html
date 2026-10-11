@@ -1,0 +1,59 @@
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Fakturavorrat</ui5-title>
+    <div slot="subheading" class="om-subtle">Lieferungen mit Warenausgang, die noch nicht fakturiert sind (VF04)</div>
+    <ui5-toolbar slot="actionsBar" design="Transparent">
+      <ui5-toolbar-button icon="refresh" text="Aktualisieren" design="Transparent" (click)="load()"></ui5-toolbar-button>
+    </ui5-toolbar>
+  </ui5-dynamic-page-title>
+
+  <div class="om-content">
+    @if (result().length) {
+      <ui5-message-strip design="Positive" (close)="result.set([])">
+        Angelegte Rechnungen:
+        @for (inv of result(); track inv.id) {
+          <ui5-link (click)="openInvoice(inv.id)">{{ inv.invoiceNumber }}</ui5-link>{{ $last ? '' : ', ' }}
+        }
+      </ui5-message-strip>
+    }
+
+    <div class="om-section">
+      <div class="om-section-header">
+        <ui5-title level="H5">Zu fakturierende Lieferungen ({{ rows().length }})</ui5-title>
+        @if (auth.hasAnyRole('BILLING')) {
+          <div class="om-filterbar">
+            <div class="om-filter">
+              <ui5-label show-colon>Fakturadatum</ui5-label>
+              <ui5-date-picker placeholder="TT.MM.JJJJ" [(ngModel)]="billingDate" value-format="yyyy-MM-dd" display-format="dd.MM.yyyy"></ui5-date-picker>
+            </div>
+            <ui5-button design="Emphasized" icon="receipt" [disabled]="busy() || selectedCount() === 0" (click)="bill()">
+              {{ selectedCount() ? selectedCount() + ' Lieferung(en) fakturieren' : 'Fakturieren' }}
+            </ui5-button>
+          </div>
+        }
+      </div>
+      <ui5-table overflow-mode="Popin" [loading]="loading() || busy()" (row-click)="openDelivery($event)"
+        no-data-text="Der Fakturavorrat ist leer – alle Lieferungen sind fakturiert.">
+        @if (auth.hasAnyRole('BILLING')) {
+          <ui5-table-selection-multi slot="features" (change)="selectionChange($event)"></ui5-table-selection-multi>
+        }
+        <ui5-table-header-row slot="headerRow" sticky>
+          <ui5-table-header-cell>Lieferung</ui5-table-header-cell>
+          <ui5-table-header-cell>Warenempfänger</ui5-table-header-cell>
+          <ui5-table-header-cell>Auftrag</ui5-table-header-cell>
+          <ui5-table-header-cell>Warenausgang</ui5-table-header-cell>
+          <ui5-table-header-cell class="om-num" horizontal-align="End">Menge</ui5-table-header-cell>
+        </ui5-table-header-row>
+        @for (d of rows(); track d.id) {
+          <ui5-table-row interactive [attr.row-key]="d.id">
+            <ui5-table-cell><span class="om-strong">{{ d.deliveryNumber }}</span></ui5-table-cell>
+            <ui5-table-cell>{{ d.shipTo.name }} ({{ d.shipTo.customerNumber }})</ui5-table-cell>
+            <ui5-table-cell>{{ d.orderNumber }}</ui5-table-cell>
+            <ui5-table-cell>{{ d.goodsIssueDate | date: 'dd.MM.yyyy HH:mm' }}</ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">{{ d.totalQuantity | number }}</ui5-table-cell>
+          </ui5-table-row>
+        }
+      </ui5-table>
+    </div>
+  </div>
+</ui5-dynamic-page>

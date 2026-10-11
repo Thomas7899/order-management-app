@@ -1,0 +1,107 @@
+<ui5-navigation-layout [attr.mode]="sideCollapsed() ? 'Collapsed' : 'Expanded'">
+  <ui5-shellbar
+    slot="header"
+    show-notifications
+    [attr.notifications-count]="errorCount() > 0 ? errorCount() : null"
+    (notifications-click)="openMessages($event)"
+    (profile-click)="openUserMenu($event)">
+    <ui5-button slot="startButton" icon="menu2" design="Transparent" tooltip="Navigation ein-/ausblenden" (click)="toggleSide()"></ui5-button>
+    <ui5-shellbar-branding slot="branding" (click)="home()">
+      Order Management
+      <span slot="logo" class="logo">OM</span>
+    </ui5-shellbar-branding>
+    <ui5-avatar slot="profile" [attr.initials]="initials()" color-scheme="Accent6"></ui5-avatar>
+  </ui5-shellbar>
+
+  <ui5-side-navigation slot="sideContent" (selection-change)="navigate($event)">
+    <ui5-side-navigation-item text="Startseite" icon="home" data-route="/" [selected]="activeRoute() === '/'"></ui5-side-navigation-item>
+    @for (group of groups; track group.text) {
+      <ui5-side-navigation-group [attr.text]="group.text" expanded>
+        @for (item of group.items; track item.route) {
+          @if (visible(item)) {
+            <ui5-side-navigation-item
+              [attr.text]="item.text"
+              [attr.icon]="item.icon"
+              [attr.data-route]="item.route"
+              [selected]="activeRoute() === item.route"></ui5-side-navigation-item>
+          }
+        }
+      </ui5-side-navigation-group>
+    }
+    @if (auth.hasAnyRole('ADMIN')) {
+      <ui5-side-navigation-item
+        slot="fixedItems"
+        text="Benutzerverwaltung"
+        icon="user-settings"
+        data-route="/admin/users"
+        [selected]="activeRoute() === '/admin/users'"></ui5-side-navigation-item>
+    }
+  </ui5-side-navigation>
+
+  <div class="shell-content">
+    <router-outlet />
+  </div>
+</ui5-navigation-layout>
+
+<ui5-user-menu #userMenu (item-click)="userMenuItem($event)" (sign-out-click)="signOut()">
+  @if (auth.user(); as user) {
+    <ui5-user-menu-account
+      slot="accounts"
+      [attr.title-text]="user.fullName"
+      [attr.subtitle-text]="user.username + ' · ' + user.email"
+      [attr.description]="roleText()"
+      [attr.avatar-initials]="initials()"
+      selected></ui5-user-menu-account>
+  }
+  <ui5-user-menu-item icon="palette" data-action="theme"
+    [attr.text]="theme() === 'sap_horizon' ? 'Dunkles Design' : 'Helles Design'"></ui5-user-menu-item>
+  @if (auth.hasAnyRole('ADMIN')) {
+    <ui5-user-menu-item icon="user-settings" text="Benutzerverwaltung" data-action="users"></ui5-user-menu-item>
+  }
+</ui5-user-menu>
+
+<ui5-popover #messagePopover header-text="Meldungen" placement="Bottom" class="message-popover">
+  @if (messages.log().length === 0) {
+    <div class="message-empty">Keine Meldungen in dieser Sitzung.</div>
+  } @else {
+    <ui5-list>
+      @for (m of messages.log(); track m.id) {
+        <ui5-li
+          [attr.icon]="m.type === 'error' ? 'error' : m.type === 'warning' ? 'alert' : m.type === 'success' ? 'status-positive' : 'message-information'"
+          [attr.description]="(m.messageId ? m.messageId + ' · ' : '') + (m.timestamp | date: 'HH:mm:ss')"
+          [attr.highlight]="m.type === 'error' ? 'Negative' : m.type === 'warning' ? 'Critical' : m.type === 'success' ? 'Positive' : 'Information'"
+          wrapping-type="Normal">{{ m.text }}</ui5-li>
+      }
+    </ui5-list>
+    <div class="message-footer">
+      <ui5-button design="Transparent" (click)="messages.clearLog()">Alle entfernen</ui5-button>
+    </div>
+  }
+</ui5-popover>
+
+<ui5-toast #toast placement="BottomCenter" duration="3500">{{ messages.toast()?.text }}</ui5-toast>
+
+<ui5-dialog
+  [open]="!!messages.dialog()"
+  [attr.header-text]="messages.dialog()?.type === 'warning' ? 'Warnung' : 'Fehler'"
+  [attr.state]="messages.dialog()?.type === 'warning' ? 'Critical' : 'Negative'"
+  (close)="messages.closeDialog()">
+  @if (messages.dialog(); as m) {
+    <div class="message-box">
+      <p>{{ m.text }}</p>
+      @if (m.details?.length) {
+        <ul>
+          @for (d of m.details; track d) {
+            <li>{{ d }}</li>
+          }
+        </ul>
+      }
+      @if (m.messageId) {
+        <div class="message-id">Meldungsnummer {{ m.messageId }}</div>
+      }
+    </div>
+  }
+  <div slot="footer" class="om-dialog-footer">
+    <ui5-button design="Emphasized" (click)="messages.closeDialog()">Schließen</ui5-button>
+  </div>
+</ui5-dialog>

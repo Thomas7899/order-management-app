@@ -1,0 +1,132 @@
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Materialbelege</ui5-title>
+    <ui5-title slot="snappedHeading" level="H5">Materialbelege ({{ total() }})</ui5-title>
+    <div slot="subheading" class="om-subtle">Alle Warenbewegungen mit SAP-Bewegungsart (MB51)</div>
+    <ui5-toolbar slot="actionsBar" design="Transparent">
+      @if (auth.hasAnyRole('WAREHOUSE')) {
+        <ui5-toolbar-button text="Warenbewegung buchen" design="Emphasized" icon="journey-arrive" (click)="dialogOpen.set(true)"></ui5-toolbar-button>
+      }
+    </ui5-toolbar>
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <div class="om-filterbar">
+      <div class="om-filter wide">
+        <ui5-label show-colon>Suche</ui5-label>
+        <ui5-input [(ngModel)]="search" placeholder="Beleg, Material, Referenz" show-clear-icon (keydown.enter)="go()">
+          <ui5-icon slot="icon" name="search"></ui5-icon>
+        </ui5-input>
+      </div>
+      <div class="om-filter wide">
+        <ui5-label show-colon>Bewegungsart</ui5-label>
+        <ui5-multi-combobox placeholder="Alle" (selection-change)="codeSelection($event)">
+          @for (c of codes; track c.code) {
+            <ui5-mcb-item [attr.text]="c.text" [attr.data-code]="c.code" [selected]="movementCodes.includes(c.code)"></ui5-mcb-item>
+          }
+        </ui5-multi-combobox>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Lagerort</ui5-label>
+        <ui5-select [(ngModel)]="warehouseId">
+          <ui5-option value="" [selected]="!warehouseId">Alle</ui5-option>
+          @for (w of warehouses(); track w.id) {
+            <ui5-option [value]="'' + w.id" [selected]="warehouseId === '' + w.id">{{ w.code }} {{ w.name }}</ui5-option>
+          }
+        </ui5-select>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>Buchungsdatum von</ui5-label>
+        <ui5-date-picker placeholder="TT.MM.JJJJ" [(ngModel)]="dateFrom" value-format="yyyy-MM-dd" display-format="dd.MM.yyyy"></ui5-date-picker>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>bis</ui5-label>
+        <ui5-date-picker placeholder="TT.MM.JJJJ" [(ngModel)]="dateTo" value-format="yyyy-MM-dd" display-format="dd.MM.yyyy"></ui5-date-picker>
+      </div>
+      <div class="om-filter-actions">
+        <ui5-button design="Transparent" (click)="reset()">Zurücksetzen</ui5-button>
+        <ui5-button design="Emphasized" (click)="go()">Start</ui5-button>
+      </div>
+    </div>
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    <div class="om-section">
+      <ui5-title level="H5" class="om-section-title">Belegpositionen ({{ total() }})</ui5-title>
+      <ui5-table overflow-mode="Popin" [loading]="loading()" no-data-text="Keine Materialbelege gefunden">
+        <ui5-table-header-row slot="headerRow" sticky>
+          <ui5-table-header-cell min-width="9rem">Materialbeleg</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="12rem">Bewegungsart</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="14rem">Material</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="8rem" popin-text="Lagerort">Lagerort</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="6rem" class="om-num" horizontal-align="End">Menge</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="8rem" importance="-1" popin-text="Referenz">Referenz</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="8rem">Buchungsdatum</ui5-table-header-cell>
+          <ui5-table-header-cell width="7rem"></ui5-table-header-cell>
+        </ui5-table-header-row>
+        @for (m of rows(); track m.id) {
+          <ui5-table-row>
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <span class="om-strong">{{ m.movementNumber }} / {{ m.documentItem }}</span>
+                <span class="om-subtle">{{ m.createdBy }}</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <span>{{ m.movementCode }} {{ m.movementTypeDisplay }}</span>
+                @if (m.reversed) {
+                  <ui5-tag design="Negative">Storniert</ui5-tag>
+                } @else if (m.reversedMovementNumber) {
+                  <span class="om-subtle">Storno zu {{ m.reversedMovementNumber }}</span>
+                }
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <a [routerLink]="['/materials', m.productId]">{{ m.productName }}</a>
+                <span class="om-subtle">{{ m.materialNumber }}</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>{{ m.sourceWarehouseCode ?? '' }}{{ m.sourceWarehouseCode && m.targetWarehouseCode ? ' → ' : '' }}{{ m.targetWarehouseCode ?? '' }}</ui5-table-cell>
+            <ui5-table-cell class="om-num" horizontal-align="End">
+              <span [class.om-positive]="m.stockEffect > 0" [class.om-negative]="m.stockEffect < 0">
+                {{ m.stockEffect > 0 ? '+' : m.stockEffect < 0 ? '−' : '' }}{{ m.quantity | number }}
+              </span>
+            </ui5-table-cell>
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <span>{{ m.referenceNumber || '–' }}</span>
+                <span class="om-subtle">{{ m.reason }}</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>{{ m.postingDate | date: 'dd.MM.yyyy' }}</ui5-table-cell>
+            <ui5-table-cell>
+              @if (canReverse(m)) {
+                <ui5-button design="Transparent" icon="decline" (click)="reverseCandidate.set(m)">Storno</ui5-button>
+              }
+            </ui5-table-cell>
+          </ui5-table-row>
+        }
+        @if (rows().length < total()) {
+          <ui5-table-growing slot="features" mode="Button" text="Mehr" [attr.subtext]="'[' + rows().length + ' / ' + total() + ']'" (load-more)="more()"></ui5-table-growing>
+        }
+      </ui5-table>
+    </div>
+  </div>
+</ui5-dynamic-page>
+
+<om-movement-dialog [open]="dialogOpen()" (closed)="dialogOpen.set(false)" (posted)="posted()" />
+
+<ui5-dialog header-text="Materialbeleg stornieren" state="Critical" [open]="!!reverseCandidate()" (close)="reverseCandidate.set(null)">
+  @if (reverseCandidate(); as m) {
+    <p>
+      Materialbeleg {{ m.movementNumber }} / {{ m.documentItem }} ({{ m.movementCode }} {{ m.movementTypeDisplay }},
+      {{ m.quantity }} × {{ m.productName }}) wird durch einen Gegenbeleg storniert.
+    </p>
+  }
+  <div slot="footer" class="om-dialog-footer">
+    <ui5-button design="Negative" (click)="reverse()">Stornieren</ui5-button>
+    <ui5-button design="Transparent" (click)="reverseCandidate.set(null)">Abbrechen</ui5-button>
+  </div>
+</ui5-dialog>

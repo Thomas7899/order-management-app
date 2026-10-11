@@ -1,0 +1,297 @@
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Analysen</ui5-title>
+    <div slot="subheading" class="om-subtle">Kennzahlen aus Fakturen, Lieferungen und Bestand · Werte netto in EUR</div>
+  </ui5-dynamic-page-title>
+
+  <div class="om-content">
+    <ui5-tabcontainer (tab-select)="selectTab($event)">
+      <!-- Kennzahlen -->
+      <ui5-tab text="Kennzahlen" data-key="kpi" [selected]="tab() === 'kpi'">
+        @if (tab() === 'kpi') {
+          @if (loading()) {
+            <div class="om-loading"><ui5-busy-indicator active size="L"></ui5-busy-indicator></div>
+          }
+          @if (kpis(); as k) {
+            <ui5-title level="H5" class="group-title">Finanzen</ui5-title>
+            <div class="kpis">
+              <div class="kpi-card">
+                <span class="label">Umsatz letzte 12 Monate</span>
+                <span class="value">{{ k.financial.revenueLast12Months | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+                <span class="sub">lfd. Jahr {{ k.financial.revenueYearToDate | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">Umsatz laufender Monat</span>
+                <span class="value">{{ k.financial.revenueThisMonth | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+                <span class="sub">
+                  <span [class.om-positive]="k.financial.revenueGrowth > 0" [class.om-negative]="k.financial.revenueGrowth < 0">
+                    {{ k.financial.revenueGrowth > 0 ? '+' : '' }}{{ k.financial.revenueGrowth | number: '1.1-1' }} %
+                  </span>
+                  ggü. Vormonat (gleicher Zeitraum)
+                </span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">Bruttomarge</span>
+                <span class="value" [attr.data-state]="k.financial.grossMarginPercent >= 25 ? 'Positive' : 'Critical'">{{ k.financial.grossMarginPercent | number: '1.1-1' }} %</span>
+                <span class="sub">{{ k.financial.grossMarginAmount | currency: 'EUR' : 'symbol' : '1.0-0' }} (Umsatz − VPRS)</span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">Ø Auftragswert</span>
+                <span class="value">{{ k.financial.averageOrderValue | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+                <span class="sub">Umsatz je Kunde {{ k.financial.revenuePerCustomer | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">Offene Forderungen</span>
+                <span class="value">{{ k.financial.openReceivables | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+                <span class="sub">davon überfällig
+                  <span [class.om-negative]="k.financial.overdueReceivables > 0">{{ k.financial.overdueReceivables | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+                </span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">DSO (Forderungslaufzeit)</span>
+                <span class="value" [attr.data-state]="k.financial.daysSalesOutstanding > 45 ? 'Negative' : k.financial.daysSalesOutstanding > 30 ? 'Critical' : 'Positive'">
+                  {{ k.financial.daysSalesOutstanding | number: '1.0-0' }} Tage
+                </span>
+                <span class="sub">Offene Forderungen / Umsatz × 365</span>
+              </div>
+            </div>
+
+            <ui5-title level="H5" class="group-title">Vertrieb und Logistik</ui5-title>
+            <div class="kpis">
+              <div class="kpi-card">
+                <span class="label">Auftragseingang lfd. Monat</span>
+                <span class="value">{{ k.operational.orderIntakeThisMonth | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+                <span class="sub">{{ k.operational.ordersThisMonth }} Aufträge · Ø {{ k.operational.averageOrdersPerDay | number: '1.1-1' }} pro Tag</span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">Offene Aufträge</span>
+                <span class="value">{{ k.operational.openOrders + k.operational.inProcessOrders }}</span>
+                <span class="sub">{{ k.operational.openOrders }} offen · {{ k.operational.inProcessOrders }} in Bearbeitung</span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">Liefertreue</span>
+                <span class="value" [attr.data-state]="k.operational.onTimeDeliveryRate >= 90 ? 'Positive' : k.operational.onTimeDeliveryRate >= 75 ? 'Critical' : 'Negative'">
+                  {{ k.operational.onTimeDeliveryRate | number: '1.1-1' }} %
+                </span>
+                <span class="sub">Warenausgang bis Wunschtermin (90 Tage)</span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">Ø Durchlaufzeit</span>
+                <span class="value">{{ k.operational.averageLeadTimeDays | number: '1.1-1' }} Tage</span>
+                <span class="sub">Auftrag bis Warenausgang</span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">Kreditsperren</span>
+                <span class="value" [attr.data-state]="k.operational.creditBlockedOrders > 0 ? 'Critical' : 'Positive'">{{ k.operational.creditBlockedOrders }}</span>
+                <span class="sub">Stornoquote {{ k.operational.cancellationRate | number: '1.1-1' }} %</span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">Rückstand</span>
+                <span class="value" [attr.data-state]="k.inventory.backlogItems > 0 ? 'Critical' : 'Positive'">{{ k.inventory.backlogItems }}</span>
+                <span class="sub">nicht bestätigte Positionen</span>
+              </div>
+            </div>
+
+            <div class="om-grid-2" style="margin-top: 1rem">
+              <div class="om-section">
+                <ui5-title level="H5">Nettoumsatz je Monat</ui5-title>
+                @if (revenueChart(); as o) { <div echarts class="om-chart" [options]="o"></div> }
+              </div>
+              <div class="om-section">
+                <ui5-title level="H5">Aufträge je Monat</ui5-title>
+                @if (orderChart(); as o) { <div echarts class="om-chart" [options]="o"></div> }
+              </div>
+            </div>
+
+            <ui5-title level="H5" class="group-title">Kunden und Bestand</ui5-title>
+            <div class="kpis">
+              <div class="kpi-card">
+                <span class="label">Aktive Debitoren</span>
+                <span class="value">{{ k.customer.activeCustomers }}</span>
+                <span class="sub">{{ k.customer.activeCustomerRate | number: '1.0-0' }} % von {{ k.customer.totalCustomers }} · {{ k.customer.newCustomersThisMonth }} neu</span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">Customer Lifetime Value</span>
+                <span class="value">{{ k.customer.customerLifetimeValue | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+                <span class="sub">Ø {{ k.customer.averagePurchaseFrequency | number: '1.1-1' }} Aufträge je Kunde</span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">Bestandswert</span>
+                <span class="value">{{ k.inventory.totalInventoryValue | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+                <span class="sub">{{ k.inventory.activeProducts }} von {{ k.inventory.totalProducts }} Materialien aktiv</span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">Lagerumschlag</span>
+                <span class="value">{{ k.inventory.stockTurnoverRate | number: '1.1-1' }}</span>
+                <span class="sub">Reichweite {{ k.inventory.daysOfSupply | number: '1.0-0' }} Tage</span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">Unter Meldebestand</span>
+                <span class="value" [attr.data-state]="k.inventory.lowStockItems > 0 ? 'Critical' : 'Positive'">{{ k.inventory.lowStockItems }}</span>
+                <span class="sub">Lagerortbestände</span>
+              </div>
+              <div class="kpi-card">
+                <span class="label">Ohne Bestand</span>
+                <span class="value" [attr.data-state]="k.inventory.outOfStockItems > 0 ? 'Negative' : 'Positive'">{{ k.inventory.outOfStockItems }}</span>
+                <span class="sub">Materialien</span>
+              </div>
+            </div>
+
+            <div class="om-grid-2" style="margin-top: 1rem">
+              <div class="om-section">
+                <ui5-title level="H5">Bestandswert je Warengruppe</ui5-title>
+                @if (inventoryChart(); as o) { <div echarts class="om-chart" [options]="o"></div> }
+              </div>
+              <div class="om-section">
+                <ui5-title level="H5">Debitoren je Land</ui5-title>
+                @if (countryChart(); as o) { <div echarts class="om-chart" [options]="o"></div> }
+              </div>
+            </div>
+          }
+        }
+      </ui5-tab>
+
+      <!-- ABC-Analyse -->
+      <ui5-tab text="ABC-Analyse" data-key="abc" [selected]="tab() === 'abc'">
+        @if (tab() === 'abc') {
+          <div class="om-section">
+            <div class="om-section-header">
+              <ui5-segmented-button (selection-change)="setAbcScope($event)">
+                <ui5-segmented-button-item data-key="products" [selected]="abcScope() === 'products'">Materialien</ui5-segmented-button-item>
+                <ui5-segmented-button-item data-key="customers" [selected]="abcScope() === 'customers'">Debitoren</ui5-segmented-button-item>
+              </ui5-segmented-button>
+              <span class="om-subtle">Umsatz der letzten 12 Monate · A bis 80 %, B bis 95 %, C Rest</span>
+            </div>
+
+            @if (abc(); as a) {
+              <div class="abc-classes">
+                <div class="kpi-card">
+                  <span class="label">A-{{ abcScope() === 'products' ? 'Materialien' : 'Kunden' }}</span>
+                  <span class="value">{{ a.summary.aClassCount }}</span>
+                  <span class="sub">{{ a.summary.aClassPercentage | number: '1.0-0' }} % Umsatzanteil · {{ a.summary.aClassRevenue | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="label">B-{{ abcScope() === 'products' ? 'Materialien' : 'Kunden' }}</span>
+                  <span class="value">{{ a.summary.bClassCount }}</span>
+                  <span class="sub">{{ a.summary.bClassPercentage | number: '1.0-0' }} % Umsatzanteil · {{ a.summary.bClassRevenue | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="label">C-{{ abcScope() === 'products' ? 'Materialien' : 'Kunden' }}</span>
+                  <span class="value">{{ a.summary.cClassCount }}</span>
+                  <span class="sub">{{ a.summary.cClassPercentage | number: '1.0-0' }} % Umsatzanteil · {{ a.summary.cClassRevenue | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+                </div>
+              </div>
+              @if (paretoChart(); as o) { <div echarts class="om-chart tall" [options]="o"></div> }
+            }
+          </div>
+
+          @if (abc(); as a) {
+            <div class="om-section">
+              <ui5-table (row-click)="openAbcItem($event)" [attr.loading]="abcLoading() ? '' : null">
+                <ui5-table-header-row slot="headerRow" sticky>
+                  <ui5-table-header-cell width="4rem">Klasse</ui5-table-header-cell>
+                  <ui5-table-header-cell>{{ abcScope() === 'products' ? 'Material' : 'Debitor' }}</ui5-table-header-cell>
+                  <ui5-table-header-cell horizontal-align="End">Umsatz</ui5-table-header-cell>
+                  <ui5-table-header-cell horizontal-align="End">Anteil</ui5-table-header-cell>
+                  <ui5-table-header-cell horizontal-align="End">Kumuliert</ui5-table-header-cell>
+                  <ui5-table-header-cell horizontal-align="End">Aufträge</ui5-table-header-cell>
+                  @if (abcScope() === 'products') {
+                    <ui5-table-header-cell horizontal-align="End">Menge</ui5-table-header-cell>
+                  }
+                </ui5-table-header-row>
+                @for (i of a.items; track i.id) {
+                  <ui5-table-row [attr.row-key]="i.id" interactive>
+                    <ui5-table-cell><ui5-tag [attr.design]="classDesign(i.abcClass)">{{ i.abcClass }}</ui5-tag></ui5-table-cell>
+                    <ui5-table-cell>
+                      <div class="om-cell-stack">
+                        <span class="om-strong">{{ i.name }}</span>
+                        <span class="om-subtle">{{ i.number }}@if (i.category) { · {{ i.category }} }</span>
+                      </div>
+                    </ui5-table-cell>
+                    <ui5-table-cell horizontal-align="End">{{ i.revenue | currency: 'EUR' }}</ui5-table-cell>
+                    <ui5-table-cell horizontal-align="End">{{ i.revenuePercentage | number: '1.1-1' }} %</ui5-table-cell>
+                    <ui5-table-cell horizontal-align="End">{{ i.cumulativePercentage | number: '1.1-1' }} %</ui5-table-cell>
+                    <ui5-table-cell horizontal-align="End">{{ i.orderCount }}</ui5-table-cell>
+                    @if (abcScope() === 'products') {
+                      <ui5-table-cell horizontal-align="End">{{ i.quantitySold | number }}</ui5-table-cell>
+                    }
+                  </ui5-table-row>
+                }
+              </ui5-table>
+            </div>
+          }
+        }
+      </ui5-tab>
+
+      <!-- Prognose -->
+      <ui5-tab text="Umsatzprognose" data-key="forecast" [selected]="tab() === 'forecast'">
+        @if (tab() === 'forecast') {
+          @if (forecast(); as f) {
+            <div class="om-section">
+              <div class="kpis">
+                <div class="kpi-card">
+                  <span class="label">Prognose nächster Monat</span>
+                  <span class="value">{{ f.summary.predictedNextMonth | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+                  <span class="sub">Ø Monatsumsatz {{ f.summary.averageMonthlyRevenue | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="label">Prognose nächstes Quartal</span>
+                  <span class="value">{{ f.summary.predictedNextQuarter | currency: 'EUR' : 'symbol' : '1.0-0' }}</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="label">Trend</span>
+                  <span class="value" [attr.data-state]="f.summary.trendDirection === 'UP' ? 'Positive' : f.summary.trendDirection === 'DOWN' ? 'Negative' : null">
+                    {{ trendText(f.summary.trendDirection) }}
+                  </span>
+                  <span class="sub">{{ f.summary.growthTrend > 0 ? '+' : '' }}{{ f.summary.growthTrend | number: '1.1-1' }} % pro Monat</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="label">Prognosegüte</span>
+                  <span class="value">{{ f.summary.confidenceLevel | number: '1.0-0' }} %</span>
+                  <span class="sub">100 % − MAPE der Rückrechnung</span>
+                </div>
+              </div>
+            </div>
+            <div class="om-section">
+              <div class="om-section-header">
+                <ui5-title level="H5">Ist-Umsatz und Prognose</ui5-title>
+                <span class="om-subtle">{{ f.summary.method }}</span>
+              </div>
+              @if (forecastChart(); as o) { <div echarts class="om-chart tall" [options]="o"></div> }
+            </div>
+            <div class="om-section">
+              <ui5-table>
+                <ui5-table-header-row slot="headerRow">
+                  <ui5-table-header-cell>Monat</ui5-table-header-cell>
+                  <ui5-table-header-cell horizontal-align="End">Ist-Umsatz</ui5-table-header-cell>
+                  <ui5-table-header-cell horizontal-align="End">Prognose</ui5-table-header-cell>
+                  <ui5-table-header-cell horizontal-align="End">Aufträge</ui5-table-header-cell>
+                  <ui5-table-header-cell horizontal-align="End">Veränderung</ui5-table-header-cell>
+                </ui5-table-header-row>
+                @for (p of periods(); track p.period) {
+                  <ui5-table-row>
+                    <ui5-table-cell>{{ p.period }}@if (p.running) { <span class="om-subtle"> (laufend)</span> }</ui5-table-cell>
+                    <ui5-table-cell horizontal-align="End">
+                      @if (p.actual !== null) { {{ p.actual | currency: 'EUR' : 'symbol' : '1.0-0' }} }
+                    </ui5-table-cell>
+                    <ui5-table-cell horizontal-align="End">
+                      @if (p.forecast !== null) { <span class="om-critical">{{ p.forecast | currency: 'EUR' : 'symbol' : '1.0-0' }}</span> }
+                    </ui5-table-cell>
+                    <ui5-table-cell horizontal-align="End">{{ p.orders || '' }}</ui5-table-cell>
+                    <ui5-table-cell horizontal-align="End">
+                      @if (p.growth !== null) {
+                        <span [class.om-positive]="p.growth > 0" [class.om-negative]="p.growth < 0">
+                          {{ p.growth > 0 ? '+' : '' }}{{ p.growth | number: '1.1-1' }} %
+                        </span>
+                      }
+                    </ui5-table-cell>
+                  </ui5-table-row>
+                }
+              </ui5-table>
+            </div>
+          }
+        }
+      </ui5-tab>
+    </ui5-tabcontainer>
+  </div>
+</ui5-dynamic-page>
