@@ -53,6 +53,13 @@ public class ReviewInsightController {
         return analytics.sentiment(start, end, productId, category);
     }
 
+    @Operation(summary = "Materialien mit aktueller Qualitätsauffälligkeit (letzte 30 Tage, ohne KI-Text, schnell)")
+    @GetMapping("/quality-alerts")
+    public java.util.List<ProductAnomaly> qualityAlerts() {
+        LocalDate today = LocalDate.now();
+        return analytics.productAnomalies(today.minusDays(29), today);
+    }
+
     @Operation(summary = "Stand der Einordnung (wie viele Bewertungen per KI bzw. regelbasiert eingeordnet sind)")
     @GetMapping("/classification")
     public Classification classification() {

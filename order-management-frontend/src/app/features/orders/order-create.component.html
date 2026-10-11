@@ -122,6 +122,16 @@
                 </div>
                 <ui5-button icon="delete" design="Transparent" tooltip="Position entfernen" [disabled]="items().length === 1" (click)="removeItem(i.key)"></ui5-button>
               </div>
+              @if (qualityAlertOf(i.productId); as q) {
+                <ui5-message-strip class="quality-alert" [attr.design]="q.severity === 'HIGH' ? 'Negative' : 'Critical'" hide-close-button>
+                  <span class="om-strong">Qualitätsauffälligkeit bei {{ q.productName }}:</span>
+                  Ø {{ q.avgRating | number: '1.1-1' }} Sterne aus {{ q.reviews }} Bewertungen der letzten 30 Tage
+                  @if (q.baselineAvgRating !== null) { (sonst Ø {{ q.baselineAvgRating | number: '1.1-1' }})}.
+                  @if (q.topProblems.length) { Häufigste Kritik: {{ q.topProblems.join(', ') }}. }
+                  Kunden ggf. vorab informieren.
+                  <a [routerLink]="['/materials', q.productId]" target="_blank">Kundenstimmen ansehen</a>
+                </ui5-message-strip>
+              }
             }
           </div>
           <div class="step-actions">

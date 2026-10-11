@@ -1,12 +1,13 @@
 import { CUSTOM_ELEMENTS_SCHEMA, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { MessageService } from '../../core/message.service';
 import { CustomersApi, MaterialsApi } from '../../core/master-data-api.service';
 import { CreditExposure, Customer, Material, OrderCreateRequest, OrderSimulation } from '../../core/models';
 import { OrdersApi } from '../../core/sales-api.service';
+import { ProductAnomaly, ReviewInsightsService } from '../../core/review-insights.service';
 import { StatusTagComponent } from '../../shared/status-tag.component';
 import { todayIso } from '../../shared/status';
 import { Ui5ValueAccessorDirective } from '../../shared/ui5-value-accessor.directive';
@@ -23,7 +24,7 @@ interface ItemDraft {
  */
 @Component({
   selector: 'om-order-create',
-  imports: [FormsModule, Ui5ValueAccessorDirective, StatusTagComponent, CurrencyPipe, DecimalPipe],
+  imports: [FormsModule, RouterLink, Ui5ValueAccessorDirective, StatusTagComponent, CurrencyPipe, DecimalPipe],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './order-create.component.html',
   styleUrl: './order-create.component.css'
@@ -55,7 +56,16 @@ export class OrderCreateComponent implements OnInit {
   protected readonly customer = computed(() => this.customers().find(c => String(c.id) === this.customerId()) ?? null);
   protected readonly validItems = computed(() => this.items().filter(i => i.productId && i.quantity > 0));
 
+  /** Materialien mit aktueller Qualitätsauffälligkeit aus den Kundenbewertungen (Hinweis an der Position). */
+  private readonly insightsApi = inject(ReviewInsightsService);
+  protected readonly qualityAlerts = signal<ProductAnomaly[]>([]);
+
+  protected qualityAlertOf(productId: string): ProductAnomaly | undefined {
+    return productId ? this.qualityAlerts().find(a => String(a.productId) === productId) : undefined;
+  }
+
   ngOnInit(): void {
+    this.insightsApi.qualityAlerts().subscribe({ next: a => this.qualityAlerts.set(a), error: () => undefined });
     const date = new Date();
     date.setDate(date.getDate() + 3);
     this.requestedDeliveryDate = date.toISOString().slice(0, 10);

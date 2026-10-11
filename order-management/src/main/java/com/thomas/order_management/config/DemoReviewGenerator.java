@@ -35,6 +35,10 @@ public class DemoReviewGenerator {
                         LocalDateTime createdAt) {
     }
 
+    /** Antwort des Kundenservice auf eine Demo-Bewertung. */
+    public record Reply(String text, LocalDateTime at) {
+    }
+
     /** Fakturierter Kauf als Grundlage einer verifizierten Bewertung. */
     public record Purchase(Long productId, Long customerId, Long orderItemId, LocalDateTime orderDate) {
     }
@@ -154,6 +158,20 @@ public class DemoReviewGenerator {
 
         drafts.sort(Comparator.comparing(Draft::createdAt));
         return drafts;
+    }
+
+    /**
+     * Ältere kritische Bewertungen sind meist schon beantwortet, aktuelle (z. B. der Qualitätsvorfall)
+     * überwiegend noch offen.
+     */
+    public Optional<Reply> reply(Draft draft) {
+        if (draft.rating() > 2) return Optional.empty();
+        boolean recent = draft.createdAt().toLocalDate().isAfter(today.minusDays(14));
+        if (random.nextDouble() >= (recent ? 0.15 : 0.75)) return Optional.empty();
+        String text = pick(corpus.path("replies")).replace("{vorname}", draft.customer().getFirstName());
+        LocalDateTime at = draft.createdAt().plusDays(1 + random.nextInt(3));
+        LocalDateTime now = today.atTime(7, 0);
+        return Optional.of(new Reply(text, at.isAfter(now) ? now : at));
     }
 
     // ------------------------------------------------------------------

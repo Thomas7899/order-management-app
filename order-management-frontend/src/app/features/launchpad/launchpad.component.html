@@ -70,7 +70,10 @@
       <div class="tiles">
         <om-tile title="Kennzahlen" subtitle="Umsatz, Marge, ABC, Prognose" icon="kpi-corporate-performance" link="/reporting"
           [value]="compact(s.totalRevenue)" [unit]="compactUnit(s.totalRevenue)" footer="Nettoumsatz gesamt" />
-        <om-tile title="Bewertungsanalyse" subtitle="Trends und Auffälligkeiten" icon="ai" link="/review-analysis" footer="Qualitätsprobleme früh erkennen" />
+        <om-tile title="Bewertungsanalyse" subtitle="Auffällige Materialien" icon="ai" link="/review-analysis" [query]="{ mode: 'anomalies' }"
+          [value]="qualityAlerts()" unit="Materialien" [state]="qualityAlerts() ? 'Negative' : 'Positive'" footer="Qualitätsprobleme der letzten 30 Tage" />
+        <om-tile title="Bewertungen beantworten" subtitle="Kritik ohne Antwort" icon="feedback" link="/review-analysis" [query]="{ mode: 'sentiment' }"
+          [value]="openCritical()" unit="offen" [state]="openCritical() ? 'Critical' : 'Positive'" footer="1–2 Sterne, letzte 30 Tage" />
         <om-tile title="Bewertungssuche" subtitle="Suche nach Bedeutung" icon="feedback" link="/reviews" footer="pgvector + OpenAI Embeddings" />
         <om-tile title="Bestandsanalyse" subtitle="Prognose und Nachschub" icon="lightbulb" link="/inventory-ai" footer="Aus Warenausgängen berechnet" />
       </div>

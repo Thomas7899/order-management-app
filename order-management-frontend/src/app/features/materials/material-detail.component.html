@@ -48,11 +48,20 @@
         }
       </div>
     </div>
+    @if (qualityAlert(); as q) {
+      <ui5-message-strip class="quality" [attr.design]="q.severity === 'HIGH' ? 'Negative' : 'Critical'" hide-close-button>
+        <span class="om-strong">Qualitätsauffälligkeit:</span>
+        Ø {{ q.avgRating | number: '1.1-1' }} Sterne aus {{ q.reviews }} Bewertungen der letzten 30 Tage
+        @if (q.baselineAvgRating !== null) { (sonst Ø {{ q.baselineAvgRating | number: '1.1-1' }})}.
+        @if (q.topProblems.length) { Häufigste Kritik: {{ q.topProblems.join(', ') }}. }
+        <ui5-link (click)="showVoice()">Kundenstimmen ansehen</ui5-link>
+      </ui5-message-strip>
+    }
   </ui5-dynamic-page-header>
 
   <div class="om-content">
-    <ui5-tabcontainer content-background-design="Transparent" header-background-design="Transparent">
-      <ui5-tab text="Bestand und Verfügbarkeit" selected>
+    <ui5-tabcontainer content-background-design="Transparent" header-background-design="Transparent" (tab-select)="onTabSelect($event)">
+      <ui5-tab text="Bestand und Verfügbarkeit" data-key="stock" [selected]="tab() === 'stock'">
         <div class="stock-grid">
           <div class="om-section">
             <ui5-title level="H5" class="om-section-title">Bestand je Lagerort (Werk 1000)</ui5-title>
@@ -99,7 +108,7 @@
         </div>
       </ui5-tab>
 
-      <ui5-tab text="Materialbelege" [attr.additional-text]="movements().length">
+      <ui5-tab text="Materialbelege" data-key="movements" [selected]="tab() === 'movements'" [attr.additional-text]="movements().length">
         <div class="om-section">
           <ui5-table overflow-mode="Popin" no-data-text="Keine Materialbelege">
             <ui5-table-header-row slot="headerRow">
@@ -139,7 +148,7 @@
         </div>
       </ui5-tab>
 
-      <ui5-tab text="Grunddaten">
+      <ui5-tab text="Grunddaten" data-key="master" [selected]="tab() === 'master'">
         <div class="om-section">
           <div class="om-attributes">
             <div class="om-attribute"><span class="label">Materialnummer</span><span class="value">{{ m.materialNumber }}</span></div>
@@ -153,7 +162,99 @@
         </div>
       </ui5-tab>
 
-      <ui5-tab text="Änderungen" [attr.additional-text]="changes().length">
+      <ui5-tab text="Kundenstimmen" data-key="voice" [selected]="tab() === 'voice'" [attr.additional-text]="voice() ? reviews().length : null">
+        @if (voiceLoading()) {
+          <div class="om-loading"><ui5-busy-indicator active size="L" text="Kundenstimmen werden ausgewertet …"></ui5-busy-indicator></div>
+        }
+        @if (!voiceLoading() && voice(); as v) {
+          <div class="voice-grid">
+            <div class="om-section">
+              <div class="om-section-header">
+                <ui5-title level="H5">Letzte 90 Tage</ui5-title>
+                @if (v.narrativeSource === 'KI') {
+                  <ui5-tag design="Information" hide-state-icon><ui5-icon slot="icon" name="ai"></ui5-icon>Einordnung von KI</ui5-tag>
+                } @else {
+                  <ui5-tag design="Neutral" hide-state-icon>Aus den Kennzahlen formuliert</ui5-tag>
+                }
+              </div>
+              <div class="om-header-facets">
+                <div class="om-facet">
+                  <span class="om-facet-label">Bewertungen</span>
+                  <span class="om-facet-value kpi">{{ v.current.reviews }}</span>
+                  <span class="om-subtle">Vorperiode {{ v.previous.reviews }}</span>
+                </div>
+                <div class="om-facet">
+                  <span class="om-facet-label">Ø Sterne</span>
+                  <ui5-rating-indicator readonly size="S" [value]="v.current.avgRating"></ui5-rating-indicator>
+                  <span class="om-subtle">{{ v.current.avgRating | number: '1.1-1' }} (Vorperiode {{ v.previous.reviews ? (v.previous.avgRating | number: '1.1-1') : '–' }})</span>
+                </div>
+                <div class="om-facet">
+                  <span class="om-facet-label">Anteil negativ</span>
+                  <span class="om-facet-value kpi" [class.om-negative]="v.current.negativeShare >= 0.4">{{ pct(v.current.negativeShare) }} %</span>
+                </div>
+                <div class="om-facet">
+                  <span class="om-facet-label">Kritisch ohne Antwort</span>
+                  <span class="om-facet-value kpi" [class.om-critical]="openCritical() > 0">{{ openCritical() }}</span>
+                </div>
+              </div>
+              <p class="summary">{{ v.summary }}</p>
+            </div>
+            <div class="om-section">
+              <ui5-title level="H5" class="om-section-title">Themen</ui5-title>
+              <ul class="themes">
+                @for (t of v.themes; track t.theme.code) {
+                  <li>
+                    <span class="om-strong">{{ t.theme.text }}</span>: {{ t.mentions }}×,
+                    <span [class.om-negative]="t.negativeShare >= 0.5">{{ pct(t.negativeShare) }} % negativ</span>
+                    <span class="om-subtle">({{ directionText(t.direction) }})</span>
+                  </li>
+                } @empty {
+                  <li class="om-subtle">Keine Themen im Zeitraum</li>
+                }
+              </ul>
+            </div>
+          </div>
+
+          <div class="om-section">
+            <ui5-title level="H5" class="om-section-title">Bewertungen ({{ reviews().length }})</ui5-title>
+            <div class="reviews">
+              @for (r of reviews().slice(0, visibleReviews()); track r.id) {
+                <div class="review">
+                  <div class="meta">
+                    <span>
+                      <ui5-rating-indicator readonly size="S" [value]="r.rating"></ui5-rating-indicator>
+                      <span class="om-subtle"> {{ r.customerName }} · {{ r.createdAt | date: 'dd.MM.yyyy' }}</span>
+                      @if (r.orderId) { <span class="om-subtle"> · <a [routerLink]="['/orders', r.orderId]">verifizierter Kauf</a></span> }
+                    </span>
+                    <span class="tags">
+                      @if (r.sentiment) { <ui5-tag [attr.design]="sentimentDesign(r.sentiment)">{{ sentimentText(r.sentiment) }}</ui5-tag> }
+                      @for (t of r.themes; track t) { <ui5-tag design="Neutral" hide-state-icon>{{ t }}</ui5-tag> }
+                    </span>
+                  </div>
+                  <p>„{{ r.comment }}“</p>
+                  @if (r.replyText) {
+                    <div class="reply">
+                      <span class="om-subtle">Antwort von {{ r.repliedBy }} am {{ r.repliedAt | date: 'dd.MM.yyyy' }}</span>
+                      <div>{{ r.replyText }}</div>
+                    </div>
+                  }
+                  @if (auth.hasAnyRole('SALES')) {
+                    <div>
+                      <ui5-button [attr.design]="!r.replyText && r.rating <= 2 ? 'Emphasized' : 'Transparent'" icon="feedback"
+                        (click)="replyTarget.set(r)">{{ r.replyText ? 'Antwort bearbeiten' : 'Antworten' }}</ui5-button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+            @if (reviews().length > visibleReviews()) {
+              <ui5-button design="Transparent" (click)="visibleReviews.set(visibleReviews() + 15)">Weitere Bewertungen anzeigen</ui5-button>
+            }
+          </div>
+        }
+      </ui5-tab>
+
+      <ui5-tab text="Änderungen" data-key="changes" [selected]="tab() === 'changes'" [attr.additional-text]="changes().length">
         <div class="om-section">
           <ui5-timeline layout="Vertical">
             @for (c of changes(); track c.id) {
@@ -172,6 +273,7 @@
 
 <om-material-dialog [open]="dialog() === 'edit'" [material]="m" (closed)="dialog.set(null)" (saved)="afterSave()" />
 <om-movement-dialog [open]="dialog() === 'movement'" [productId]="m.id" (closed)="dialog.set(null)" (posted)="afterSave()" />
+<om-review-reply-dialog [open]="!!replyTarget()" [review]="replyTarget()" (closed)="replyTarget.set(null)" (saved)="replySaved($event)" />
 
 <ui5-dialog [attr.header-text]="'Dispositionsdaten · ' + settings.warehouseName" [open]="dialog() === 'settings'" (close)="dialog.set(null)">
   <div class="om-form-grid">

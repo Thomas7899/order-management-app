@@ -10,11 +10,15 @@ import { Availability, ChangeDocument, Material, StockMovement, WarehouseStock }
 import { STOCK_STATUS_TEXT, semanticOf } from '../../shared/status';
 import { Ui5ValueAccessorDirective } from '../../shared/ui5-value-accessor.directive';
 import { MovementDialogComponent } from '../inventory/movement-dialog.component';
+import { ProductAnomaly, ReviewInsightsService, ThemeDirection, TrendReport } from '../../core/review-insights.service';
+import { Review, ReviewsService } from '../../core/reviews.service';
+import { ReviewReplyDialogComponent } from '../../shared/review-reply-dialog.component';
+import { todayIso } from '../../shared/status';
 import { MaterialDialogComponent } from './material-dialog.component';
 
 @Component({
   selector: 'om-material-detail',
-  imports: [FormsModule, RouterLink, Ui5ValueAccessorDirective, MaterialDialogComponent, MovementDialogComponent,
+  imports: [FormsModule, RouterLink, Ui5ValueAccessorDirective, MaterialDialogComponent, MovementDialogComponent, ReviewReplyDialogComponent,
     CurrencyPipe, DatePipe, DecimalPipe, PercentPipe],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './material-detail.component.html',
@@ -25,6 +29,19 @@ import { MaterialDialogComponent } from './material-dialog.component';
     @media (max-width: 1100px) { .stock-grid { grid-template-columns: minmax(0, 1fr); } }
     .atp { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: .25rem 1.5rem; max-width: 28rem; }
     .atp .total { border-top: 1px solid var(--sapGroup_ContentBorderColor); padding-top: .25rem; }
+    .quality { margin-top: .75rem; }
+    .voice-grid { display: grid; gap: 1rem; grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr); align-items: start; }
+    @media (max-width: 1100px) { .voice-grid { grid-template-columns: minmax(0, 1fr); } }
+    .summary { line-height: 1.5; margin: 0; }
+    .reviews { display: flex; flex-direction: column; gap: .75rem; }
+    .review { padding: .75rem 1rem; border-radius: .75rem; border: 1px solid var(--sapGroup_ContentBorderColor);
+      background: var(--sapGroup_ContentBackground); display: flex; flex-direction: column; gap: .4rem; }
+    .review p { margin: 0; line-height: 1.45; }
+    .review .meta { display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap; }
+    .reply { margin-left: 1rem; padding: .5rem .75rem; border-left: 3px solid var(--sapBrandColor);
+      background: var(--sapList_Background); white-space: pre-line; }
+    .tags { display: flex; gap: .25rem; flex-wrap: wrap; }
+    .themes li { margin-bottom: .35rem; }
   `
 })
 export class MaterialDetailComponent {
@@ -41,6 +58,18 @@ export class MaterialDetailComponent {
   protected readonly movements = signal<StockMovement[]>([]);
   protected readonly changes = signal<ChangeDocument[]>([]);
   protected readonly dialog = signal<'edit' | 'movement' | 'settings' | null>(null);
+  protected readonly tab = signal<'stock' | 'movements' | 'master' | 'voice' | 'changes'>('stock');
+
+  // Kundenstimmen
+  private readonly reviewsApi = inject(ReviewsService);
+  private readonly insightsApi = inject(ReviewInsightsService);
+  protected readonly qualityAlert = signal<ProductAnomaly | null>(null);
+  protected readonly voice = signal<TrendReport | null>(null);
+  protected readonly reviews = signal<Review[]>([]);
+  protected readonly visibleReviews = signal(15);
+  protected readonly voiceLoading = signal(false);
+  protected readonly replyTarget = signal<Review | null>(null);
+  protected readonly openCritical = computed(() => this.reviews().filter(r => r.rating <= 2 && !r.replyText).length);
   protected readonly busy = signal(false);
   protected readonly stockStatusText = STOCK_STATUS_TEXT;
   protected readonly semanticOf = semanticOf;
@@ -78,6 +107,62 @@ export class MaterialDetailComponent {
       this.movements.set(r.movements);
       this.changes.set(r.changes);
     });
+    this.insightsApi.qualityAlerts().subscribe({
+      next: alerts => this.qualityAlert.set(alerts.find(a => a.productId === id) ?? null),
+      error: () => this.qualityAlert.set(null)
+    });
+    this.voice.set(null);
+    if (this.tab() === 'voice') this.loadVoice(id);
+  }
+
+  protected onTabSelect(event: Event): void {
+    const key = (event as CustomEvent<{ tab: HTMLElement }>).detail.tab.dataset['key'] as ReturnType<typeof this.tab>;
+    this.tab.set(key);
+    if (key === 'voice' && !this.voice()) this.loadVoice(Number(this.id()));
+  }
+
+  protected showVoice(): void {
+    this.tab.set('voice');
+    if (!this.voice()) this.loadVoice(Number(this.id()));
+  }
+
+  /** Kundenstimmen der letzten 90 Tage: Kennzahlen und Einordnung im Vergleich zum Vorzeitraum, dazu alle Bewertungen. */
+  private loadVoice(id: number): void {
+    const start = new Date();
+    start.setDate(start.getDate() - 89);
+    this.voiceLoading.set(true);
+    forkJoin({
+      trend: this.insightsApi.trend(start.toISOString().slice(0, 10), todayIso(), { productId: id }),
+      reviews: this.reviewsApi.forProduct(id)
+    }).subscribe({
+      next: r => {
+        this.voice.set(r.trend);
+        this.reviews.set(r.reviews);
+        this.voiceLoading.set(false);
+      },
+      error: () => this.voiceLoading.set(false)
+    });
+  }
+
+  protected replySaved(saved: Review): void {
+    this.reviews.update(list => list.map(r => (r.id === saved.id ? saved : r)));
+    this.replyTarget.set(null);
+  }
+
+  protected directionText(d: ThemeDirection): string {
+    return { IMPROVING: 'verbessert', STABLE: 'unverändert', DECLINING: 'verschlechtert', NEW: 'neu' }[d];
+  }
+
+  protected sentimentDesign(s: string | null): string {
+    return ({ POSITIVE: 'Positive', NEUTRAL: 'Neutral', NEGATIVE: 'Negative' } as Record<string, string>)[s ?? ''] ?? 'Neutral';
+  }
+
+  protected sentimentText(s: string | null): string {
+    return ({ POSITIVE: 'Positiv', NEUTRAL: 'Neutral', NEGATIVE: 'Negativ' } as Record<string, string>)[s ?? ''] ?? '';
+  }
+
+  protected pct(share: number): number {
+    return Math.round(share * 100);
   }
 
   protected editSettings(s: WarehouseStock): void {
