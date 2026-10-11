@@ -55,6 +55,8 @@ Die Demo-Daten entstehen durch die Simulation eines kompletten Geschäftsjahres 
 - **Bewertungsanalyse**: Trend gegen den Vorzeitraum (gesamt, je Material, je Warengruppe), statistisch erkannte Qualitätsauffälligkeiten, Themen und Stimmung – mit KI-Einordnung und Belegzitaten
 - **Bewertungssuche**: semantische Suche nach Bedeutung (OpenAI-Embeddings + pgvector) mit Relevanzschwelle
 - **Bestandsanalyse**: Bedarfsprognose aus Warenausgängen, Nachschubvorschläge je Lagerort, Auffälligkeiten inklusive Qualitätsrisiken aus den Bewertungen
+- **Kundenstimmen im Prozess**: Qualitätshinweis im Materialstamm und beim Auftrag anlegen, Reiter „Kundenstimmen“ je Material mit Trend und Themen
+- **Bewertungen beantworten**: Arbeitsliste kritischer Bewertungen ohne Antwort, Antwortvorschlag per KI zum Prüfen und Anpassen (Rolle Vertrieb)
 
 ### Plattform
 - **Fiori-Oberfläche** mit UI5 Web Components (Theme Horizon, hell und dunkel): Launchpad, List Reports, Object Pages, Dynamic Page, Wizard
@@ -72,7 +74,7 @@ Kennwort für alle: **`demo1234`** – auf der Anmeldeseite genügt ein Klick au
 | Benutzer | Rolle | Darf ändern |
 |----------|-------|-------------|
 | `ADMIN` | Administrator | alles, inkl. Benutzerverwaltung |
-| `MREUTER` | Vertrieb | Kundenaufträge, Debitoren, Materialien |
+| `MREUTER` | Vertrieb | Kundenaufträge, Debitoren, Materialien, Antworten auf Bewertungen |
 | `JMEIER` | Lager & Versand | Lieferungen, Warenausgang, Bestandsbuchungen, Materialien |
 | `PRICHTER`, `AKOCH` | Fakturierung & Debitorenbuchhaltung | Fakturen, Zahlungseingänge, Kreditfreigaben, Debitoren |
 | `SWEBER` | Controlling | KI-Analysen starten |
@@ -92,6 +94,8 @@ Grundsatz: **Erkennen und Rechnen macht nachvollziehbarer Code, das Sprachmodell
 | Zusammenfassung, Einschätzung, Maßnahmen | Sprachmodell bekommt nur die berechneten Fakten und Zitate; die Oberfläche zeigt, ob ein Text von der KI stammt |
 | Semantische Suche | Embeddings (`text-embedding-3-small`) in pgvector, Kosinus-Ähnlichkeit mit Mindestwert |
 | Bedarfsprognose und Nachschub | berechnet (exponentielle Glättung, Melde-/Höchstbestand, Rückstand); das Sprachmodell fasst nur zusammen |
+| Qualitätshinweise in Materialstamm und Auftragserfassung | dieselben berechneten Auffälligkeiten der letzten 30 Tage, ohne Sprachmodell |
+| Antwort auf Bewertungen | Sprachmodell schlägt einen Text vor (Sie-Form, keine Zusagen oder erfundenen Fakten), ohne Schlüssel eine Vorlage je kritisiertem Thema; gespeichert wird nur der vom Menschen freigegebene Text |
 
 Die Demo-Bewertungen stammen aus einem eingecheckten Textbaukasten mit warengruppenspezifischen Aussagen und eingebauten Mustern (Qualitätsvorfall, Lieferprobleme, Auf- und Abwärtstrends). Tests prüfen, dass die Auswertung genau diese Muster findet.
 
