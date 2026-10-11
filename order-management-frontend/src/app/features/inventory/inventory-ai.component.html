@@ -1,8 +1,8 @@
 <ui5-dynamic-page class="om-page" hide-pin-button>
   <ui5-dynamic-page-title slot="titleArea">
-    <ui5-title slot="heading" level="H3">KI-Bestandsanalyse</ui5-title>
+    <ui5-title slot="heading" level="H3">Bestandsanalyse</ui5-title>
     <div slot="subheading" class="om-subtle">
-      Bedarfsprognose und Nachschubempfehlungen aus Warenausgängen (601) der letzten 90 Tage und Bewertungsstimmung
+      Bedarfsprognose, Nachschubvorschläge und Auffälligkeiten aus Warenausgängen, Disposition, Rückstand und Kundenbewertungen
     </div>
     <ui5-toolbar slot="actionsBar" design="Transparent">
       <ui5-toolbar-button text="Neu analysieren" icon="refresh" [disabled]="loading()" (click)="load()"></ui5-toolbar-button>
@@ -12,14 +12,14 @@
   <div class="om-content">
     @if (loading()) {
       <div class="om-section om-loading">
-        <ui5-busy-indicator active size="L" text="Das Sprachmodell analysiert den Bestand – das dauert bis zu 30 Sekunden."></ui5-busy-indicator>
+        <ui5-busy-indicator active size="L" text="Bestand wird analysiert …"></ui5-busy-indicator>
       </div>
     }
 
     @if (failed()) {
       <div class="om-section">
-        <ui5-illustrated-message name="UnableToLoad" title-text="KI-Analyse nicht verfügbar"
-          subtitle-text="Der KI-Dienst hat nicht geantwortet. Ist im Backend ein gültiger OpenAI-API-Schlüssel konfiguriert?">
+        <ui5-illustrated-message name="UnableToLoad" title-text="Analyse nicht verfügbar"
+          subtitle-text="Die Bestandsanalyse konnte nicht geladen werden.">
           <ui5-button design="Emphasized" (click)="load()">Erneut versuchen</ui5-button>
         </ui5-illustrated-message>
       </div>
@@ -28,9 +28,16 @@
     @if (report(); as r) {
       <div class="om-grid-2">
         <div class="om-section">
-          <ui5-title level="H5" class="om-section-title">Zusammenfassung</ui5-title>
+          <div class="om-section-header">
+            <ui5-title level="H5">Zusammenfassung</ui5-title>
+            @if (r.narrativeSource === 'KI') {
+              <ui5-tag design="Information" hide-state-icon><ui5-icon slot="icon" name="ai"></ui5-icon>Formuliert von KI aus den Kennzahlen</ui5-tag>
+            } @else {
+              <ui5-tag design="Neutral" hide-state-icon>Aus den Kennzahlen formuliert (ohne KI)</ui5-tag>
+            }
+          </div>
           <p class="summary">{{ r.executiveSummary }}</p>
-          <p class="om-subtle">Erstellt am {{ r.generatedAt | date: 'dd.MM.yyyy' }}</p>
+          <p class="om-subtle">{{ r.method }} Stand {{ r.generatedAt | date: 'dd.MM.yyyy HH:mm' }}.</p>
           @if (r.actionItems?.length) {
             <ui5-title level="H6">Empfohlene Maßnahmen</ui5-title>
             <ul>
@@ -52,7 +59,7 @@
               <div class="score">
                 <span class="om-subtle">Verfügbarkeit</span>
                 <ui5-progress-indicator [value]="h.stockAvailabilityScore" [attr.value-state]="scoreState(h.stockAvailabilityScore)"></ui5-progress-indicator>
-                <span class="om-subtle">Umschlag</span>
+                <span class="om-subtle">Umschlag ({{ h.turnoverRate | number: '1.1-1' }} pro Jahr)</span>
                 <ui5-progress-indicator [value]="h.turnoverScore" [attr.value-state]="scoreState(h.turnoverScore)"></ui5-progress-indicator>
                 <span class="om-subtle">Inventurgenauigkeit</span>
                 <ui5-progress-indicator [value]="h.accuracyScore" [attr.value-state]="scoreState(h.accuracyScore)"></ui5-progress-indicator>
@@ -65,35 +72,34 @@
               @if (h.weaknesses?.length) {
                 <div><ui5-title level="H6">Schwächen</ui5-title><ul>@for (s of h.weaknesses; track s) {<li>{{ s }}</li>}</ul></div>
               }
-              @if (h.opportunities?.length) {
-                <div><ui5-title level="H6">Chancen</ui5-title><ul>@for (s of h.opportunities; track s) {<li>{{ s }}</li>}</ul></div>
-              }
             </div>
           </div>
         }
       </div>
 
       <div class="om-section">
-        <ui5-title level="H5" class="om-section-title">Nachschubempfehlungen ({{ r.reorderRecommendations.length }})</ui5-title>
+        <ui5-title level="H5" class="om-section-title">Nachschubvorschläge ({{ r.reorderRecommendations.length }})</ui5-title>
         <ui5-table overflow-mode="Popin" no-data-text="Keine Nachbestellung erforderlich">
           <ui5-table-header-row slot="headerRow">
-            <ui5-table-header-cell min-width="14rem">Material</ui5-table-header-cell>
+            <ui5-table-header-cell min-width="14rem">Material / Lagerort</ui5-table-header-cell>
             <ui5-table-header-cell min-width="7rem">Dringlichkeit</ui5-table-header-cell>
             <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="6rem">Bestand</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="7rem">Melde / Höchst</ui5-table-header-cell>
             <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="7rem">Bestellmenge</ui5-table-header-cell>
             <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="7rem" importance="-1" popin-text="Kosten">Kosten</ui5-table-header-cell>
             <ui5-table-header-cell min-width="14rem" importance="-1" popin-text="Begründung">Begründung</ui5-table-header-cell>
           </ui5-table-header-row>
-          @for (rec of r.reorderRecommendations; track rec.productId) {
+          @for (rec of r.reorderRecommendations; track rec.productId + rec.warehouseName) {
             <ui5-table-row>
               <ui5-table-cell>
                 <div class="om-cell-stack">
                   <a [routerLink]="['/materials', rec.productId]">{{ rec.productName }}</a>
-                  <span class="om-subtle">{{ rec.category }} · Reichweite {{ rec.daysUntilStockout }} Tage</span>
+                  <span class="om-subtle">{{ rec.warehouseName }} · bestellen bis {{ rec.suggestedOrderDate | date: 'dd.MM.' }}</span>
                 </div>
               </ui5-table-cell>
-              <ui5-table-cell><ui5-tag [attr.design]="urgencyDesign(rec.urgency)">{{ urgencyText(rec.urgency) }}</ui5-tag></ui5-table-cell>
+              <ui5-table-cell><ui5-tag [attr.design]="urgencyDesign(rec.urgency)" wrapping-type="None">{{ urgencyText(rec.urgency) }}</ui5-tag></ui5-table-cell>
               <ui5-table-cell class="om-num" horizontal-align="End">{{ rec.currentStock | number }}</ui5-table-cell>
+              <ui5-table-cell class="om-num" horizontal-align="End">{{ rec.minStock }} / {{ rec.maxStock }}</ui5-table-cell>
               <ui5-table-cell class="om-num om-strong" horizontal-align="End">{{ rec.recommendedOrderQuantity | number }}</ui5-table-cell>
               <ui5-table-cell class="om-num" horizontal-align="End">{{ rec.estimatedCost | currency: 'EUR' : 'symbol' : '1.0-0' }}</ui5-table-cell>
               <ui5-table-cell>{{ rec.reason }}</ui5-table-cell>
@@ -104,30 +110,42 @@
 
       <div class="om-section">
         <ui5-title level="H5" class="om-section-title">Bedarfsprognose ({{ r.demandForecasts.length }})</ui5-title>
-        <ui5-table overflow-mode="Popin" no-data-text="Keine Prognosen">
+        <ui5-table overflow-mode="Popin" no-data-text="Keine Warenausgänge im Betrachtungszeitraum">
+          @if (r.demandForecasts.length > visibleForecasts()) {
+            <ui5-table-growing slot="features" mode="Button" text="Mehr" (load-more)="showMore()"></ui5-table-growing>
+          }
           <ui5-table-header-row slot="headerRow">
             <ui5-table-header-cell min-width="14rem">Material</ui5-table-header-cell>
             <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="6rem">Bestand</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="6rem">Verbrauch/Tag</ui5-table-header-cell>
             <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="5rem">7 Tage</ui5-table-header-cell>
             <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="5rem">30 Tage</ui5-table-header-cell>
-            <ui5-table-header-cell min-width="6rem">Trend</ui5-table-header-cell>
-            <ui5-table-header-cell min-width="16rem" importance="-1" popin-text="Einschätzung">Einschätzung</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End" min-width="6rem">Reichweite</ui5-table-header-cell>
+            <ui5-table-header-cell min-width="6rem" importance="-1" popin-text="Trend">Trend</ui5-table-header-cell>
           </ui5-table-header-row>
-          @for (f of r.demandForecasts; track f.productId) {
+          @for (f of r.demandForecasts.slice(0, visibleForecasts()); track f.productId) {
             <ui5-table-row>
               <ui5-table-cell>
                 <div class="om-cell-stack">
                   <a [routerLink]="['/materials', f.productId]">{{ f.productName }}</a>
-                  <span class="om-subtle">Konfidenz {{ f.confidenceScore | number: '1.0-0' }} %</span>
+                  <span class="om-subtle">
+                    Verlässlichkeit {{ confidenceText(f.confidence) }}
+                    @if (f.backlog) { · Rückstand {{ f.backlog }} ST }
+                  </span>
                 </div>
               </ui5-table-cell>
               <ui5-table-cell class="om-num" horizontal-align="End">{{ f.currentStock | number }}</ui5-table-cell>
+              <ui5-table-cell class="om-num" horizontal-align="End">{{ f.dailyDemand | number: '1.1-2' }}</ui5-table-cell>
               <ui5-table-cell class="om-num" horizontal-align="End">{{ f.predictedDemand7Days | number }}</ui5-table-cell>
               <ui5-table-cell class="om-num" horizontal-align="End">{{ f.predictedDemand30Days | number }}</ui5-table-cell>
-              <ui5-table-cell>
-                <ui5-tag [attr.design]="f.trendDirection === 'RISING' ? 'Positive' : f.trendDirection === 'FALLING' ? 'Negative' : 'Neutral'">{{ trendText(f.trendDirection) }}</ui5-tag>
+              <ui5-table-cell class="om-num" horizontal-align="End">
+                @if (f.reachDays !== null) {
+                  <span [class.om-negative]="f.reachDays <= 7" [class.om-critical]="f.reachDays > 7 && f.reachDays <= 21">{{ f.reachDays }} Tage</span>
+                } @else { – }
               </ui5-table-cell>
-              <ui5-table-cell>{{ f.aiInsight }}</ui5-table-cell>
+              <ui5-table-cell>
+                <ui5-tag [attr.design]="f.trendDirection === 'RISING' ? 'Information' : f.trendDirection === 'FALLING' ? 'Critical' : 'Neutral'" wrapping-type="None">{{ trendText(f.trendDirection) }}</ui5-tag>
+              </ui5-table-cell>
             </ui5-table-row>
           }
         </ui5-table>
@@ -136,11 +154,27 @@
       @if (r.anomalies.length) {
         <div class="om-section">
           <ui5-title level="H5" class="om-section-title">Auffälligkeiten ({{ r.anomalies.length }})</ui5-title>
-          @for (a of r.anomalies; track a.description) {
-            <ui5-message-strip hide-close-button [attr.design]="a.severity === 'HIGH' ? 'Negative' : a.severity === 'MEDIUM' ? 'Critical' : 'Information'">
-              <span class="om-strong">{{ a.productName }}</span> ({{ a.warehouseName }}): {{ a.description }} – {{ a.suggestedAction }}
-            </ui5-message-strip>
-          }
+          <ui5-table>
+            <ui5-table-header-row slot="headerRow">
+              <ui5-table-header-cell min-width="14rem">Material</ui5-table-header-cell>
+              <ui5-table-header-cell min-width="10rem">Art</ui5-table-header-cell>
+              <ui5-table-header-cell min-width="16rem">Befund</ui5-table-header-cell>
+              <ui5-table-header-cell min-width="16rem" importance="-1" popin-text="Maßnahme">Maßnahme</ui5-table-header-cell>
+            </ui5-table-header-row>
+            @for (a of r.anomalies; track a.anomalyType + a.productId + a.warehouseName) {
+              <ui5-table-row>
+                <ui5-table-cell>
+                  <div class="om-cell-stack">
+                    <a [routerLink]="['/materials', a.productId]">{{ a.productName }}</a>
+                    <span class="om-subtle">{{ a.warehouseName }}</span>
+                  </div>
+                </ui5-table-cell>
+                <ui5-table-cell><ui5-tag [attr.design]="severityDesign(a.severity)" wrapping-type="None">{{ anomalyText(a.anomalyType) }}</ui5-tag></ui5-table-cell>
+                <ui5-table-cell>{{ a.description }}</ui5-table-cell>
+                <ui5-table-cell>{{ a.suggestedAction }}</ui5-table-cell>
+              </ui5-table-row>
+            }
+          </ui5-table>
         </div>
       }
     }

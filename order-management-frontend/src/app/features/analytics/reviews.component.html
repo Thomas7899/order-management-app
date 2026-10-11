@@ -1,7 +1,7 @@
 <ui5-dynamic-page class="om-page" hide-pin-button>
   <ui5-dynamic-page-title slot="titleArea">
-    <ui5-title slot="heading" level="H3">Bewertungen</ui5-title>
-    <div slot="subheading" class="om-subtle">Semantische Suche: findet Bewertungen nach Bedeutung, nicht nur nach Stichwort (OpenAI-Embeddings + pgvector)</div>
+    <ui5-title slot="heading" level="H3">Bewertungssuche</ui5-title>
+    <div slot="subheading" class="om-subtle">Findet Bewertungen nach Bedeutung statt nach Stichwort (OpenAI-Embeddings + pgvector)</div>
   </ui5-dynamic-page-title>
 
   <ui5-dynamic-page-header slot="headerArea">
@@ -10,16 +10,16 @@
         <ui5-icon slot="icon" name="search"></ui5-icon>
       </ui5-input>
       <ui5-select [(ngModel)]="limit">
-        <ui5-option value="20" [selected]="limit === '20'">20 Treffer</ui5-option>
-        <ui5-option value="50" [selected]="limit === '50'">50 Treffer</ui5-option>
-        <ui5-option value="100" [selected]="limit === '100'">100 Treffer</ui5-option>
+        <ui5-option value="15" [selected]="limit === '15'">15 Treffer</ui5-option>
+        <ui5-option value="30" [selected]="limit === '30'">30 Treffer</ui5-option>
+        <ui5-option value="60" [selected]="limit === '60'">60 Treffer</ui5-option>
       </ui5-select>
       <ui5-button design="Emphasized" [disabled]="loading() || !query.trim()" (click)="search()">Suchen</ui5-button>
     </div>
     <div class="examples">
       <span class="om-subtle">Beispiele:</span>
       @for (e of examples; track e) {
-        <ui5-tag design="Information" interactive (click)="useExample(e)">{{ e }}</ui5-tag>
+        <ui5-tag design="Information" hide-state-icon interactive (click)="useExample(e)">{{ e }}</ui5-tag>
       }
     </div>
   </ui5-dynamic-page-header>
@@ -28,72 +28,72 @@
     @if (loading()) {
       <div class="om-loading"><ui5-busy-indicator active size="L" text="Ähnliche Bewertungen werden gesucht …"></ui5-busy-indicator></div>
     }
-
-    @if (failed()) {
-      <ui5-message-strip design="Negative" hide-close-button>
-        Die semantische Suche ist fehlgeschlagen. Ist im Backend ein gültiger OpenAI-API-Schlüssel konfiguriert?
-      </ui5-message-strip>
+    @if (error(); as e) {
+      <ui5-message-strip design="Negative" hide-close-button>{{ e }}</ui5-message-strip>
     }
 
-    @if (!loading() && searched() && !failed() && reviews().length === 0) {
-      <div class="om-section">
-        <ui5-illustrated-message name="NoSearchResults" title-text="Keine passenden Bewertungen"
-          subtitle-text="Für die semantische Suche müssen Embeddings erzeugt sein (OpenAI-Schlüssel im Backend)."></ui5-illustrated-message>
-      </div>
-    }
-
-    @if (!loading() && reviews().length) {
-      <div class="om-section">
-        <div class="om-header-facets">
-          <div class="om-facet">
-            <span class="om-facet-label">Treffer</span>
-            <span class="om-facet-value kpi">{{ reviews().length }}</span>
-          </div>
-          <div class="om-facet">
-            <span class="om-facet-label">Durchschnittsbewertung</span>
-            <ui5-rating-indicator readonly [value]="average()"></ui5-rating-indicator>
-            <span class="om-subtle">{{ average() | number: '1.1-1' }} von 5</span>
-          </div>
-          <div class="om-facet">
-            <span class="om-facet-label">Stimmung</span>
-            <ui5-tag [attr.design]="sentiment().design">{{ sentiment().text }}</ui5-tag>
-          </div>
-          <div class="om-facet">
-            <span class="om-facet-label">Häufige Begriffe</span>
-            <div class="keywords">
-              @for (w of topWords(); track w) {
-                <ui5-tag design="Neutral">{{ w }}</ui5-tag>
-              }
+    @if (!loading() && result(); as r) {
+      @if (r.hits.length === 0) {
+        <div class="om-section">
+          <ui5-illustrated-message name="NoSearchResults" title-text="Keine passenden Bewertungen"
+            [attr.subtitle-text]="'Keine Bewertung ist der Anfrage ausreichend ähnlich (Mindestähnlichkeit ' + (r.minSimilarity * 100 | number: '1.0-0') + ' %).'"></ui5-illustrated-message>
+        </div>
+      } @else {
+        <div class="om-section">
+          <div class="om-header-facets">
+            <div class="om-facet">
+              <span class="om-facet-label">Passende Bewertungen</span>
+              <span class="om-facet-value kpi">{{ r.totalHits }}</span>
+              <span class="om-subtle">{{ r.hits.length }} verschiedene Texte</span>
+            </div>
+            <div class="om-facet">
+              <span class="om-facet-label">Ø Sterne der Treffer</span>
+              <ui5-rating-indicator readonly [value]="average()"></ui5-rating-indicator>
+              <span class="om-subtle">{{ average() | number: '1.1-1' }} von 5</span>
+            </div>
+            <div class="om-facet">
+              <span class="om-facet-label">Häufigste Themen</span>
+              <div class="tags">
+                @for (t of topThemes(); track t[0]) { <ui5-tag design="Neutral" hide-state-icon>{{ t[0] }} ({{ t[1] }})</ui5-tag> }
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="cards">
-        @for (r of reviews(); track r.id) {
-          <div class="card">
-            <div class="card-head">
-              <ui5-rating-indicator readonly [value]="r.rating"></ui5-rating-indicator>
-              <span class="om-subtle">{{ r.createdAt | date: 'dd.MM.yyyy' }}</span>
-            </div>
-            <p class="comment">„{{ r.comment }}“</p>
-            <div class="om-subtle">
-              @if (r.productId) {
-                <a [routerLink]="['/materials', r.productId]">{{ r.productName }}</a>
-                @if (r.productPrice) {
-                  · {{ r.productPrice | currency: 'EUR' }}
-                }
-              }
-              @if (r.userName) {
-                · {{ r.userName }}
-              }
-              @if (r.orderId) {
-                · <a [routerLink]="['/orders', r.orderId]">verifizierter Kauf</a>
-              }
-            </div>
+        <div class="layout">
+          <div class="cards">
+            @for (h of r.hits; track h.reviewId) {
+              <div class="card">
+                <div class="card-head">
+                  <ui5-rating-indicator readonly size="S" [value]="h.rating"></ui5-rating-indicator>
+                  <span class="om-subtle" title="Kosinus-Ähnlichkeit zur Anfrage">Relevanz {{ h.similarity * 100 | number: '1.0-0' }} %</span>
+                </div>
+                <p class="comment">„{{ h.comment }}“</p>
+                <div class="tags">
+                  @if (h.sentiment) { <ui5-tag [attr.design]="sentimentDesign(h.sentiment)">{{ sentimentText(h.sentiment) }}</ui5-tag> }
+                  @for (t of h.themes; track t) { <ui5-tag design="Neutral" hide-state-icon>{{ t }}</ui5-tag> }
+                  @if (h.duplicates) { <ui5-tag design="Information" hide-state-icon>+{{ h.duplicates }} gleichlautend</ui5-tag> }
+                </div>
+                <div class="om-subtle">
+                  <a [routerLink]="['/materials', h.productId]">{{ h.productName }}</a>
+                  · {{ h.createdAt | date: 'dd.MM.yyyy' }}
+                  @if (h.orderId) { · <a [routerLink]="['/orders', h.orderId]">verifizierter Kauf</a> }
+                </div>
+              </div>
+            }
           </div>
-        }
-      </div>
+
+          <div class="om-section">
+            <ui5-title level="H5" class="om-section-title">Betroffene Materialien</ui5-title>
+            @for (p of r.products; track p.productId) {
+              <div class="product-row">
+                <a [routerLink]="['/materials', p.productId]">{{ p.productName }}</a>
+                <span class="om-subtle">{{ p.hits }}× · Ø {{ p.avgRating | number: '1.1-1' }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
     }
   </div>
 </ui5-dynamic-page>

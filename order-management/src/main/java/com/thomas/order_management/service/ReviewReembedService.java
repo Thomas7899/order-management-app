@@ -1,5 +1,3 @@
-// order-management/src/main/java/com/thomas/order_management/service/ReviewReembedService.java
-// order-management/src/main/java/com/thomas/order_management/service/ReviewReembedService.java
 package com.thomas.order_management.service;
 
 import com.thomas.order_management.model.ProductReview;
@@ -7,7 +5,6 @@ import com.thomas.order_management.repository.ProductReviewRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -19,26 +16,12 @@ public class ReviewReembedService {
     private final ProductReviewRepository reviewRepo;
     private final ReviewEmbeddingService embeddingService;
 
-    /**
-     * Re-embedet ALLE Reviews (z. B. nach Modellwechsel oder verbessertem Prompt).
-     */
-    @Transactional
+    /** Bettet alle Bewertungen neu ein (z. B. nach einem Modellwechsel). Ohne Transaktion: jeder Block wird sofort geschrieben. */
     public int reembedAll() {
         List<ProductReview> reviews = reviewRepo.findAll();
-
-        log.info("Starte Re-Embedding von {} Reviews ...", reviews.size());
-
-        int n = 0;
-        for (ProductReview r : reviews) {
-            embeddingService.createEmbedding(r);  // erzeugt jetzt upsert + enriched text
-            n++;
-
-            if (n % 50 == 0) {
-                log.info("{} Reviews neu eingebettet ...", n);
-            }
-        }
-
-        log.info("Re-Embedding abgeschlossen. Total: {}", n);
-        return n;
+        log.info("Starte Re-Embedding von {} Bewertungen ...", reviews.size());
+        int done = embeddingService.embed(reviews);
+        log.info("Re-Embedding abgeschlossen: {} von {}", done, reviews.size());
+        return done;
     }
 }

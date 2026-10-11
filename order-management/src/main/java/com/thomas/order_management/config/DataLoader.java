@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -98,6 +99,8 @@ public class DataLoader implements CommandLineRunner {
         for (String sql : List.of(
                 "DELETE FROM change_documents",
                 "DELETE FROM review_embeddings",
+                "DELETE FROM review_insight_aspects",
+                "DELETE FROM review_insights",
                 "DELETE FROM product_reviews",
                 "DELETE FROM invoice_items",
                 "UPDATE invoices SET reference_invoice_id = NULL",
@@ -478,355 +481,36 @@ public class DataLoader implements CommandLineRunner {
     }
 
     private void seedReviews(List<Product> products, List<Customer> customers) {
-        List<ProductReview> reviews = new ArrayList<>();
-        Map<Long, Product> productById = new HashMap<>();
-        products.forEach(p -> productById.put(p.getId(), p));
-        Map<Long, Customer> customerById = new HashMap<>();
-        customers.forEach(c -> customerById.put(c.getId(), c));
-        List<Object[]> purchases = orderItemRepository.findBilledPurchases();
+        List<DemoReviewGenerator.Purchase> purchases = orderItemRepository.findBilledPurchases().stream()
+                .map(row -> new DemoReviewGenerator.Purchase((Long) row[0], (Long) row[1], (Long) row[2], (LocalDateTime) row[3]))
+                .toList();
+        List<DemoReviewGenerator.Draft> drafts = new DemoReviewGenerator(random, LocalDate.now())
+                .generate(products, customers, purchases, trendingUpProducts, trendingDownProducts);
 
-        // 600 Reviews: überwiegend verifizierte Käufe, ergänzt um freie Bewertungen
-        for (int i = 0; i < 600; i++) {
-            if (!purchases.isEmpty() && random.nextDouble() < 0.8) {
-                Object[] purchase = purchases.get(random.nextInt(purchases.size()));
-                Product product = productById.get((Long) purchase[0]);
-                Customer customer = customerById.get((Long) purchase[1]);
-                if (product != null && customer != null) {
-                    int rating = generateTrendAwareRating(product);
-                    ProductReview review = new ProductReview();
-                    review.setProduct(product);
-                    review.setCustomer(customer);
-                    review.setOrderItem(orderItemRepository.getReferenceById((Long) purchase[2]));
-                    review.setRating(rating);
-                    review.setComment(generateEmotionalComment(product, rating));
-                    LocalDateTime reviewDate = ((LocalDateTime) purchase[3]).plusDays(3 + random.nextInt(25));
-                    review.setCreatedAt(reviewDate.isAfter(LocalDateTime.now()) ? LocalDateTime.now().minusHours(random.nextInt(48)) : reviewDate);
-                    reviews.add(review);
-                    continue;
-                }
-            }
-            Product product = products.get(random.nextInt(products.size()));
-            Customer customer = customers.get(random.nextInt(customers.size()));
-
-            // Rating basierend auf Produkt-Trend
-            int rating = generateTrendAwareRating(product);
-            
-            // Detaillierter, emotionaler Kommentar
-            String comment = generateEmotionalComment(product, rating);
-
+        List<ProductReview> reviews = drafts.stream().map(draft -> {
             ProductReview review = new ProductReview();
-            review.setProduct(product);
-            review.setCustomer(customer);
-            review.setRating(rating);
-            review.setComment(comment);
-            
-            // Reviews über 365 Tage verteilen (statt nur 180)
-            LocalDateTime reviewDate = generateReviewDate(product);
-            review.setCreatedAt(reviewDate);
-            reviews.add(review);
-        }
-
-        // Anomalie-Produkt mit plötzlichem Qualitätsproblem
-        if (products.size() > 10 && !customers.isEmpty()) {
-            Product anomalyProduct = products.get(10); 
-            
-            // 20 schlechte Reviews in den letzten 7 Tagen (Qualitätsproblem)
-            for (int i = 0; i < 20; i++) {
-                Customer c = customers.get(random.nextInt(customers.size()));
-                ProductReview anomalyReview = new ProductReview();
-                anomalyReview.setProduct(anomalyProduct);
-                anomalyReview.setCustomer(c);
-                anomalyReview.setRating(1);
-                
-                String[] criticalComments = {
-                    "Direkt nach dem Auspacken defekt! Inakzeptabel!",
-                    "Das Produkt ist nach 2 Tagen kaputtgegangen. Sehr enttäuscht!",
-                    "Qualität ist katastrophal. Geld verschwendet!",
-                    "Finger weg! Hatte hohe Erwartungen, wurde bitter enttäuscht.",
-                    "Schlechteste Kaufentscheidung überhaupt. Geht gar nicht!",
-                    "Nach einer Woche schon Probleme. Support reagiert nicht!",
-                    "Totaler Schrott, verarbeitung unterirdisch.",
-                    "Produkt riecht komisch und funktioniert nicht richtig.",
-                    "Wurde beschädigt geliefert. Rücksendung war auch ein Albtraum!",
-                    "Nie wieder! Das Produkt hat meine Erwartungen null erfüllt."
-                };
-                anomalyReview.setComment(criticalComments[random.nextInt(criticalComments.length)]);
-                anomalyReview.setCreatedAt(LocalDateTime.now().minusDays(random.nextInt(7)));
-                reviews.add(anomalyReview);
+            review.setProduct(draft.product());
+            review.setCustomer(draft.customer());
+            if (draft.orderItemId() != null) {
+                review.setOrderItem(orderItemRepository.getReferenceById(draft.orderItemId()));
             }
-        }
-        
-        // Trend-Up Produkt: Viele positive Reviews in letzter Zeit
-        for (Long productId : trendingUpProducts) {
-            Product trendProduct = products.stream()
-                    .filter(p -> p.getId().equals(productId))
-                    .findFirst()
-                    .orElse(null);
-                    
-            if (trendProduct != null) {
-                for (int i = 0; i < 8; i++) {
-                    Customer c = customers.get(random.nextInt(customers.size()));
-                    ProductReview trendReview = new ProductReview();
-                    trendReview.setProduct(trendProduct);
-                    trendReview.setCustomer(c);
-                    trendReview.setRating(random.nextDouble() < 0.8 ? 5 : 4);
-                    trendReview.setComment(generatePositiveTrendComment(trendProduct));
-                    trendReview.setCreatedAt(LocalDateTime.now().minusDays(random.nextInt(30)));
-                    reviews.add(trendReview);
-                }
-            }
-        }
-        
-        // Trend-Down Produkt: Verschlechternde Reviews über Zeit
-        for (Long productId : trendingDownProducts) {
-            Product decliningProduct = products.stream()
-                    .filter(p -> p.getId().equals(productId))
-                    .findFirst()
-                    .orElse(null);
-                    
-            if (decliningProduct != null) {
-                for (int i = 0; i < 6; i++) {
-                    Customer c = customers.get(random.nextInt(customers.size()));
-                    ProductReview declineReview = new ProductReview();
-                    declineReview.setProduct(decliningProduct);
-                    declineReview.setCustomer(c);
-                    declineReview.setRating(random.nextDouble() < 0.6 ? 2 : 3);
-                    declineReview.setComment(generateNegativeTrendComment(decliningProduct));
-                    declineReview.setCreatedAt(LocalDateTime.now().minusDays(random.nextInt(60)));
-                    reviews.add(declineReview);
-                }
-            }
-        }
+            review.setRating(draft.rating());
+            review.setComment(draft.comment());
+            review.setCreatedAt(draft.createdAt());
+            return review;
+        }).toList();
+        List<ProductReview> saved = reviewRepository.saveAll(reviews);
+        log.info("Seeded {} reviews (Qualitätsvorfall bei '{}')", saved.size(),
+                DemoReviewGenerator.incidentProduct(products).getName());
 
-        List<ProductReview> savedReviews = reviewRepository.saveAll(reviews);
-        log.info("Seeded {} reviews (including anomalies and trends)", savedReviews.size());
-
+        // Die Einordnung (Stimmung, Themen) übernimmt ReviewInsightBootstrap nach dem Start
         if (generateEmbeddings) {
             if (openAiApiKey == null || openAiApiKey.isBlank() || openAiApiKey.contains("${")
                     || "not-configured".equals(openAiApiKey)) {
                 log.warn("Embeddings werden übersprungen: kein gültiger OpenAI API Key konfiguriert.");
                 return;
             }
-
-            int embeddedCount = 0;
-            for (ProductReview r1 : savedReviews) {
-                try {
-                    embeddingService.createEmbedding(r1);
-                    embeddedCount++;
-                } catch (RuntimeException ex) {
-                    log.warn("Embedding für Review {} fehlgeschlagen – übersprungen: {}", r1.getId(), ex.getMessage());
-                }
-            }
-            log.info("Created embeddings for {} reviews", embeddedCount);
-        }
-    }
-    
-    /**
-     * Generiert Rating basierend auf Produkt-Trend
-     */
-    private int generateTrendAwareRating(Product product) {
-        if (trendingUpProducts.contains(product.getId())) {
-            // Trend-Up: mehr 4er und 5er
-            double rand = random.nextDouble();
-            if (rand < 0.5) return 5;
-            if (rand < 0.8) return 4;
-            if (rand < 0.95) return 3;
-            return 2;
-        }
-        
-        if (trendingDownProducts.contains(product.getId())) {
-            // Trend-Down: mehr 2er und 3er
-            double rand = random.nextDouble();
-            if (rand < 0.3) return 2;
-            if (rand < 0.6) return 3;
-            if (rand < 0.85) return 4;
-            return random.nextBoolean() ? 5 : 1;
-        }
-        
-        // Normal: leicht positiv verzerrt
-        return random.nextInt(1, 6);
-    }
-    
-    /**
-     * Generiert Review-Datum mit Berücksichtigung von Trends
-     */
-    private LocalDateTime generateReviewDate(Product product) {
-        if (trendingUpProducts.contains(product.getId())) {
-            // Mehr neuere Reviews für Trend-Produkte
-            return LocalDateTime.now().minusDays(random.nextInt(90));
-        }
-        if (trendingDownProducts.contains(product.getId())) {
-            // Verteilt über längeren Zeitraum
-            return LocalDateTime.now().minusDays(30 + random.nextInt(335));
-        }
-        // Normal: über 365 Tage verteilt
-        return LocalDateTime.now().minusDays(random.nextInt(365));
-    }
-    
-    /**
-     * Generiert positive Kommentare für Trend-Up Produkte
-     */
-    private String generatePositiveTrendComment(Product product) {
-        String[] comments = {
-            "Wow, ein echter Geheimtipp! Bin total begeistert! 🔥",
-            "Hab es auf Social Media gesehen und musste es haben. Absolut lohnenswert!",
-            "Beste Investition seit langem! Kann es nur empfehlen.",
-            "Übertrifft alle Erwartungen. Preis-Leistung ist unschlagbar!",
-            "Endlich ein Produkt, das hält was es verspricht! Super zufrieden.",
-            "Mein absolutes Highlight dieses Jahr. Danke für dieses tolle Produkt!",
-            "Freunde haben es mir empfohlen - sie hatten recht! Fantastisch!",
-            "Design und Qualität sind erstklassig. Würde es sofort wieder kaufen.",
-            "Das " + product.getCategory() + "-Produkt meiner Träume! ⭐⭐⭐⭐⭐",
-            "Nach langer Recherche endlich das Richtige gefunden. Perfekt!"
-        };
-        return comments[random.nextInt(comments.length)];
-    }
-    
-    /**
-     * Generiert negative Kommentare für Trend-Down Produkte
-     */
-    private String generateNegativeTrendComment(Product product) {
-        String[] comments = {
-            "Früher war das Produkt besser. Qualität hat nachgelassen.",
-            "Leider nicht mehr wie erwartet. Alternativen wären besser.",
-            "Enttäuscht. Die Konkurrenz bietet mittlerweile mehr fürs Geld.",
-            "Nach 3 Monaten schon Probleme. Nicht mehr zu empfehlen.",
-            "Service lässt zu wünschen übrig. Werde wechseln.",
-            "Preis stimmt nicht mehr mit der Qualität überein.",
-            "Meine zweite Bestellung - deutlich schlechter als die erste.",
-            "Updates haben das Produkt eher verschlechtert als verbessert.",
-            "War mal ein Fan, aber die Qualitätskontrolle scheint nachzulassen.",
-            "Schade, hatte gute Erinnerungen an die Marke. Diesmal enttäuscht."
-        };
-        return comments[random.nextInt(comments.length)];
-    }
-
-    private String generateRealisticComment(Product product, int rating) {
-        String category = product.getCategory();
-
-        String[] generic_5 = {
-                "Einfach perfekt! Übertrifft alle Erwartungen.",
-                "Tolles Produkt, kann ich nur wärmstens empfehlen!",
-                "Super schnelle Lieferung! Das Produkt ist einwandfrei."
-        };
-        String[] generic_4 = {
-                "Sehr gutes Produkt, fast perfekt.",
-                "Preis-Leistung ist unschlagbar.",
-                "Bin sehr zufrieden, gute Qualität."
-        };
-        String[] generic_3 = {
-                "Ganz okay, aber nichts Besonderes.",
-                "Erfüllt seinen Zweck, mehr aber auch nicht.",
-                "Mittelmäßig. Weder gut noch schlecht."
-        };
-        String[] generic_2 = {
-                "Leider nicht wie erwartet, die Farbe war anders.",
-                "Die Verpackung war beschädigt, das Produkt zum Glück nicht.",
-                "Enttäuschend. Die Qualität lässt zu wünschen übrig."
-        };
-        String[] generic_1 = {
-                "Nach zwei Wochen schon kaputt. Nicht zu empfehlen.",
-                "Absoluter Schrott, Finger weg!",
-                "Ging direkt zurück. Das Produkt war unbrauchbar."
-        };
-
-        Map<String, List<String>> cat_5 = Map.of(
-                "Elektronik", List.of("Der Akku hält ewig!", "Super Display, tolle Farben.", "Die Verbindung war sofort da."),
-                "Möbel", List.of("Sehr stabil und einfach aufzubauen.", "Sieht noch besser aus als auf den Bildern.", "Das Material fühlt sich hochwertig an."),
-                "Beleuchtung", List.of("Macht ein wunderbar warmes Licht.", "Die Helligkeit ist perfekt.", "Installation war kinderleicht."),
-                "Bürobedarf", List.of("Endlich Ordnung auf dem Schreibtisch!", "Schreibt perfekt, ohne zu schmieren.", "Sehr ergonomisch, super für lange Arbeitstage."),
-                "Sport & Fitness", List.of("Training macht jetzt richtig Spaß!", "Hochwertige Verarbeitung, hält einiges aus.", "Genau das was ich gesucht habe für mein Home-Gym."),
-                "Haushalt & Küche", List.of("Kochen ist jetzt so viel einfacher!", "Reinigung ist super simpel.", "Revolutioniert meine Küche!"),
-                "Garten & Outdoor", List.of("Mein Garten sieht fantastisch aus!", "Wetterfest wie versprochen.", "Robuste Qualität für draußen.")
-        );
-        Map<String, List<String>> cat_1 = Map.of(
-                "Elektronik", List.of("Der Akku war nach 2 Tagen kaputt.", "Lässt sich nicht verbinden.", "Schon beim Auspacken ein Defekt."),
-                "Möbel", List.of("Teile haben gefehlt!", "Der Lack ist zerkratzt.", "Die Anleitung war unbrauchbar."),
-                "Beleuchtung", List.of("Viel zu dunkel.", "Hat nach 2 Stunden geflackert.", "Wackelkontakt."),
-                "Bürobedarf", List.of("Die Tinte ist ausgelaufen.", "Ist direkt zerbrochen.", "Papierstau nach 5 Seiten."),
-                "Sport & Fitness", List.of("Material reißt sofort.", "Falsche Größenangaben.", "Nach erstem Training schon defekt."),
-                "Haushalt & Küche", List.of("Funktioniert nicht wie beschrieben.", "Plastik riecht chemisch.", "Motor ist sofort überhitzt."),
-                "Garten & Outdoor", List.of("Beim ersten Regen kaputt.", "Farbe verblasst nach einer Woche.", "Instabil, kippt ständig um.")
-        );
-
-        if (random.nextBoolean()) {
-            if (rating == 5 && cat_5.containsKey(category)) {
-                List<String> comments = cat_5.get(category);
-                return comments.get(random.nextInt(comments.size()));
-            }
-            if (rating == 1 && cat_1.containsKey(category)) {
-                List<String> comments = cat_1.get(category);
-                return comments.get(random.nextInt(comments.size()));
-            }
-        }
-
-        switch (rating) {
-            case 1: return generic_1[random.nextInt(generic_1.length)];
-            case 2: return generic_2[random.nextInt(generic_2.length)];
-            case 3: return generic_3[random.nextInt(generic_3.length)];
-            case 4: return generic_4[random.nextInt(generic_4.length)];
-            case 5: return generic_5[random.nextInt(generic_5.length)];
-            default: return "Ganz okay.";
-        }
-    }
-    
-    /**
-     * Generiert emotionale Kommentare für die Sentiment-Analyse
-     */
-    private String generateEmotionalComment(Product product, int rating) {
-        // 40% Chance für emotionalen Kommentar, sonst Standard
-        if (random.nextDouble() > 0.4) {
-            return generateRealisticComment(product, rating);
-        }
-        
-        String category = product.getCategory();
-        
-        // Emotionale Kommentare nach Rating
-        String[][] emotional_5 = {
-            // Joy / Freude
-            {"Ich bin SO GLÜCKLICH mit diesem Kauf! 😍", "Das beste Produkt ever! Bin überglücklich!", 
-             "Wow wow wow! Übertrifft alle meine Erwartungen!"},
-            // Satisfaction / Zufriedenheit
-            {"Endlich ein Produkt das hält was es verspricht. Sehr zufrieden.",
-             "Genau das was ich gesucht habe. Rundum zufrieden!",
-             "Läuft einwandfrei seit Wochen. Absolute Kaufempfehlung."},
-            // Surprise / Überraschung  
-            {"Hätte nicht erwartet, dass es SO gut ist! Angenehm überrascht.",
-             "Die Qualität hat mich wirklich überrascht! Viel besser als gedacht.",
-             "Unerwartet schnelle Lieferung und top Produkt!"}
-        };
-        
-        String[][] emotional_1 = {
-            // Frustration
-            {"Ich bin so FRUSTRIERT! Nichts funktioniert wie es soll!", 
-             "Stundenlang versucht es zum Laufen zu bekommen. Totale Zeitverschwendung!",
-             "Support ist ein Witz. Keinerlei Hilfe bekommen. Frustrierend!"},
-            // Disappointment / Enttäuschung
-            {"Sehr enttäuscht. Hatte mir so viel mehr erhofft...",
-             "Die Bewertungen waren so gut, das Produkt leider nicht. Enttäuschend.",
-             "Schade, der Hersteller war mal besser. Bin sehr enttäuscht."},
-            // Anger / Ärger
-            {"Das ist UNVERSCHÄMT! Für den Preis bekommt man sowas?!",
-             "Bin stinksauer! Das geht gar nicht! Geld zurück!",
-             "Ärgerlich! Die Produktbeschreibung ist komplett irreführend!"}
-        };
-        
-        String[][] emotional_3 = {
-            // Neutral/Mixed
-            {"Naja... es ist okay, denke ich. Nicht begeistert, nicht enttäuscht.",
-             "Schwer zu sagen ob ich es empfehlen würde. Hat Vor- und Nachteile.",
-             "Für den Preis ist es in Ordnung, aber mehr auch nicht."}
-        };
-        
-        if (rating >= 4) {
-            String[] comments = emotional_5[random.nextInt(emotional_5.length)];
-            return comments[random.nextInt(comments.length)];
-        } else if (rating <= 2) {
-            String[] comments = emotional_1[random.nextInt(emotional_1.length)];
-            return comments[random.nextInt(comments.length)];
-        } else {
-            String[] comments = emotional_3[0];
-            return comments[random.nextInt(comments.length)];
+            log.info("Created embeddings for {} reviews", embeddingService.embed(saved));
         }
     }
 }

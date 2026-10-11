@@ -4,6 +4,7 @@ package com.thomas.order_management.repository;
 import com.thomas.order_management.model.StockMovement;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -11,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -68,4 +70,8 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
         GROUP BY product_id
         """, nativeQuery = true)
     List<Object[]> getIssuedQuantityByProduct(@Param("startDate") LocalDateTime startDate);
+
+    /** Bewegungen ausgewählter Bewegungsarten (z. B. 601/602) seit einem Stichtag, mit Material und Lagerorten. */
+    @EntityGraph(attributePaths = {"product", "sourceWarehouse", "targetWarehouse"})
+    List<StockMovement> findByPostingDateGreaterThanEqualAndMovementCodeIn(LocalDateTime from, Collection<String> codes);
 }

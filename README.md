@@ -52,8 +52,9 @@ Die Demo-Daten entstehen durch die Simulation eines kompletten Geschäftsjahres 
 ### Analyse und KI
 - **Kennzahlen**: Umsatz, Bruttomarge, DSO, Liefertreue, Durchlaufzeit, Lagerumschlag, Reichweite
 - **ABC-Analyse** für Materialien und Debitoren, **Umsatzprognose** per linearer Regression
-- **Semantische Suche** in Kundenbewertungen (OpenAI-Embeddings + pgvector)
-- **KI-Trends, Auffälligkeiten und Stimmungsanalyse** der Bewertungen, **KI-Bestandsanalyse**
+- **Bewertungsanalyse**: Trend gegen den Vorzeitraum (gesamt, je Material, je Warengruppe), statistisch erkannte Qualitätsauffälligkeiten, Themen und Stimmung – mit KI-Einordnung und Belegzitaten
+- **Bewertungssuche**: semantische Suche nach Bedeutung (OpenAI-Embeddings + pgvector) mit Relevanzschwelle
+- **Bestandsanalyse**: Bedarfsprognose aus Warenausgängen, Nachschubvorschläge je Lagerort, Auffälligkeiten inklusive Qualitätsrisiken aus den Bewertungen
 
 ### Plattform
 - **Fiori-Oberfläche** mit UI5 Web Components (Theme Horizon, hell und dunkel): Launchpad, List Reports, Object Pages, Dynamic Page, Wizard
@@ -77,6 +78,22 @@ Kennwort für alle: **`demo1234`** – auf der Anmeldeseite genügt ein Klick au
 | `SWEBER` | Controlling | KI-Analysen starten |
 
 Lesen dürfen alle angemeldeten Benutzer.
+
+---
+
+## 🤖 Wie die KI eingesetzt wird
+
+Grundsatz: **Erkennen und Rechnen macht nachvollziehbarer Code, das Sprachmodell formuliert und ordnet Freitext ein.** So bleiben Zahlen prüfbar und Antworten schnell.
+
+| Aufgabe | Wie |
+|---------|-----|
+| Bewertung einordnen (Stimmung, Emotion, Themen mit eigener Tonalität) | Sprachmodell mit fester Themenliste und strukturierter Ausgabe, einmal je Bewertung im Hintergrund; regelbasierter Rückfall ohne Schlüssel |
+| Trends, Auffälligkeiten, Themenentwicklung | berechnet aus den gespeicherten Einordnungen: Vorzeitraum, Vergleichsbasis 180 Tage, Mindestanzahlen |
+| Zusammenfassung, Einschätzung, Maßnahmen | Sprachmodell bekommt nur die berechneten Fakten und Zitate; die Oberfläche zeigt, ob ein Text von der KI stammt |
+| Semantische Suche | Embeddings (`text-embedding-3-small`) in pgvector, Kosinus-Ähnlichkeit mit Mindestwert |
+| Bedarfsprognose und Nachschub | berechnet (exponentielle Glättung, Melde-/Höchstbestand, Rückstand); das Sprachmodell fasst nur zusammen |
+
+Die Demo-Bewertungen stammen aus einem eingecheckten Textbaukasten mit warengruppenspezifischen Aussagen und eingebauten Mustern (Qualitätsvorfall, Lieferprobleme, Auf- und Abwärtstrends). Tests prüfen, dass die Auswertung genau diese Muster findet.
 
 ---
 
@@ -140,8 +157,10 @@ Frontend: http://localhost:4200
 | `APP_DEMO_SEED_DATA` | Demo-Daten bei leerer Datenbank erzeugen | `true` |
 | `APP_DEV_RESET_ON_START` | Demo-Daten bei jedem Start neu erzeugen | `false` |
 | `APP_DEV_GENERATE_EMBEDDINGS` | beim Erzeugen der Demo-Daten auch die Embeddings für die semantische Suche anlegen (braucht `OPENAI_API_KEY`) | `false` |
+| `APP_AI_ENABLED` | KI-Funktionen nutzen, sofern ein Schlüssel gesetzt ist | `true` |
+| `APP_AI_CLASSIFY_ON_START` | nach dem Start alle noch regelbasiert eingeordneten Bewertungen im Hintergrund per KI einordnen | `true` |
 
-Embeddings lassen sich auch nachträglich erzeugen: `POST /api/reviews/maintenance/reembed` (Rolle Controlling oder Administrator).
+Embeddings lassen sich auch nachträglich erzeugen: `POST /api/reviews/maintenance/reembed`, die KI-Einordnung der Bewertungen über „Jetzt per KI einordnen“ in der Bewertungsanalyse bzw. `POST /api/reviews/insights/classification` (jeweils Rolle Controlling oder Administrator).
 
 ---
 
@@ -161,8 +180,9 @@ order-management/           Spring Boot
                             Faktura, Belegfluss, Rechnungs-PDF
   service/                  Bestandsbuchungen, Nummernkreise, Änderungsbelege,
                             Reporting, Benutzer
-  ai/                       Embeddings, Trend-, Anomalie- und Stimmungsanalyse
-  config/                   Security (JWT, Rollen), Demo-Daten und Geschäftsjahressimulation
+  service/reviews/          Einordnung der Bewertungen (KI/Regeln), Trend-, Auffälligkeits- und Themenauswertung, Suche
+  service/ai/               Zugriff auf das Sprachmodell mit strukturierter Ausgabe und Rückfall ohne KI
+  config/                   Security (JWT, Rollen), Demo-Daten, Geschäftsjahressimulation, Demo-Bewertungen
   resources/db/migration/   Flyway-Migrationen
 ```
 

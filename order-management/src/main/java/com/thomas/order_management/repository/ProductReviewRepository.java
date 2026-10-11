@@ -52,6 +52,12 @@ public interface ProductReviewRepository extends JpaRepository<ProductReview, Lo
 
     List<ProductReview> findByCreatedAtBetween(LocalDateTime from, LocalDateTime to);
 
+    @EntityGraph(attributePaths = {"product"})
+    List<ProductReview> findWithProductByCreatedAtBetween(LocalDateTime from, LocalDateTime to);
+
+    @EntityGraph(attributePaths = {"product"})
+    List<ProductReview> findWithProductByIdIn(java.util.Collection<Long> ids);
+
     List<ProductReview> findByProductIdAndCreatedAtBetween(
             Long productId,
             LocalDateTime start,

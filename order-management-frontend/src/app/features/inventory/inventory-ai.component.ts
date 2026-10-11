@@ -10,33 +10,39 @@ interface DemandForecast {
   productName: string;
   category: string;
   currentStock: number;
+  dailyDemand: number;
   predictedDemand7Days: number;
   predictedDemand14Days: number;
   predictedDemand30Days: number;
-  confidenceScore: number;
   trendDirection: 'RISING' | 'STABLE' | 'FALLING';
-  aiInsight: string;
-  stockoutRiskDate?: string;
+  confidence: number;
+  reachDays: number | null;
+  stockoutRiskDate: string | null;
+  backlog: number;
 }
 
 interface ReorderRecommendation {
   productId: number;
   productName: string;
-  category: string;
+  warehouseName: string;
   currentStock: number;
   minStock: number;
+  maxStock: number;
+  dailyDemand: number;
+  backlog: number;
   recommendedOrderQuantity: number;
   urgency: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   reason: string;
   estimatedCost: number;
   suggestedOrderDate: string;
-  daysUntilStockout: number;
+  daysUntilStockout: number | null;
 }
 
 interface InventoryAnomaly {
+  productId: number;
   productName: string;
   warehouseName: string;
-  anomalyType: string;
+  anomalyType: 'QUALITY_RISK' | 'STOCKOUT_WITH_BACKLOG' | 'DEMAND_SPIKE' | 'OVERSTOCK' | 'SLOW_MOVER';
   severity: 'HIGH' | 'MEDIUM' | 'LOW';
   description: string;
   suggestedAction: string;
@@ -48,22 +54,27 @@ interface HealthScore {
   stockAvailabilityScore: number;
   turnoverScore: number;
   accuracyScore: number;
+  turnoverRate: number;
   strengths: string[];
   weaknesses: string[];
-  opportunities: string[];
 }
 
-interface InventoryAiReport {
+interface InventoryReport {
   generatedAt: string;
   executiveSummary: string;
+  actionItems: string[];
+  narrativeSource: 'KI' | 'REGELN';
+  method: string;
   demandForecasts: DemandForecast[];
   reorderRecommendations: ReorderRecommendation[];
   anomalies: InventoryAnomaly[];
   healthScore: HealthScore;
-  actionItems: string[];
 }
 
-/** KI-gestützte Bestandsanalyse: Bedarfsprognose, Nachschubempfehlungen und Auffälligkeiten (per LLM). */
+/**
+ * Bestandsanalyse: Bedarfsprognose, Nachschubvorschläge und Auffälligkeiten. Die Zahlen sind berechnet,
+ * die Zusammenfassung formuliert bei verfügbarer KI das Sprachmodell.
+ */
 @Component({
   selector: 'om-inventory-ai',
   imports: [RouterLink, CurrencyPipe, DatePipe, DecimalPipe],
@@ -81,9 +92,14 @@ interface InventoryAiReport {
 export class InventoryAiComponent implements OnInit {
   private readonly http = inject(HttpClient);
 
-  protected readonly report = signal<InventoryAiReport | null>(null);
+  protected readonly report = signal<InventoryReport | null>(null);
   protected readonly loading = signal(false);
   protected readonly failed = signal(false);
+  protected readonly visibleForecasts = signal(20);
+
+  protected showMore(): void {
+    this.visibleForecasts.update(n => n + 20);
+  }
 
   ngOnInit(): void {
     this.load();
@@ -93,7 +109,7 @@ export class InventoryAiComponent implements OnInit {
     this.loading.set(true);
     this.failed.set(false);
     // Fehler werden hier als eigene Hinweisseite angezeigt statt als Meldungsdialog
-    this.http.get<InventoryAiReport>(`${API_URL}/inventory/ai/report`, { context: new HttpContext().set(SILENT_ERRORS, true) })
+    this.http.get<InventoryReport>(`${API_URL}/inventory/ai/report`, { context: new HttpContext().set(SILENT_ERRORS, true) })
       .subscribe({
         next: r => {
           this.report.set(r);
@@ -116,6 +132,21 @@ export class InventoryAiComponent implements OnInit {
 
   protected trendText(t: string): string {
     return { RISING: 'Steigend', STABLE: 'Stabil', FALLING: 'Fallend' }[t] ?? t;
+  }
+
+  protected anomalyText(t: string): string {
+    return {
+      QUALITY_RISK: 'Qualitätsrisiko', STOCKOUT_WITH_BACKLOG: 'Ausverkauft mit Rückstand', DEMAND_SPIKE: 'Nachfragespitze',
+      OVERSTOCK: 'Überbestand', SLOW_MOVER: 'Ladenhüter'
+    }[t] ?? t;
+  }
+
+  protected severityDesign(s: string): string {
+    return { HIGH: 'Negative', MEDIUM: 'Critical', LOW: 'Information' }[s] ?? 'Neutral';
+  }
+
+  protected confidenceText(c: number): string {
+    return c >= 0.7 ? 'hoch' : c >= 0.45 ? 'mittel' : 'niedrig';
   }
 
   protected scoreState(score: number): string {

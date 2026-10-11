@@ -105,17 +105,18 @@ export const routes: Routes = [
       },
       {
         path: 'reviews',
-        title: 'Bewertungen',
+        title: 'Bewertungssuche',
         loadComponent: () => import('./features/analytics/reviews.component').then(m => m.ReviewsComponent)
       },
       {
-        path: 'ki-trends',
-        title: 'KI-Trends',
-        loadComponent: () => import('./features/analytics/review-trends.component').then(m => m.ReviewTrendsComponent)
+        path: 'review-analysis',
+        title: 'Bewertungsanalyse',
+        loadComponent: () => import('./features/analytics/review-analysis.component').then(m => m.ReviewAnalysisComponent)
       },
+      { path: 'ki-trends', redirectTo: 'review-analysis' },
       {
         path: 'inventory-ai',
-        title: 'KI-Bestandsanalyse',
+        title: 'Bestandsanalyse',
         loadComponent: () => import('./features/inventory/inventory-ai.component').then(m => m.InventoryAiComponent)
       },
 

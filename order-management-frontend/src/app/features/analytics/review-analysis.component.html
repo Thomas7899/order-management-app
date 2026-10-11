@@ -1,0 +1,398 @@
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Bewertungsanalyse</ui5-title>
+    <div slot="subheading" class="om-subtle">Kundenbewertungen im Vergleich zum Vorzeitraum: Trends, Auffälligkeiten, Themen und Stimmung</div>
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <ui5-segmented-button class="mode" (selection-change)="setMode($event)">
+      <ui5-segmented-button-item data-key="trend" [selected]="mode() === 'trend'">Trend</ui5-segmented-button-item>
+      <ui5-segmented-button-item data-key="anomalies" [selected]="mode() === 'anomalies'">Auffälligkeiten</ui5-segmented-button-item>
+      <ui5-segmented-button-item data-key="sentiment" [selected]="mode() === 'sentiment'">Themen &amp; Stimmung</ui5-segmented-button-item>
+    </ui5-segmented-button>
+
+    <div class="om-filterbar">
+      @if (mode() !== 'anomalies') {
+        <div class="om-filter">
+          <ui5-label show-colon>Auswertung für</ui5-label>
+          <ui5-select [(ngModel)]="scopeType">
+            <ui5-option value="GLOBAL" [selected]="scopeType === 'GLOBAL'">Alle Bewertungen</ui5-option>
+            <ui5-option value="PRODUCT" [selected]="scopeType === 'PRODUCT'">Ein Material</ui5-option>
+            <ui5-option value="CATEGORY" [selected]="scopeType === 'CATEGORY'">Eine Warengruppe</ui5-option>
+          </ui5-select>
+        </div>
+        @if (scopeType === 'PRODUCT') {
+          <div class="om-filter wide">
+            <ui5-label show-colon required>Material</ui5-label>
+            <ui5-select [(ngModel)]="productId">
+              <ui5-option value="" [selected]="!productId">Bitte auswählen</ui5-option>
+              @for (m of materials(); track m.id) {
+                <ui5-option [value]="'' + m.id" [selected]="productId === '' + m.id">{{ m.materialNumber }} – {{ m.name }}</ui5-option>
+              }
+            </ui5-select>
+          </div>
+        }
+        @if (scopeType === 'CATEGORY') {
+          <div class="om-filter">
+            <ui5-label show-colon required>Warengruppe</ui5-label>
+            <ui5-select [(ngModel)]="category">
+              <ui5-option value="" [selected]="!category">Bitte auswählen</ui5-option>
+              @for (c of categories(); track c) {
+                <ui5-option [value]="c" [selected]="category === c">{{ c }}</ui5-option>
+              }
+            </ui5-select>
+          </div>
+        }
+      }
+      <div class="om-filter">
+        <ui5-label show-colon>Zeitraum von</ui5-label>
+        <ui5-date-picker placeholder="TT.MM.JJJJ" [(ngModel)]="startDate" value-format="yyyy-MM-dd" display-format="dd.MM.yyyy"></ui5-date-picker>
+      </div>
+      <div class="om-filter">
+        <ui5-label show-colon>bis</ui5-label>
+        <ui5-date-picker placeholder="TT.MM.JJJJ" [(ngModel)]="endDate" value-format="yyyy-MM-dd" display-format="dd.MM.yyyy"></ui5-date-picker>
+      </div>
+      <div class="presets">
+        <ui5-button design="Transparent" (click)="setPreset(14)">14 Tage</ui5-button>
+        <ui5-button design="Transparent" (click)="setPreset(30)">30 Tage</ui5-button>
+        <ui5-button design="Transparent" (click)="setPreset(90)">90 Tage</ui5-button>
+      </div>
+      <div class="om-filter-actions">
+        <ui5-button design="Emphasized" [disabled]="loading()" (click)="analyze()">Auswerten</ui5-button>
+      </div>
+    </div>
+
+    @if (classification(); as c) {
+      <ui5-message-strip [attr.design]="c.job.running ? 'Information' : c.aiAvailable ? 'Positive' : 'Critical'" hide-close-button>
+        {{ classificationText(c) }}
+        @if (canClassify()) {
+          <ui5-link (click)="startClassification()">Jetzt per KI einordnen</ui5-link>
+        }
+      </ui5-message-strip>
+    }
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    @if (loading()) {
+      <div class="om-loading"><ui5-busy-indicator active size="L" text="Bewertungen werden ausgewertet …"></ui5-busy-indicator></div>
+    }
+    @if (error(); as e) {
+      <ui5-message-strip design="Negative" hide-close-button>{{ e }}</ui5-message-strip>
+    }
+
+    <!-- ===================== Trend ===================== -->
+    @if (!loading() && mode() === 'trend' && trend(); as t) {
+      <div class="om-section">
+        <div class="om-section-header">
+          <ui5-title level="H5">{{ t.title }}</ui5-title>
+          <span class="om-subtle">
+            {{ t.windowStart | date: 'dd.MM.yyyy' }} – {{ t.windowEnd | date: 'dd.MM.yyyy' }}
+            · verglichen mit {{ t.previousStart | date: 'dd.MM.' }} – {{ t.previousEnd | date: 'dd.MM.yyyy' }}
+          </span>
+        </div>
+        <div class="om-header-facets">
+          <div class="om-facet">
+            <span class="om-facet-label">Bewertungen</span>
+            <span class="om-facet-value kpi">{{ t.current.reviews }}</span>
+            <span class="om-subtle">Vorperiode {{ t.previous.reviews }}</span>
+          </div>
+          <div class="om-facet">
+            <span class="om-facet-label">Ø Sterne</span>
+            <span class="om-facet-value kpi">{{ t.current.avgRating | number: '1.1-1' }}</span>
+            <span [class.delta-neg]="t.current.avgRating < t.previous.avgRating" [class.delta-pos]="t.current.avgRating > t.previous.avgRating">
+              {{ signed(t.current.avgRating - t.previous.avgRating) }} ggü. Vorperiode
+            </span>
+          </div>
+          <div class="om-facet">
+            <span class="om-facet-label">Anteil negativ</span>
+            <span class="om-facet-value kpi">{{ pct(t.current.negativeShare) }} %</span>
+            <span [class.delta-neg]="t.current.negativeShare > t.previous.negativeShare" [class.delta-pos]="t.current.negativeShare < t.previous.negativeShare">
+              Vorperiode {{ pct(t.previous.negativeShare) }} %
+            </span>
+          </div>
+          <div class="om-facet">
+            <span class="om-facet-label">Stimmungswert (−1 bis +1)</span>
+            <span class="om-facet-value kpi">{{ t.current.sentimentScore | number: '1.2-2' }}</span>
+            <span class="om-subtle">Vorperiode {{ t.previous.sentimentScore | number: '1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="om-section">
+        <div class="om-section-header">
+          <ui5-title level="H5">Einordnung</ui5-title>
+          <span class="source">
+            @if (t.narrativeSource === 'KI') {
+              <ui5-tag design="Information" hide-state-icon><ui5-icon slot="icon" name="ai"></ui5-icon>Formuliert von KI aus den Kennzahlen</ui5-tag>
+            } @else {
+              <ui5-tag design="Neutral" hide-state-icon>Aus den Kennzahlen formuliert (ohne KI)</ui5-tag>
+            }
+          </span>
+        </div>
+        <p class="summary">{{ t.summary }}</p>
+        @if (t.recommendations.length) {
+          <ui5-title level="H6">Empfohlene Maßnahmen</ui5-title>
+          <ul>
+            @for (r of t.recommendations; track $index) { <li>{{ r }}</li> }
+          </ul>
+        }
+      </div>
+
+      <div class="lists">
+        <div class="om-section">
+          <ui5-title level="H5"><span class="om-negative">Verschlechtert</span></ui5-title>
+          <ul>@for (x of t.negativeTrends; track $index) { <li>{{ x }}</li> } @empty { <li class="om-subtle">Keine deutliche Verschlechterung</li> }</ul>
+        </div>
+        <div class="om-section">
+          <ui5-title level="H5"><span class="om-positive">Verbessert</span></ui5-title>
+          <ul>@for (x of t.positiveTrends; track $index) { <li>{{ x }}</li> } @empty { <li class="om-subtle">Keine deutliche Verbesserung</li> }</ul>
+        </div>
+        <div class="om-section">
+          <ui5-title level="H5">Beobachtungen</ui5-title>
+          <ul>@for (x of t.observations; track $index) { <li>{{ x }}</li> }</ul>
+        </div>
+      </div>
+
+      <div class="om-section">
+        <ui5-title level="H5" class="om-section-title">Themen</ui5-title>
+        <ui5-table no-data-text="Keine Themen im Zeitraum">
+          <ui5-table-header-row slot="headerRow">
+            <ui5-table-header-cell min-width="12rem">Thema</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End">Erwähnungen</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End">Positiv</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End">Negativ</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End">Negativ Vorperiode</ui5-table-header-cell>
+            <ui5-table-header-cell>Entwicklung</ui5-table-header-cell>
+          </ui5-table-header-row>
+          @for (th of t.themes; track th.theme.code) {
+            <ui5-table-row>
+              <ui5-table-cell>{{ th.theme.text }}</ui5-table-cell>
+              <ui5-table-cell class="om-num" horizontal-align="End">{{ th.mentions }} <span class="om-subtle">({{ th.previousMentions }})</span></ui5-table-cell>
+              <ui5-table-cell class="om-num" horizontal-align="End">{{ pct(th.positiveShare) }} %</ui5-table-cell>
+              <ui5-table-cell class="om-num" horizontal-align="End">{{ pct(th.negativeShare) }} %</ui5-table-cell>
+              <ui5-table-cell class="om-num" horizontal-align="End">{{ pct(th.previousNegativeShare) }} %</ui5-table-cell>
+              <ui5-table-cell><ui5-tag [attr.design]="directionDesign(th.direction)" wrapping-type="None">{{ directionText(th.direction) }}</ui5-tag></ui5-table-cell>
+            </ui5-table-row>
+          }
+        </ui5-table>
+      </div>
+
+      @if (t.declining.length || t.improving.length) {
+        <div class="om-grid-2">
+          @for (group of [{ title: 'Deutlich schlechter bewertet', items: t.declining }, { title: 'Deutlich besser bewertet', items: t.improving }]; track group.title) {
+            <div class="om-section">
+              <ui5-title level="H5" class="om-section-title">{{ group.title }}</ui5-title>
+              <ui5-table no-data-text="Keine Materialien">
+                <ui5-table-header-row slot="headerRow">
+                  <ui5-table-header-cell min-width="12rem">Material</ui5-table-header-cell>
+                  <ui5-table-header-cell class="om-num" horizontal-align="End">Ø jetzt</ui5-table-header-cell>
+                  <ui5-table-header-cell class="om-num" horizontal-align="End">Ø vorher</ui5-table-header-cell>
+                  <ui5-table-header-cell class="om-num" horizontal-align="End">Δ</ui5-table-header-cell>
+                </ui5-table-header-row>
+                @for (m of group.items; track m.productId) {
+                  <ui5-table-row>
+                    <ui5-table-cell>
+                      <div class="om-cell-stack">
+                        <a [routerLink]="['/materials', m.productId]">{{ m.productName }}</a>
+                        <span class="om-subtle">{{ m.reviews }} Bewertungen (vorher {{ m.previousReviews }})</span>
+                      </div>
+                    </ui5-table-cell>
+                    <ui5-table-cell class="om-num" horizontal-align="End">{{ m.avgRating | number: '1.1-1' }}</ui5-table-cell>
+                    <ui5-table-cell class="om-num" horizontal-align="End">{{ m.previousAvgRating | number: '1.1-1' }}</ui5-table-cell>
+                    <ui5-table-cell class="om-num" horizontal-align="End">
+                      <span [class.delta-neg]="(m.delta ?? 0) < 0" [class.delta-pos]="(m.delta ?? 0) > 0">{{ signed(m.delta) }}</span>
+                    </ui5-table-cell>
+                  </ui5-table-row>
+                }
+              </ui5-table>
+            </div>
+          }
+        </div>
+      }
+
+      @if (t.evidence.length) {
+        <div class="om-section">
+          <ui5-title level="H5" class="om-section-title">Belege aus den Bewertungen</ui5-title>
+          <div class="quotes">
+            @for (q of t.evidence; track q.reviewId) {
+              <div class="quote">
+                <div class="meta">
+                  <ui5-rating-indicator readonly size="S" [value]="q.rating"></ui5-rating-indicator>
+                  <span class="om-subtle">{{ q.createdAt | date: 'dd.MM.yyyy' }}</span>
+                </div>
+                <p>„{{ q.comment }}“</p>
+                <a class="om-subtle" [routerLink]="['/materials', q.productId]">{{ q.productName }}</a>
+                <div class="tags">@for (th of q.themes; track th) { <ui5-tag design="Neutral" hide-state-icon>{{ th }}</ui5-tag> }</div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+
+    <!-- ===================== Auffälligkeiten ===================== -->
+    @if (!loading() && mode() === 'anomalies' && anomalies(); as a) {
+      <div class="om-section">
+        <div class="om-section-header">
+          <ui5-title level="H5">Auffällige Materialien ({{ a.products.length }})</ui5-title>
+          <span class="om-subtle">
+            {{ a.windowStart | date: 'dd.MM.yyyy' }} – {{ a.windowEnd | date: 'dd.MM.yyyy' }}, verglichen mit den 180 Tagen davor ·
+            mindestens 4 Bewertungen, Ø mindestens 1 Stern schlechter oder überwiegend negativ
+          </span>
+        </div>
+        @for (p of a.products; track p.productId) {
+          <div class="om-section anomaly">
+            <div class="anomaly-head">
+              <ui5-tag [attr.design]="severityDesign(p.severity)">{{ severityText(p.severity) }}</ui5-tag>
+              <a class="om-strong" [routerLink]="['/materials', p.productId]">{{ p.productName }}</a>
+              <span class="om-subtle">{{ p.category }}</span>
+            </div>
+            <div class="om-header-facets">
+              <div class="om-facet"><span class="om-facet-label">Ø im Zeitraum</span><span class="om-facet-value kpi om-negative">{{ p.avgRating | number: '1.1-1' }}</span></div>
+              <div class="om-facet"><span class="om-facet-label">Ø vorher</span><span class="om-facet-value kpi">{{ p.baselineAvgRating === null ? '–' : (p.baselineAvgRating | number: '1.1-1') }}</span></div>
+              <div class="om-facet"><span class="om-facet-label">Bewertungen</span><span class="om-facet-value kpi">{{ p.reviews }}</span></div>
+              <div class="om-facet"><span class="om-facet-label">Negativ</span><span class="om-facet-value kpi">{{ pct(p.negativeShare) }} %</span></div>
+              <div class="om-facet">
+                <span class="om-facet-label">Häufigste Kritik</span>
+                <div class="tags">@for (x of p.topProblems; track x) { <ui5-tag design="Negative" hide-state-icon>{{ x }}</ui5-tag> }</div>
+              </div>
+            </div>
+            <div><span class="om-strong">Einschätzung: </span>{{ p.assessment }}</div>
+            <div><span class="om-strong">Maßnahme: </span>{{ p.recommendedAction }}</div>
+            @if (p.evidence.length) {
+              <div class="quotes">
+                @for (q of p.evidence; track q.reviewId) {
+                  <div class="quote">
+                    <div class="meta">
+                      <ui5-rating-indicator readonly size="S" [value]="q.rating"></ui5-rating-indicator>
+                      <span class="om-subtle">{{ q.createdAt | date: 'dd.MM.yyyy' }}</span>
+                    </div>
+                    <p>„{{ q.comment }}“</p>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        } @empty {
+          <ui5-illustrated-message name="NoData" title-text="Keine auffälligen Materialien"
+            subtitle-text="Kein Material hat sich im Zeitraum deutlich verschlechtert."></ui5-illustrated-message>
+        }
+      </div>
+
+      @if (a.themes.length) {
+        <div class="om-section">
+          <ui5-title level="H5" class="om-section-title">Auffällige Themen über alle Materialien</ui5-title>
+          <ui5-table>
+            <ui5-table-header-row slot="headerRow">
+              <ui5-table-header-cell min-width="12rem">Thema</ui5-table-header-cell>
+              <ui5-table-header-cell class="om-num" horizontal-align="End">Negativ pro Woche</ui5-table-header-cell>
+              <ui5-table-header-cell class="om-num" horizontal-align="End">Sonst pro Woche</ui5-table-header-cell>
+              <ui5-table-header-cell min-width="20rem">Einschätzung</ui5-table-header-cell>
+            </ui5-table-header-row>
+            @for (th of a.themes; track th.theme.code) {
+              <ui5-table-row>
+                <ui5-table-cell><span class="om-strong">{{ th.theme.text }}</span></ui5-table-cell>
+                <ui5-table-cell class="om-num" horizontal-align="End"><span class="om-negative">{{ th.negativePerWeek | number: '1.1-1' }}</span></ui5-table-cell>
+                <ui5-table-cell class="om-num" horizontal-align="End">{{ th.baselineNegativePerWeek | number: '1.1-1' }}</ui5-table-cell>
+                <ui5-table-cell>{{ th.assessment }}</ui5-table-cell>
+              </ui5-table-row>
+            }
+          </ui5-table>
+        </div>
+      }
+      <div class="source">
+        @if (a.narrativeSource === 'KI') {
+          <ui5-tag design="Information" hide-state-icon><ui5-icon slot="icon" name="ai"></ui5-icon>Einschätzungen formuliert von KI</ui5-tag>
+        }
+        <span class="om-subtle">Die Erkennung ist berechnet; die KI formuliert nur Einschätzung und Maßnahme aus Kennzahlen und Zitaten.</span>
+      </div>
+    }
+
+    <!-- ===================== Themen & Stimmung ===================== -->
+    @if (!loading() && mode() === 'sentiment' && sentiment(); as s) {
+      <div class="om-section">
+        <div class="om-header-facets">
+          <div class="om-facet">
+            <span class="om-facet-label">Bewertungen</span>
+            <span class="om-facet-value kpi">{{ s.current.reviews }}</span>
+            <span class="om-subtle">Vorperiode {{ s.previous.reviews }}</span>
+          </div>
+          <div class="om-facet">
+            <span class="om-facet-label">Stimmungswert (−1 bis +1)</span>
+            <span class="om-facet-value kpi">{{ s.current.sentimentScore | number: '1.2-2' }}</span>
+            <span [class.delta-neg]="s.current.sentimentScore < s.previous.sentimentScore" [class.delta-pos]="s.current.sentimentScore > s.previous.sentimentScore">
+              {{ signed(s.current.sentimentScore - s.previous.sentimentScore, 2) }} ggü. Vorperiode
+            </span>
+          </div>
+          @for (c of s.sentiments; track c.code) {
+            <div class="om-facet">
+              <span class="om-facet-label">{{ c.text }}</span>
+              <span class="om-facet-value kpi">{{ c.count }}</span>
+              <span class="om-subtle">{{ s.current.reviews ? (c.count * 100 / s.current.reviews | number: '1.0-0') : 0 }} %</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="om-grid-2">
+        <div class="om-section">
+          <ui5-title level="H5">Verlauf je {{ s.timelineGranularity === 'WEEK' ? 'Woche' : 'Tag' }}</ui5-title>
+          @if (timelineChart(); as o) { <div echarts class="om-chart" [options]="o"></div> }
+        </div>
+        <div class="om-section">
+          <ui5-title level="H5">Emotionen</ui5-title>
+          @if (emotionChart(); as o) { <div echarts class="om-chart" [options]="o"></div> }
+        </div>
+      </div>
+
+      <div class="om-section">
+        <ui5-title level="H5" class="om-section-title">Themen</ui5-title>
+        <ui5-table no-data-text="Keine Themen im Zeitraum">
+          <ui5-table-header-row slot="headerRow">
+            <ui5-table-header-cell min-width="12rem">Thema</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End">Erwähnungen</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End">Positiv</ui5-table-header-cell>
+            <ui5-table-header-cell class="om-num" horizontal-align="End">Negativ</ui5-table-header-cell>
+            <ui5-table-header-cell>Entwicklung</ui5-table-header-cell>
+          </ui5-table-header-row>
+          @for (th of s.themes; track th.theme.code) {
+            <ui5-table-row>
+              <ui5-table-cell>{{ th.theme.text }}</ui5-table-cell>
+              <ui5-table-cell class="om-num" horizontal-align="End">{{ th.mentions }}</ui5-table-cell>
+              <ui5-table-cell class="om-num" horizontal-align="End">{{ pct(th.positiveShare) }} %</ui5-table-cell>
+              <ui5-table-cell class="om-num" horizontal-align="End">{{ pct(th.negativeShare) }} %</ui5-table-cell>
+              <ui5-table-cell><ui5-tag [attr.design]="directionDesign(th.direction)" wrapping-type="None">{{ directionText(th.direction) }}</ui5-tag></ui5-table-cell>
+            </ui5-table-row>
+          }
+        </ui5-table>
+      </div>
+
+      @if (s.criticalReviews.length) {
+        <div class="om-section">
+          <ui5-title level="H5" class="om-section-title">Neueste kritische Bewertungen</ui5-title>
+          <ui5-table>
+            <ui5-table-header-row slot="headerRow">
+              <ui5-table-header-cell width="7rem">Sterne</ui5-table-header-cell>
+              <ui5-table-header-cell min-width="12rem">Material</ui5-table-header-cell>
+              <ui5-table-header-cell min-width="20rem">Bewertung</ui5-table-header-cell>
+              <ui5-table-header-cell>Themen</ui5-table-header-cell>
+            </ui5-table-header-row>
+            @for (q of s.criticalReviews; track q.reviewId) {
+              <ui5-table-row>
+                <ui5-table-cell><ui5-rating-indicator readonly size="S" [value]="q.rating"></ui5-rating-indicator></ui5-table-cell>
+                <ui5-table-cell>
+                  <div class="om-cell-stack">
+                    <a [routerLink]="['/materials', q.productId]">{{ q.productName }}</a>
+                    <span class="om-subtle">{{ q.createdAt | date: 'dd.MM.yyyy' }}</span>
+                  </div>
+                </ui5-table-cell>
+                <ui5-table-cell>„{{ q.comment }}“</ui5-table-cell>
+                <ui5-table-cell><div class="tags">@for (th of q.themes; track th) { <ui5-tag design="Neutral" hide-state-icon>{{ th }}</ui5-tag> }</div></ui5-table-cell>
+              </ui5-table-row>
+            }
+          </ui5-table>
+        </div>
+      }
+    }
+  </div>
+</ui5-dynamic-page>

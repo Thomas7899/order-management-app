@@ -4,6 +4,37 @@ import { Observable } from 'rxjs';
 import { API_URL } from './api';
 import { SILENT_ERRORS } from './http.interceptors';
 
+/** Treffer der semantischen Suche; gleichlautende Bewertungen sind zusammengefasst (duplicates). */
+export interface SearchHit {
+  reviewId: number;
+  comment: string;
+  rating: number;
+  createdAt: string;
+  productId: number;
+  productName: string;
+  customerName: string | null;
+  orderId: number | null;
+  similarity: number;
+  duplicates: number;
+  sentiment: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' | null;
+  themes: string[];
+}
+
+export interface ProductHits {
+  productId: number;
+  productName: string;
+  hits: number;
+  avgRating: number;
+}
+
+export interface SearchResult {
+  query: string;
+  minSimilarity: number;
+  totalHits: number;
+  hits: SearchHit[];
+  products: ProductHits[];
+}
+
 export interface Review {
   id: number;
   comment: string;
@@ -23,8 +54,8 @@ export class ReviewsService {
   private readonly http = inject(HttpClient);
 
   /** Semantische Suche (Embeddings + pgvector). Fehler zeigt die Seite selbst an. */
-  getSimilarReviews(query: string, limit: number): Observable<Review[]> {
-    return this.http.get<Review[]>(`${API_URL}/reviews/similar`,
+  search(query: string, limit: number): Observable<SearchResult> {
+    return this.http.get<SearchResult>(`${API_URL}/reviews/similar`,
       { params: { query, limit }, context: new HttpContext().set(SILENT_ERRORS, true) });
   }
 

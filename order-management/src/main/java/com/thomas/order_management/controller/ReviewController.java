@@ -6,43 +6,70 @@ import com.thomas.order_management.model.Customer;
 import com.thomas.order_management.model.OrderItem;
 import com.thomas.order_management.model.Product;
 import com.thomas.order_management.model.ProductReview;
+import com.thomas.order_management.dto.reviews.ReviewSearchDtos.CreateReview;
+import com.thomas.order_management.dto.reviews.ReviewSearchDtos.SearchResult;
+import com.thomas.order_management.exception.ResourceNotFoundException;
+import com.thomas.order_management.repository.CustomerRepository;
+import com.thomas.order_management.repository.OrderItemRepository;
+import com.thomas.order_management.repository.ProductRepository;
 import com.thomas.order_management.repository.ProductReviewRepository;
 import com.thomas.order_management.service.ReviewEmbeddingService;
+import com.thomas.order_management.service.ai.AiAvailability;
+import com.thomas.order_management.service.reviews.ReviewInsightService;
+import com.thomas.order_management.service.reviews.ReviewSearchService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/reviews")
 @RequiredArgsConstructor
 public class ReviewController {
 
-    private final ReviewEmbeddingService reviewEmbeddingService;
+    private final ReviewSearchService searchService;
+    private final ReviewEmbeddingService embeddingService;
+    private final ReviewInsightService insightService;
+    private final AiAvailability aiAvailability;
     private final ProductReviewRepository reviewRepository;
+    private final ProductRepository productRepository;
+    private final CustomerRepository customerRepository;
+    private final OrderItemRepository orderItemRepository;
 
     @GetMapping("/similar")
-    public List<ReviewDTO> findSimilarReviews(
-            @RequestParam String query,
-            @RequestParam(defaultValue = "50") int limit
-    ) {
+    public SearchResult findSimilarReviews(@RequestParam String query,
+                                           @RequestParam(required = false) Integer limit) {
+        return searchService.search(query, limit);
+    }
 
-        var similar = reviewEmbeddingService.findSimilar(query, limit);
-        var ids = similar.stream().map(ProductReview::getId).toList();
+    /** Neue Bewertung anlegen; sie wird sofort eingeordnet und (mit KI) für die Suche eingebettet. */
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
+    public ReviewDTO create(@Valid @RequestBody CreateReview request) {
+        ProductReview review = new ProductReview();
+        review.setProduct(productRepository.findById(request.productId())
+                .orElseThrow(() -> new ResourceNotFoundException("Material " + request.productId() + " nicht gefunden")));
+        review.setCustomer(customerRepository.findById(request.customerId())
+                .orElseThrow(() -> new ResourceNotFoundException("Debitor " + request.customerId() + " nicht gefunden")));
+        if (request.orderItemId() != null) {
+            review.setOrderItem(orderItemRepository.findById(request.orderItemId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Auftragsposition " + request.orderItemId() + " nicht gefunden")));
+        }
+        review.setRating(request.rating());
+        review.setComment(request.comment().trim());
+        review.setCreatedAt(LocalDateTime.now());
+        ProductReview saved = reviewRepository.save(review);
 
-        // Die IN-Abfrage liefert keine feste Reihenfolge; Treffer wieder nach Ähnlichkeit sortieren
-        Map<Long, ProductReview> loaded = reviewRepository.findAllByIdWithProductAndCustomer(ids).stream()
-                .collect(Collectors.toMap(ProductReview::getId, Function.identity()));
-
-        return ids.stream()
-                .map(loaded::get)
-                .filter(Objects::nonNull)
-                .map(this::toDto)
-                .toList();
+        insightService.classify(saved);
+        if (aiAvailability.isAvailable()) {
+            embeddingService.embed(List.of(saved));
+        }
+        return toDto(saved);
     }
 
     @GetMapping("/product/{productId}")
