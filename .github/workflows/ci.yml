@@ -4,6 +4,13 @@ on:
   pull_request:
   push:
     branches: [ main ]
+  # Manuell erneut deployen: Actions → CI → Run workflow (Branch main)
+  workflow_dispatch:
+
+env:
+  HEROKU_APP: thomas-order-backend
+  BACKEND_URL: https://thomas-order-backend-f8a0728f603a.herokuapp.com
+  NETLIFY_SITE_ID: 61edabe6-b160-4b89-b337-f51983aa9d94
 
 jobs:
   backend:
@@ -43,3 +50,69 @@ jobs:
       - name: Tests
         working-directory: order-management-frontend
         run: npx ng test --watch=false --browsers=ChromeHeadless
+
+  # Deploy nur von main und nur, wenn Backend- und Frontend-Prüfungen grün sind
+  deploy-backend:
+    needs: [ backend, frontend ]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-backend
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: ${{ env.BACKEND_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Heroku braucht die vollständige Historie
+
+      - name: Deploy nach Heroku
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: |
+          test -n "$HEROKU_API_KEY" || { echo "::error::Secret HEROKU_API_KEY fehlt"; exit 1; }
+          git push "https://heroku:${HEROKU_API_KEY}@git.heroku.com/${HEROKU_APP}.git" HEAD:refs/heads/main
+
+      - name: Health-Check
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "$BACKEND_URL/actuator/health" | grep -q '"UP"'; then
+              echo "Backend ist erreichbar"; exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Backend antwortet nach dem Deploy nicht"; exit 1
+
+  deploy-frontend:
+    needs: deploy-backend
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-frontend
+      cancel-in-progress: false
+    environment:
+      name: production-frontend
+      url: https://order-management-front.netlify.app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: order-management-frontend/package-lock.json
+
+      - name: Build
+        working-directory: order-management-frontend
+        run: |
+          npm ci
+          npx ng build
+
+      - name: Deploy nach Netlify
+        working-directory: order-management-frontend
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          test -n "$NETLIFY_AUTH_TOKEN" || { echo "::error::Secret NETLIFY_AUTH_TOKEN fehlt"; exit 1; }
+          npx --yes netlify-cli@27.12.0 deploy --prod --dir=dist/order-management-frontend/browser \
+            --site "$NETLIFY_SITE_ID" --message "GitHub Actions ${GITHUB_SHA::7}"
