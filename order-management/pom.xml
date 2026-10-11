@@ -21,6 +21,10 @@
         <lombok.version>1.18.48</lombok.version>
         <spring.ai.version>2.0.1</spring.ai.version>
         <springdoc.version>3.1.1</springdoc.version>
+        <!-- Sicherheitsfixes, bis Spring Boot sie selbst mitbringt (Dependabot #131-#147) -->
+        <tomcat.version>11.0.26</tomcat.version>
+        <jackson-bom.version>3.1.7</jackson-bom.version>
+        <jackson-2-bom.version>2.21.7</jackson-2-bom.version>
     </properties>
 
     <dependencyManagement>
