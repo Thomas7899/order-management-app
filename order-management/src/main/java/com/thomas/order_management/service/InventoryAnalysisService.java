@@ -1,7 +1,6 @@
 package com.thomas.order_management.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.thomas.order_management.dto.inventory.InventoryAnalysisDto.*;
 import com.thomas.order_management.dto.reviews.ReviewInsightDtos.ProductAnomaly;
 import com.thomas.order_management.model.Product;
@@ -12,7 +11,6 @@ import com.thomas.order_management.repository.StockMovementRepository;
 import com.thomas.order_management.repository.WarehouseStockRepository;
 import com.thomas.order_management.service.ai.StructuredAi;
 import com.thomas.order_management.service.reviews.ReviewAnalyticsService;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -81,7 +79,7 @@ public class InventoryAnalysisService {
 
     public InventoryAnalysisService(StockMovementRepository movementRepository, WarehouseStockRepository stockRepository,
                                     OrderItemRepository orderItemRepository, ReviewAnalyticsService reviewAnalytics,
-                                    StructuredAi ai, @Qualifier("aiObjectMapper") ObjectMapper objectMapper,
+                                    StructuredAi ai, ObjectMapper objectMapper,
                                     @Value("${app.inventory.lead-time-days:3}") int leadTimeDays) {
         this.movementRepository = movementRepository;
         this.stockRepository = stockRepository;
@@ -363,21 +361,17 @@ public class InventoryAnalysisService {
                 "art", a.anomalyType(), "schwere", a.severity(), "beschreibung", a.description())).toList());
         facts.put("steigendeNachfrage", forecasts.stream().filter(f -> "RISING".equals(f.trendDirection()))
                 .limit(5).map(DemandForecast::productName).toList());
-        try {
-            return """
-                Fasse die berechnete Bestandsanalyse für die Disposition zusammen.
-                Nutze ausschließlich diese Fakten, nenne Materialien und Zahlen.
+        return """
+            Fasse die berechnete Bestandsanalyse für die Disposition zusammen.
+            Nutze ausschließlich diese Fakten, nenne Materialien und Zahlen.
 
-                Fakten:
-                %s
+            Fakten:
+            %s
 
-                Ausgabe:
-                - summary: 2 bis 3 Sätze zur Lage
-                - actions: 3 bis 5 konkrete nächste Schritte, wichtigste zuerst
-                """.formatted(objectMapper.writeValueAsString(facts));
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException(e);
-        }
+            Ausgabe:
+            - summary: 2 bis 3 Sätze zur Lage
+            - actions: 3 bis 5 konkrete nächste Schritte, wichtigste zuerst
+            """.formatted(objectMapper.writeValueAsString(facts));
     }
 
     private static String ruleSummary(List<ReorderRecommendation> reorders, List<InventoryAnomaly> anomalies,

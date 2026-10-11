@@ -1,7 +1,6 @@
 package com.thomas.order_management.service.reviews;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.thomas.order_management.model.ProductReview;
 import com.thomas.order_management.model.ReviewAspect;
 import com.thomas.order_management.model.ReviewEmotion;
@@ -9,7 +8,6 @@ import com.thomas.order_management.model.ReviewInsight;
 import com.thomas.order_management.model.ReviewSentiment;
 import com.thomas.order_management.model.ReviewTheme;
 import com.thomas.order_management.service.ai.StructuredAi;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -45,7 +43,7 @@ public class LlmReviewClassifier {
     private final StructuredAi ai;
     private final ObjectMapper objectMapper;
 
-    public LlmReviewClassifier(StructuredAi ai, @Qualifier("aiObjectMapper") ObjectMapper objectMapper) {
+    public LlmReviewClassifier(StructuredAi ai, ObjectMapper objectMapper) {
         this.ai = ai;
         this.objectMapper = objectMapper;
     }
@@ -105,27 +103,23 @@ public class LlmReviewClassifier {
         String themes = Arrays.stream(ReviewTheme.values())
                 .map(t -> "  " + t.name() + " = " + t.getDisplayName())
                 .collect(Collectors.joining("\n"));
-        try {
-            return """
-                Ordne jede der folgenden Produktbewertungen ein.
+        return """
+            Ordne jede der folgenden Produktbewertungen ein.
 
-                Je Bewertung:
-                - reviewId: unverändert übernehmen
-                - sentiment: POSITIVE, NEUTRAL oder NEGATIVE (Gesamteindruck aus Text und Sternen)
-                - score: Zahl von -1 (sehr negativ) bis 1 (sehr positiv)
-                - emotion: JOY, SATISFACTION, SURPRISE, NEUTRAL, DISAPPOINTMENT, FRUSTRATION oder ANGER
-                - aspects: nur die Themen, die im Text tatsächlich angesprochen werden, jeweils mit eigener
-                  Tonalität (POSITIVE, NEUTRAL, NEGATIVE). Ein Text kann ein Thema loben und ein anderes kritisieren.
-                  Erlaubte Themen:
-                %s
+            Je Bewertung:
+            - reviewId: unverändert übernehmen
+            - sentiment: POSITIVE, NEUTRAL oder NEGATIVE (Gesamteindruck aus Text und Sternen)
+            - score: Zahl von -1 (sehr negativ) bis 1 (sehr positiv)
+            - emotion: JOY, SATISFACTION, SURPRISE, NEUTRAL, DISAPPOINTMENT, FRUSTRATION oder ANGER
+            - aspects: nur die Themen, die im Text tatsächlich angesprochen werden, jeweils mit eigener
+              Tonalität (POSITIVE, NEUTRAL, NEGATIVE). Ein Text kann ein Thema loben und ein anderes kritisieren.
+              Erlaubte Themen:
+            %s
 
-                Gib das JSON kompakt ohne Einrückungen und Zeilenumbrüche aus.
+            Gib das JSON kompakt ohne Einrückungen und Zeilenumbrüche aus.
 
-                Bewertungen:
-                %s
-                """.formatted(themes, objectMapper.writeValueAsString(input));
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException(e);
-        }
+            Bewertungen:
+            %s
+            """.formatted(themes, objectMapper.writeValueAsString(input));
     }
 }

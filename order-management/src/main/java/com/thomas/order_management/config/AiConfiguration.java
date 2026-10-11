@@ -1,7 +1,6 @@
 // order-management/src/main/java/com/thomas/order_management/config/AiConfiguration.java
 package com.thomas.order_management.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -9,8 +8,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
-import org.springframework.retry.annotation.EnableRetry;
 
 /**
  * Zentrale KI-Konfiguration für alle AI-Services.
@@ -18,16 +15,13 @@ import org.springframework.retry.annotation.EnableRetry;
  * <h2>Design-Entscheidungen:</h2>
  * <ul>
  *   <li>Zentrale ChatClient-Konfiguration mit System-Prompt</li>
- *   <li>Retry-Support für transiente API-Fehler</li>
  *   <li>Deterministische Prompts durch niedrige Temperature</li>
- *   <li>Shared ObjectMapper für konsistentes JSON-Handling</li>
  * </ul>
  * 
  * @author Thomas Osterlehner
  * @since 2.0
  */
 @Configuration
-@EnableRetry
 public class AiConfiguration {
 
     /**
@@ -72,30 +66,7 @@ public class AiConfiguration {
                 .defaultSystem(DEFAULT_SYSTEM_PROMPT)
                 .defaultOptions(OpenAiChatOptions.builder()
                         .temperature(temperature)
-                        .maxTokens(maxTokens)
-                        .build())
+                        .maxTokens(maxTokens))
                 .build();
-    }
-
-    /**
-     * Sobald ein eigenes ObjectMapper-Bean existiert, legt Spring Boot keinen eigenen mehr an.
-     * Ohne dieses Bean würde die REST-API die spring.jackson.*-Einstellungen verlieren
-     * (z. B. Datumswerte als Arrays statt als ISO-Strings).
-     */
-    @Bean
-    @Primary
-    public ObjectMapper objectMapper(Jackson2ObjectMapperBuilder builder) {
-        return builder.build();
-    }
-
-    /**
-     * Shared ObjectMapper für alle AI-Services.
-     * Verhindert mehrfache Instanziierung und gewährleistet konsistentes JSON-Handling.
-     */
-    @Bean("aiObjectMapper")
-    public ObjectMapper aiObjectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.findAndRegisterModules(); // Registriert Java 8 Date/Time Support
-        return mapper;
     }
 }

@@ -1,6 +1,6 @@
 package com.thomas.order_management.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.thomas.order_management.dto.sales.OrderDto;
 import com.thomas.order_management.dto.sales.OrderRequests;
 import com.thomas.order_management.model.*;
@@ -14,7 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -94,7 +94,7 @@ class ReviewControllerIntegrationTest {
                         .content("{\"username\":\"SWEBER\",\"password\":\"" + UserService.DEMO_PASSWORD + "\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        return "Bearer " + objectMapper.readTree(body).get("token").asText();
+        return "Bearer " + objectMapper.readTree(body).get("token").asString();
     }
 
     @Test
