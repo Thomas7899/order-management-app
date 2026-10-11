@@ -2,7 +2,7 @@
 
 # 📦 Order Management – Auftragsabwicklung im SAP-Stil
 
-[![Java](https://img.shields.io/badge/Java-17-orange?style=for-the-badge&logo=openjdk)](https://openjdk.org/)
+[![Java](https://img.shields.io/badge/Java-25-orange?style=for-the-badge&logo=openjdk)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen?style=for-the-badge&logo=springboot)](https://spring.io/projects/spring-boot)
 [![Angular](https://img.shields.io/badge/Angular-22-red?style=for-the-badge&logo=angular)](https://angular.dev/)
 [![UI5](https://img.shields.io/badge/UI5%20Web%20Components-Horizon-0a6ed1?style=for-the-badge)](https://sap.github.io/ui5-webcomponents/)
@@ -84,7 +84,7 @@ Lesen dürfen alle angemeldeten Benutzer.
 
 | Bereich | Technologie |
 |---------|-------------|
-| Backend | Java 17, Spring Boot 3.5, Spring Data JPA, Spring Security (OAuth2 Resource Server, JWT), Flyway, MapStruct, Lombok, OpenPDF |
+| Backend | Java 25 (virtuelle Threads), Spring Boot 3.5, Spring Data JPA, Spring Security (OAuth2 Resource Server, JWT), Flyway, MapStruct, Lombok, OpenPDF |
 | KI | Spring AI 1.0 mit OpenAI (Chat: `gpt-4o-mini`, Embeddings mit 1536 Dimensionen), pgvector |
 | Datenbank | PostgreSQL 16 mit pgvector |
 | Frontend | Angular 22 (Standalone, Signals), UI5 Web Components 2 (Fiori Horizon), ECharts |
@@ -96,7 +96,7 @@ Lesen dürfen alle angemeldeten Benutzer.
 ## 🚀 Lokal starten
 
 ### Voraussetzungen
-- Java 17, Node.js 22
+- JDK 25 (z. B. Fedora: `sudo dnf install java-25-openjdk-devel`), Node.js 22
 - PostgreSQL mit pgvector, z. B. per Docker/Podman
 - optional ein OpenAI-API-Schlüssel – ohne Schlüssel läuft alles außer den KI-Funktionen
 

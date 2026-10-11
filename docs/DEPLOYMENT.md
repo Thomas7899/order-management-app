@@ -27,6 +27,8 @@ Voraussetzungen: `heroku` und `netlify` CLI installiert und angemeldet.
 | `APP_DEV_RESET_ON_START` | `false` – Daten bleiben bei Neustarts erhalten |
 | `APP_DEV_GENERATE_EMBEDDINGS` | optional `true`, damit die semantische Suche nach einem Neuaufbau der Demo-Daten sofort funktioniert |
 
+Die Java-Version für Heroku steht in `system.properties` (`java.runtime.version=25`). Das `Procfile` startet die JVM mit `-XX:+UseCompactObjectHeaders`, das spart auf dem 512-MB-Dyno Heap.
+
 `JWT_SECRET` muss gesetzt sein. Ohne ihn erzeugt das Backend bei jedem Start einen zufälligen Schlüssel, und alle Anmeldungen werden nach einem Neustart ungültig.
 
 ```bash
