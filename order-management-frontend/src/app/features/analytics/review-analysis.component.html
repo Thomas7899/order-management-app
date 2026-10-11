@@ -367,6 +367,40 @@
         </ui5-table>
       </div>
 
+      @if (openCritical(); as o) {
+        <div class="om-section">
+          <div class="om-section-header">
+            <ui5-title level="H5">Kritische Bewertungen ohne Antwort ({{ o.count }})</ui5-title>
+            <span class="om-subtle">1–2 Sterne, letzte 30 Tage</span>
+          </div>
+          <ui5-table no-data-text="Alle kritischen Bewertungen sind beantwortet">
+            <ui5-table-header-row slot="headerRow">
+              <ui5-table-header-cell width="7rem">Sterne</ui5-table-header-cell>
+              <ui5-table-header-cell min-width="12rem">Material</ui5-table-header-cell>
+              <ui5-table-header-cell min-width="20rem">Bewertung</ui5-table-header-cell>
+              <ui5-table-header-cell width="10rem"></ui5-table-header-cell>
+            </ui5-table-header-row>
+            @for (r of o.reviews; track r.id) {
+              <ui5-table-row>
+                <ui5-table-cell><ui5-rating-indicator readonly size="S" [value]="r.rating"></ui5-rating-indicator></ui5-table-cell>
+                <ui5-table-cell>
+                  <div class="om-cell-stack">
+                    <a [routerLink]="['/materials', r.productId]">{{ r.productName }}</a>
+                    <span class="om-subtle">{{ r.customerName }} · {{ r.createdAt | date: 'dd.MM.yyyy' }}</span>
+                  </div>
+                </ui5-table-cell>
+                <ui5-table-cell>„{{ r.comment }}“</ui5-table-cell>
+                <ui5-table-cell>
+                  @if (auth.hasAnyRole('SALES')) {
+                    <ui5-button design="Emphasized" icon="feedback" (click)="replyTarget.set(r)">Antworten</ui5-button>
+                  }
+                </ui5-table-cell>
+              </ui5-table-row>
+            }
+          </ui5-table>
+        </div>
+      }
+
       @if (s.criticalReviews.length) {
         <div class="om-section">
           <ui5-title level="H5" class="om-section-title">Neueste kritische Bewertungen</ui5-title>
@@ -396,3 +430,5 @@
     }
   </div>
 </ui5-dynamic-page>
+
+<om-review-reply-dialog [open]="!!replyTarget()" [review]="replyTarget()" (closed)="replyTarget.set(null)" (saved)="replySaved()" />

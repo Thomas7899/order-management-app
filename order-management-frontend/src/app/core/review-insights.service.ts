@@ -178,6 +178,11 @@ export class ReviewInsightsService {
     return this.http.get<SentimentReport>(`${this.url}/sentiment`, { ...this.silent, params: toParams({ start, end, ...scope }) });
   }
 
+  /** Materialien mit aktueller Qualitätsauffälligkeit (letzte 30 Tage). */
+  qualityAlerts(): Observable<ProductAnomaly[]> {
+    return this.http.get<ProductAnomaly[]>(`${this.url}/quality-alerts`, this.silent);
+  }
+
   classification(): Observable<Classification> {
     return this.http.get<Classification>(`${this.url}/classification`, this.silent);
   }

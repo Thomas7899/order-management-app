@@ -2,6 +2,8 @@ import { CUSTOM_ELEMENTS_SCHEMA, Component, OnInit, computed, inject, signal } f
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
+import { ReviewInsightsService } from '../../core/review-insights.service';
+import { ReviewsService } from '../../core/reviews.service';
 import { AuthService } from '../../core/auth.service';
 import { DashboardApi } from '../../core/analytics-api.service';
 import { DashboardStats, RecentActivity } from '../../core/models';
@@ -24,6 +26,10 @@ export class LaunchpadComponent implements OnInit {
 
   protected readonly stats = signal<DashboardStats | null>(null);
   protected readonly activity = signal<RecentActivity | null>(null);
+  protected readonly qualityAlerts = signal<number | null>(null);
+  protected readonly openCritical = signal<number | null>(null);
+  private readonly insightsApi = inject(ReviewInsightsService);
+  private readonly reviewsApi = inject(ReviewsService);
   protected readonly loading = signal(true);
   protected readonly stockStatusText = STOCK_STATUS_TEXT;
   protected readonly semanticOf = semanticOf;
@@ -46,6 +52,9 @@ export class LaunchpadComponent implements OnInit {
 
   protected load(): void {
     this.loading.set(true);
+    // Kundenbewertungen: auffällige Materialien und unbeantwortete Kritik (Fehler hier sollen das Launchpad nicht stören)
+    this.insightsApi.qualityAlerts().subscribe({ next: a => this.qualityAlerts.set(a.length), error: () => undefined });
+    this.reviewsApi.openCritical(30).subscribe({ next: o => this.openCritical.set(o.count), error: () => undefined });
     forkJoin({ stats: this.api.stats(), activity: this.api.recentActivity() }).subscribe({
       next: ({ stats, activity }) => {
         this.stats.set(stats);

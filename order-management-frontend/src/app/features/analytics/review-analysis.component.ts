@@ -2,7 +2,7 @@ import { CUSTOM_ELEMENTS_SCHEMA, Component, OnDestroy, OnInit, computed, inject,
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import type { EChartsOption } from 'echarts';
@@ -12,6 +12,8 @@ import { Material } from '../../core/models';
 import {
   AnomalyReport, Classification, ReviewInsightsService, SentimentReport, ThemeDirection, TrendReport
 } from '../../core/review-insights.service';
+import { OpenCritical, Review, ReviewsService } from '../../core/reviews.service';
+import { ReviewReplyDialogComponent } from '../../shared/review-reply-dialog.component';
 import { chartTheme } from '../../shared/charts';
 import { todayIso } from '../../shared/status';
 import { Ui5ValueAccessorDirective } from '../../shared/ui5-value-accessor.directive';
@@ -25,7 +27,7 @@ type ScopeType = 'GLOBAL' | 'PRODUCT' | 'CATEGORY';
  */
 @Component({
   selector: 'om-review-analysis',
-  imports: [FormsModule, RouterLink, Ui5ValueAccessorDirective, NgxEchartsDirective, DatePipe, DecimalPipe],
+  imports: [FormsModule, RouterLink, Ui5ValueAccessorDirective, NgxEchartsDirective, ReviewReplyDialogComponent, DatePipe, DecimalPipe],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './review-analysis.component.html',
   styles: `
@@ -70,6 +72,12 @@ export class ReviewAnalysisComponent implements OnInit, OnDestroy {
   protected readonly anomalies = signal<AnomalyReport | null>(null);
   protected readonly sentiment = signal<SentimentReport | null>(null);
   protected readonly classification = signal<Classification | null>(null);
+
+  // Arbeitsliste: kritische Bewertungen ohne Antwort
+  private readonly reviewsApi = inject(ReviewsService);
+  private readonly route = inject(ActivatedRoute);
+  protected readonly openCritical = signal<OpenCritical | null>(null);
+  protected readonly replyTarget = signal<Review | null>(null);
   private pollTimer?: ReturnType<typeof setInterval>;
 
   protected readonly canClassify = computed(() => {
@@ -116,6 +124,8 @@ export class ReviewAnalysisComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    const mode = this.route.snapshot.queryParamMap.get('mode');
+    if (mode === 'trend' || mode === 'anomalies' || mode === 'sentiment') this.mode.set(mode);
     this.setPreset(30, false);
     this.materialsApi.list().subscribe(m => this.materials.set(m.sort((a, b) => a.name.localeCompare(b.name))));
     this.loadClassification();
@@ -165,8 +175,18 @@ export class ReviewAnalysisComponent implements OnInit, OnDestroy {
           this.sentiment.set(r);
           this.classification.set(r.classification);
         });
+        this.loadOpenCritical();
         break;
     }
+  }
+
+  protected loadOpenCritical(): void {
+    this.reviewsApi.openCritical(30).subscribe({ next: o => this.openCritical.set(o), error: () => undefined });
+  }
+
+  protected replySaved(): void {
+    this.replyTarget.set(null);
+    this.loadOpenCritical();
   }
 
   protected startClassification(): void {
