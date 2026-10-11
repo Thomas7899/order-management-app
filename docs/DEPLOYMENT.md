@@ -1,13 +1,38 @@
 # Deployment
 
-Backend und Frontend werden manuell per CLI veröffentlicht. Es gibt keinen automatischen Deploy aus GitHub; die GitHub Actions führen nur Build und Tests aus.
+Jeder Push bzw. Merge auf `main` wird automatisch deployt – aber nur, wenn vorher Backend-Tests, Frontend-Build und Frontend-Tests grün sind. Pull Requests werden nur geprüft, nicht deployt.
 
 | Teil | Plattform | Name |
 |------|-----------|------|
 | Backend | Heroku | App `thomas-order-backend` mit Heroku Postgres (`essential-0`) |
 | Frontend | Netlify | Site `order-management-front` |
 
-Voraussetzungen: `heroku` und `netlify` CLI installiert und angemeldet.
+---
+
+## Automatischer Deploy (GitHub Actions)
+
+Der Workflow `.github/workflows/ci.yml` läuft bei jedem Push auf `main`:
+
+1. `backend` und `frontend`: Tests und Produktions-Build
+2. `deploy-backend`: `git push` des Commits nach Heroku, danach Health-Check auf `/actuator/health`
+3. `deploy-frontend`: Produktions-Build und `netlify deploy --prod`
+
+Erneut deployen ohne neuen Commit: GitHub → Actions → CI → „Run workflow“ auf `main`.
+
+Benötigte Repository-Secrets (GitHub → Settings → Secrets and variables → Actions):
+
+| Secret | Inhalt |
+|--------|--------|
+| `HEROKU_API_KEY` | eigener Heroku-Token für den Deploy: `heroku authorizations:create --description "GitHub Actions Deploy"` |
+| `NETLIFY_AUTH_TOKEN` | Netlify Personal Access Token (User settings → Applications → Personal access tokens) |
+
+Setzen per CLI, ohne dass der Token im Terminal-Verlauf landet:
+
+```bash
+gh secret set NETLIFY_AUTH_TOKEN   # fragt den Wert ab
+```
+
+Die folgenden Abschnitte beschreiben die Konfiguration und den Deploy von Hand (Voraussetzung: `heroku` und `netlify` CLI angemeldet).
 
 ---
 
@@ -35,18 +60,19 @@ Die Java-Version für Heroku steht in `system.properties` (`java.runtime.version
 heroku config:set -a thomas-order-backend JWT_SECRET="$(openssl rand -base64 48)"
 ```
 
-### Veröffentlichen
+### Von Hand veröffentlichen
 
 ```bash
+git remote add heroku https://git.heroku.com/thomas-order-backend.git   # einmalig
 git push heroku main
 heroku logs -a thomas-order-backend --tail
 ```
 
 Ist die Datenbank leer, simuliert das Backend nach dem Start ein Geschäftsjahr als Demo-Daten. Das dauert einige Minuten. Die App ist währenddessen schon erreichbar und füllt sich nach und nach. Fertig ist sie, wenn im Log `Demo data loaded in … s` erscheint.
 
-### Einmalig beim Umstieg auf Flyway
+### Umstieg auf Flyway (am 11.10.2026 erledigt)
 
-Bis Release v31 hat Hibernate das Schema erzeugt (`ddl-auto`). Seitdem verwaltet Flyway das Schema (`db/migration`), und das alte Schema ist damit nicht kompatibel. Beim ersten Deploy dieses Stands muss die Datenbank deshalb einmal geleert werden:
+Bis Release v31 hat Hibernate das Schema erzeugt (`ddl-auto`). Seitdem verwaltet Flyway das Schema (`db/migration`). Beim ersten Deploy wurde die Datenbank deshalb einmal geleert; das Backup davor ist `b001` (`heroku pg:backups -a thomas-order-backend`). Für eine neue App wären die Schritte:
 
 ```bash
 heroku maintenance:on -a thomas-order-backend
@@ -68,7 +94,7 @@ curl https://thomas-order-backend-f8a0728f603a.herokuapp.com/api/auth/demo-users
 
 ## Frontend (Netlify)
 
-Die API-Adresse für den Produktions-Build steht in `src/environments/environment.prod.ts`. `src/_redirects` leitet alle Routen auf `index.html` (Single-Page-App).
+Von Hand veröffentlichen (sonst übernimmt das der Workflow). Die API-Adresse für den Produktions-Build steht in `src/environments/environment.prod.ts`. `src/_redirects` leitet alle Routen auf `index.html` (Single-Page-App).
 
 ```bash
 cd order-management-frontend
@@ -82,7 +108,6 @@ netlify deploy --prod --dir=dist/order-management-frontend/browser --site 61edab
 ## Checkliste für ein Release
 
 1. CI auf dem Pull Request grün (Backend-Tests, Frontend-Build und -Tests)
-2. Pull Request nach `main` mergen
-3. Backend veröffentlichen (`git push heroku main`) und Log beobachten
-4. Frontend bauen und per `netlify deploy --prod` veröffentlichen
-5. Anmeldung mit einem Demo-Zugang testen, z. B. `MREUTER` / `demo1234`
+2. Pull Request per Merge-Commit nach `main` mergen – der Deploy startet automatisch
+3. In GitHub → Actions prüfen, dass `deploy-backend` und `deploy-frontend` grün sind
+4. Anmeldung mit einem Demo-Zugang testen, z. B. `MREUTER` / `demo1234`

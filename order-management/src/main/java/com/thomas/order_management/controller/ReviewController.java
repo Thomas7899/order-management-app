@@ -12,6 +12,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/reviews")
@@ -30,9 +34,13 @@ public class ReviewController {
         var similar = reviewEmbeddingService.findSimilar(query, limit);
         var ids = similar.stream().map(ProductReview::getId).toList();
 
-        var loaded = reviewRepository.findAllByIdWithProductAndCustomer(ids);
+        // Die IN-Abfrage liefert keine feste Reihenfolge; Treffer wieder nach Ähnlichkeit sortieren
+        Map<Long, ProductReview> loaded = reviewRepository.findAllByIdWithProductAndCustomer(ids).stream()
+                .collect(Collectors.toMap(ProductReview::getId, Function.identity()));
 
-        return loaded.stream()
+        return ids.stream()
+                .map(loaded::get)
+                .filter(Objects::nonNull)
                 .map(this::toDto)
                 .toList();
     }

@@ -89,7 +89,7 @@ Lesen dürfen alle angemeldeten Benutzer.
 | Datenbank | PostgreSQL 16 mit pgvector |
 | Frontend | Angular 22 (Standalone, Signals), UI5 Web Components 2 (Fiori Horizon), ECharts |
 | Tests | JUnit 5, Spring Boot Test (Backend); Karma/Jasmine (Frontend) |
-| Betrieb | Heroku (Backend), Netlify (Frontend), GitHub Actions (CI) |
+| Betrieb | Heroku (Backend), Netlify (Frontend), GitHub Actions (CI und Deploy) |
 
 ---
 
@@ -184,13 +184,13 @@ cd order-management && ./mvnw test                                            # 
 cd order-management-frontend && npx ng test --watch=false --browsers=ChromeHeadless   # Frontend
 ```
 
-Die CI (`.github/workflows/ci.yml`) führt beide Testläufe und den Produktions-Build bei jedem Pull Request aus.
+Die CI (`.github/workflows/ci.yml`) führt beide Testläufe und den Produktions-Build bei jedem Pull Request und Push auf `main` aus.
 
 ---
 
 ## 📦 Deployment
 
-Backend (Heroku) und Frontend (Netlify) werden manuell per CLI veröffentlicht – Details in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Jeder Merge auf `main` wird nach grünen Tests automatisch deployt: Backend auf Heroku, Frontend auf Netlify. Details und der Weg von Hand in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ---
 
