@@ -52,19 +52,11 @@ public class ReviewEmbeddingService {
     }
 
     /**
-     * Text, der eingebettet wird: Material, Warengruppe und Kommentar. Die Sternezahl bleibt bewusst
-     * draußen, damit die Suche nach Inhalt und nicht nach Bewertungshöhe trifft.
+     * Text, der eingebettet wird: nur der Kommentar. Ein gemeinsamer Vorspann (Material, Warengruppe) macht
+     * alle Vektoren einander ähnlicher und verwischt den Abstand zwischen passenden und unpassenden Treffern.
      */
     static String embeddingText(ProductReview review) {
-        StringBuilder sb = new StringBuilder();
-        if (review.getProduct() != null) {
-            sb.append("Produkt: ").append(review.getProduct().getName()).append('\n');
-            if (review.getProduct().getCategory() != null) {
-                sb.append("Warengruppe: ").append(review.getProduct().getCategory()).append('\n');
-            }
-        }
-        sb.append("Bewertung: ").append(review.getComment());
-        return sb.toString();
+        return review.getComment() == null ? "" : review.getComment();
     }
 
     private static List<Double> normalize(float[] values) {

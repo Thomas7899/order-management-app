@@ -39,6 +39,9 @@ public class LlmReviewClassifier {
     record BatchResult(List<Item> items) {
     }
 
+    /** Platz für rund 20 Einordnungen mit mehreren Themen. */
+    private static final int MAX_TOKENS = 4000;
+
     private final StructuredAi ai;
     private final ObjectMapper objectMapper;
 
@@ -54,7 +57,7 @@ public class LlmReviewClassifier {
     /** Einordnung je Bewertungs-ID; fehlt eine Bewertung im Ergebnis, ist sie nicht enthalten. */
     public Map<Long, ReviewClassification> classify(List<ProductReview> reviews) {
         if (reviews.isEmpty()) return Map.of();
-        Optional<BatchResult> result = ai.call(prompt(reviews), BatchResult.class, false);
+        Optional<BatchResult> result = ai.call(prompt(reviews), BatchResult.class, false, MAX_TOKENS);
         if (result.isEmpty() || result.get().items() == null) return Map.of();
 
         Set<Long> requested = reviews.stream().map(ProductReview::getId).collect(Collectors.toSet());
@@ -115,6 +118,8 @@ public class LlmReviewClassifier {
                   Tonalität (POSITIVE, NEUTRAL, NEGATIVE). Ein Text kann ein Thema loben und ein anderes kritisieren.
                   Erlaubte Themen:
                 %s
+
+                Gib das JSON kompakt ohne Einrückungen und Zeilenumbrüche aus.
 
                 Bewertungen:
                 %s

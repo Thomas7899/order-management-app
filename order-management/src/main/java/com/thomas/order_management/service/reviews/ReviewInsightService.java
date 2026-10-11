@@ -13,6 +13,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -30,7 +32,8 @@ public class ReviewInsightService {
                             LocalDateTime startedAt, LocalDateTime finishedAt, String lastError) {
     }
 
-    private static final int MAX_FAILED_BATCHES_IN_A_ROW = 3;
+    private static final int MAX_FAILED_FIRST_BATCHES = 3;
+    private static final int PARALLEL_BATCHES = 4;
 
     private final ProductReviewRepository reviewRepository;
     private final ReviewInsightRepository insightRepository;
@@ -100,33 +103,42 @@ public class ReviewInsightService {
     }
 
     private void runLlmClassification(List<Long> ids) {
-        int failedInARow = 0;
-        try {
+        AtomicInteger succeeded = new AtomicInteger();
+        AtomicBoolean aborted = new AtomicBoolean(false);
+        try (ExecutorService executor = Executors.newFixedThreadPool(PARALLEL_BATCHES, Thread.ofVirtual().factory())) {
             for (int from = 0; from < ids.size(); from += batchSize) {
                 List<Long> chunk = ids.subList(from, Math.min(ids.size(), from + batchSize));
-                List<ProductReview> reviews = reviewRepository.findWithProductByIdIn(chunk);
-                Map<Long, ReviewClassification> result = llm.classify(reviews);
-                if (result.isEmpty()) {
-                    failedBatches.incrementAndGet();
-                    lastError = "KI hat für einen Block keine verwertbare Antwort geliefert";
-                    if (++failedInARow >= MAX_FAILED_BATCHES_IN_A_ROW) {
-                        lastError = "Abgebrochen nach " + failedInARow + " fehlgeschlagenen Blöcken in Folge";
-                        log.warn("KI-Einordnung der Bewertungen abgebrochen: {}", lastError);
-                        return;
+                executor.submit(() -> {
+                    if (aborted.get()) return;
+                    try {
+                        List<ProductReview> reviews = reviewRepository.findWithProductByIdIn(chunk);
+                        Map<Long, ReviewClassification> result = llm.classify(reviews);
+                        if (result.isEmpty()) {
+                            failedBatches.incrementAndGet();
+                            lastError = "KI hat für einen Block keine verwertbare Antwort geliefert";
+                            // Scheitern die ersten Blöcke alle, liegt es am Dienst (Schlüssel, Kontingent): abbrechen
+                            if (succeeded.get() == 0 && failedBatches.get() >= MAX_FAILED_FIRST_BATCHES && aborted.compareAndSet(false, true)) {
+                                lastError = "Abgebrochen: die ersten " + failedBatches.get() + " Blöcke sind fehlgeschlagen";
+                                log.warn("KI-Einordnung der Bewertungen abgebrochen: {}", lastError);
+                            }
+                        } else {
+                            succeeded.incrementAndGet();
+                            tx.executeWithoutResult(status -> result.forEach(this::save));
+                        }
+                    } catch (RuntimeException ex) {
+                        failedBatches.incrementAndGet();
+                        lastError = ex.getMessage();
+                        log.warn("KI-Einordnung eines Blocks fehlgeschlagen", ex);
+                    } finally {
+                        processed.addAndGet(chunk.size());
                     }
-                } else {
-                    failedInARow = 0;
-                    tx.executeWithoutResult(status -> result.forEach(this::save));
-                }
-                processed.addAndGet(chunk.size());
+                });
             }
-            log.info("KI-Einordnung abgeschlossen: {} Bewertungen, {} Blöcke ohne Ergebnis", ids.size(), failedBatches.get());
-        } catch (RuntimeException ex) {
-            lastError = ex.getMessage();
-            log.warn("KI-Einordnung der Bewertungen fehlgeschlagen", ex);
         } finally {
             finishedAt = LocalDateTime.now();
             running.set(false);
+            log.info("KI-Einordnung beendet: {} Bewertungen, {} Blöcke erfolgreich, {} ohne Ergebnis",
+                    ids.size(), succeeded.get(), failedBatches.get());
         }
     }
 

@@ -9,6 +9,7 @@ import com.thomas.order_management.repository.ProductRepository;
 import com.thomas.order_management.repository.ProductReviewRepository;
 import com.thomas.order_management.repository.ReviewInsightRepository;
 import com.thomas.order_management.service.ai.StructuredAi;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
  * Vorzeitraum, Mindestanzahlen, Vergleichsbasis der letzten 180 Tage. Das Sprachmodell formuliert
  * nur Zusammenfassung, Einschätzung und Empfehlungen aus diesen Fakten und Zitaten.</p>
  */
+@Slf4j
 @Service
 @Transactional(readOnly = true)
 public class ReviewAnalyticsService {
@@ -240,9 +242,11 @@ public class ReviewAnalyticsService {
         // Einschätzung und Maßnahme: KI aus Kennzahlen und Zitaten, sonst Regeltexte
         Optional<Assessments> assessments = !withNarrative || (products.isEmpty() && themes.isEmpty()) ? Optional.empty()
                 : ai.call(assessmentPrompt(products, themes, current, flaggedProducts), Assessments.class);
-        Map<String, Assessment> byKey = assessments.map(a -> a.items() == null ? List.<Assessment>of() : a.items())
-                .orElse(List.of()).stream().filter(a -> a != null && a.key() != null)
-                .collect(Collectors.toMap(Assessment::key, a -> a, (a, b) -> a));
+        List<String> keys = new ArrayList<>();
+        products.forEach(p -> keys.add("P" + p.productId()));
+        themes.forEach(t -> keys.add("T" + t.theme().code()));
+        Map<String, Assessment> byKey = matchAssessments(keys,
+                assessments.map(a -> a.items() == null ? List.<Assessment>of() : a.items()).orElse(List.of()));
 
         List<ProductAnomaly> assessedProducts = products.stream().map(a -> {
             Assessment x = byKey.get("P" + a.productId());
@@ -615,16 +619,34 @@ public class ReviewAnalyticsService {
             items.add(m);
         }
         return """
-                Folgende Auffälligkeiten in Kundenbewertungen wurden statistisch erkannt (Zeitraum gegen die 180 Tage davor).
-                Schreibe je Eintrag:
+                Folgende %d Auffälligkeiten in Kundenbewertungen wurden statistisch erkannt (Zeitraum gegen die 180 Tage davor).
+                Gib in items für JEDEN Eintrag genau ein Element zurück, also %d Elemente, mit:
+                - key: unverändert aus dem Eintrag übernehmen
                 - assessment: 1 bis 2 Sätze Einschätzung mit den wichtigsten Zahlen und der wahrscheinlichsten Ursache,
                   so wie sie aus den Zitaten hervorgeht (keine Ursache erfinden)
                 - recommendedAction: eine konkrete nächste Maßnahme für Qualitätsmanagement, Einkauf oder Kundenservice
-                Übernimm das Feld key unverändert.
 
                 Auffälligkeiten:
                 %s
-                """.formatted(json(items));
+                """.formatted(items.size(), items.size(), json(items));
+    }
+
+    /** Ordnet die KI-Einschätzungen über den Schlüssel zu, ersatzweise über die Reihenfolge der Eingabe. */
+    private static Map<String, Assessment> matchAssessments(List<String> keys, List<Assessment> items) {
+        Map<String, Assessment> result = new HashMap<>();
+        for (Assessment a : items) {
+            if (a != null && a.key() != null && keys.contains(a.key().trim())) result.putIfAbsent(a.key().trim(), a);
+        }
+        if (result.isEmpty() && items.size() == keys.size()) {
+            for (int i = 0; i < keys.size(); i++) {
+                if (items.get(i) != null) result.put(keys.get(i), items.get(i));
+            }
+        }
+        if (result.isEmpty() && !keys.isEmpty()) {
+            log.warn("KI-Einschätzungen ließen sich nicht zuordnen; erwartet {}, geliefert {}", keys,
+                    items.stream().map(a -> a == null ? null : a.key()).toList());
+        }
+        return result;
     }
 
     private String json(Object value) {

@@ -35,7 +35,7 @@ public class ReviewSearchService {
 
     public ReviewSearchService(ReviewEmbeddingService embeddingService, ProductReviewRepository reviewRepository,
                                ReviewInsightRepository insightRepository, AiAvailability ai,
-                               @Value("${app.ai.search.min-similarity:0.30}") double minSimilarity,
+                               @Value("${app.ai.search.min-similarity:0.42}") double minSimilarity,
                                @Value("${app.ai.search.default-limit:30}") int defaultLimit) {
         this.embeddingService = embeddingService;
         this.reviewRepository = reviewRepository;

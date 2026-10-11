@@ -2,6 +2,7 @@ package com.thomas.order_management.service.ai;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -47,6 +48,11 @@ public class StructuredAi {
     }
 
     public <T> Optional<T> call(String prompt, Class<T> type, boolean useCache) {
+        return call(prompt, type, useCache, null);
+    }
+
+    /** Wie {@link #call(String, Class)}, mit eigener Obergrenze für die Antwortlänge (z. B. für Massenverarbeitung). */
+    public <T> Optional<T> call(String prompt, Class<T> type, boolean useCache, Integer maxTokens) {
         if (!availability.isAvailable()) {
             return Optional.empty();
         }
@@ -58,7 +64,11 @@ public class StructuredAi {
             }
         }
         try {
-            T result = chatClient.prompt().user(prompt).call().entity(type);
+            var request = chatClient.prompt().user(prompt);
+            if (maxTokens != null) {
+                request = request.options(OpenAiChatOptions.builder().maxTokens(maxTokens).build());
+            }
+            T result = request.call().entity(type);
             if (result != null && useCache) {
                 cache.put(key, result);
             }
