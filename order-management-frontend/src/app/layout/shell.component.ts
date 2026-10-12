@@ -42,6 +42,7 @@ export class ShellComponent {
     {
       text: 'Vertrieb',
       items: [
+        { text: 'Auftragseingang', icon: 'inbox', route: '/order-requests' },
         { text: 'Kundenaufträge', icon: 'sales-order', route: '/orders' },
         { text: 'Auftrag anlegen', icon: 'add', route: '/orders/new', roles: ['SALES'] },
         { text: 'Debitoren', icon: 'customer', route: '/customers' }

@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ReviewInsightsService } from '../../core/review-insights.service';
 import { ReviewsService } from '../../core/reviews.service';
+import { OrderRequestsApi } from '../../core/order-requests.service';
 import { AuthService } from '../../core/auth.service';
 import { DashboardApi } from '../../core/analytics-api.service';
 import { DashboardStats, RecentActivity } from '../../core/models';
@@ -28,6 +29,8 @@ export class LaunchpadComponent implements OnInit {
   protected readonly activity = signal<RecentActivity | null>(null);
   protected readonly qualityAlerts = signal<number | null>(null);
   protected readonly openCritical = signal<number | null>(null);
+  protected readonly openRequests = signal<number | null>(null);
+  private readonly requestsApi = inject(OrderRequestsApi);
   private readonly insightsApi = inject(ReviewInsightsService);
   private readonly reviewsApi = inject(ReviewsService);
   protected readonly loading = signal(true);
@@ -55,6 +58,7 @@ export class LaunchpadComponent implements OnInit {
     // Kundenbewertungen: auffällige Materialien und unbeantwortete Kritik (Fehler hier sollen das Launchpad nicht stören)
     this.insightsApi.qualityAlerts().subscribe({ next: a => this.qualityAlerts.set(a.length), error: () => undefined });
     this.reviewsApi.openCritical(30).subscribe({ next: o => this.openCritical.set(o.count), error: () => undefined });
+    this.requestsApi.countOpen().subscribe({ next: c => this.openRequests.set(c.open), error: () => undefined });
     forkJoin({ stats: this.api.stats(), activity: this.api.recentActivity() }).subscribe({
       next: ({ stats, activity }) => {
         this.stats.set(stats);

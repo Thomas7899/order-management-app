@@ -1,0 +1,78 @@
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Auftragseingang</ui5-title>
+    <ui5-title slot="snappedHeading" level="H5">Auftragseingang ({{ rows().length }})</ui5-title>
+    <div slot="subheading" class="om-subtle">Bestellungen per E-Mail oder PDF – von der KI ausgelesen, vom Vertrieb geprüft</div>
+    @if (auth.hasAnyRole('SALES')) {
+      <ui5-toolbar slot="actionsBar" design="Transparent">
+        <ui5-toolbar-button design="Emphasized" icon="add" text="Bestellung erfassen" (click)="createOpen.set(true)"></ui5-toolbar-button>
+      </ui5-toolbar>
+    }
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <div class="om-filterbar">
+      <div class="om-filter">
+        <ui5-label show-colon>Status</ui5-label>
+        <ui5-select [(ngModel)]="status" (change)="go()">
+          @for (o of statusOptions; track o.code) {
+            <ui5-option [value]="o.code" [selected]="status === o.code">{{ o.text }}</ui5-option>
+          }
+        </ui5-select>
+      </div>
+    </div>
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    <div class="om-section">
+      <ui5-title level="H5" class="om-section-title">Eingänge ({{ rows().length }})</ui5-title>
+      <ui5-table overflow-mode="Popin" [loading]="loading()" (row-click)="open($event)" no-data-text="Keine Eingänge">
+        <ui5-table-header-row slot="headerRow" sticky>
+          <ui5-table-header-cell min-width="9rem">Eingang</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="14rem">Absender / Betreff</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="12rem">Auftraggeber</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="5rem" horizontal-align="End" popin-text="Positionen">Pos.</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="8rem" popin-text="Zuordnung">Zuordnung</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="8rem">Status</ui5-table-header-cell>
+          <ui5-table-header-cell min-width="8rem" importance="-1" popin-text="Auftrag">Auftrag</ui5-table-header-cell>
+        </ui5-table-header-row>
+        @for (r of rows(); track r.id) {
+          <ui5-table-row interactive [attr.row-key]="r.id">
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <span class="om-strong">{{ r.requestNumber }}</span>
+                <span class="om-subtle">{{ r.receivedAt | date: 'dd.MM.yyyy HH:mm' }} · {{ r.sourceType.text }}</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>
+              <div class="om-cell-stack">
+                <span>{{ senderName(r.sender) }}</span>
+                <span class="om-subtle">{{ r.subject ?? '' }}</span>
+              </div>
+            </ui5-table-cell>
+            <ui5-table-cell>
+              @if (r.customerName) {
+                <div class="om-cell-stack">
+                  <span>{{ r.customerName }}</span>
+                  <span class="om-subtle">{{ r.customerNumber ?? 'nicht zugeordnet' }}</span>
+                </div>
+              } @else {
+                <span class="om-subtle">{{ r.confidence ? 'nicht erkannt' : 'wird ausgelesen …' }}</span>
+              }
+            </ui5-table-cell>
+            <ui5-table-cell horizontal-align="End">{{ r.itemCount }}</ui5-table-cell>
+            <ui5-table-cell>
+              @if (r.confidence; as c) {
+                <ui5-tag [attr.design]="confidenceDesign[c]" wrapping-type="None">{{ confidenceText[c] }}</ui5-tag>
+              }
+            </ui5-table-cell>
+            <ui5-table-cell><om-status [status]="r.status" /></ui5-table-cell>
+            <ui5-table-cell>{{ r.orderNumber ?? '' }}</ui5-table-cell>
+          </ui5-table-row>
+        }
+      </ui5-table>
+    </div>
+  </div>
+</ui5-dynamic-page>
+
+<om-order-request-create-dialog [open]="createOpen()" (created)="created($event)" (closed)="createOpen.set(false)" />

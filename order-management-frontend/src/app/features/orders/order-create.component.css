@@ -95,3 +95,18 @@ ui5-wizard {
 .quality-alert {
   margin: -.25rem 0 .75rem 2.5rem;
 }
+
+.from-request {
+  margin-bottom: 1rem;
+}
+
+.hint {
+  display: block;
+  margin-top: .25rem;
+  font-size: var(--sapFontSmallSize);
+  color: var(--sapContent_LabelColor);
+}
+
+.hint.missing {
+  color: var(--sapCriticalTextColor);
+}

@@ -5,6 +5,12 @@
   </ui5-dynamic-page-title>
 
   <div class="wizard-host">
+    @if (fromRequest(); as src) {
+      <ui5-message-strip design="Information" hide-close-button class="from-request">
+        Übernahme aus Auftragseingang <a [routerLink]="['/order-requests', src.id]">{{ src.number }}</a>:
+        Auftraggeber, Positionen und Kopfdaten sind vorbelegt – bitte prüfen, Preise und Verfügbarkeit werden beim Sichern ermittelt.
+      </ui5-message-strip>
+    }
     <ui5-wizard content-layout="SingleStep" (step-change)="stepChange($event)">
       <!-- Schritt 1 -->
       <ui5-wizard-step icon="customer" title-text="Auftraggeber" data-step="1" [selected]="step() === 1">
@@ -29,6 +35,12 @@
               <ui5-date-picker placeholder="TT.MM.JJJJ" [(ngModel)]="requestedDeliveryDate" [attr.min-date]="minDate"
                 value-format="yyyy-MM-dd" display-format="dd.MM.yyyy"></ui5-date-picker>
             </div>
+            @if (shippingAddress) {
+              <div class="om-field span-2">
+                <ui5-label show-colon>Abweichende Lieferanschrift</ui5-label>
+                <ui5-input [(ngModel)]="shippingAddress" maxlength="500"></ui5-input>
+              </div>
+            }
             <div class="om-field span-2">
               <ui5-label show-colon>Notiz</ui5-label>
               <ui5-textarea [(ngModel)]="notes" rows="2" placeholder="Interne Notiz zum Auftrag"></ui5-textarea>
@@ -92,6 +104,9 @@
                       <ui5-cb-item [attr.text]="materialLabel(m)" [attr.additional-text]="m.stockQuantity + ' ' + m.unitOfMeasure + ' Bestand'" [attr.data-id]="m.id"></ui5-cb-item>
                     }
                   </ui5-combobox>
+                  @if (i.hint) {
+                    <span class="hint" [class.missing]="!i.productId">In der Bestellung: „{{ i.hint }}“{{ i.productId ? '' : ' – bitte Material wählen' }}</span>
+                  }
                 </div>
                 <div class="om-field qty">
                   <ui5-label show-colon required>Menge</ui5-label>

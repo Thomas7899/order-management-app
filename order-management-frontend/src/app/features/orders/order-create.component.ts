@@ -7,6 +7,7 @@ import { MessageService } from '../../core/message.service';
 import { CustomersApi, MaterialsApi } from '../../core/master-data-api.service';
 import { CreditExposure, Customer, Material, OrderCreateRequest, OrderSimulation } from '../../core/models';
 import { OrdersApi } from '../../core/sales-api.service';
+import { OrderDraft, OrderRequestsApi, draftFrom } from '../../core/order-requests.service';
 import { ProductAnomaly, ReviewInsightsService } from '../../core/review-insights.service';
 import { StatusTagComponent } from '../../shared/status-tag.component';
 import { todayIso } from '../../shared/status';
@@ -17,6 +18,8 @@ interface ItemDraft {
   productId: string;
   quantity: number;
   discountPercent: number;
+  /** Bezeichnung aus der Bestellung, wenn die Position aus dem Auftragseingang stammt */
+  hint?: string;
 }
 
 /**
@@ -48,7 +51,12 @@ export class OrderCreateComponent implements OnInit {
   protected customerReference = '';
   protected requestedDeliveryDate = '';
   protected notes = '';
+  protected shippingAddress = '';
   protected items = signal<ItemDraft[]>([]);
+
+  /** Herkunft, wenn der Auftrag aus dem Auftragseingang übernommen wird */
+  private readonly requestsApi = inject(OrderRequestsApi);
+  protected readonly fromRequest = signal<{ id: number; number: string } | null>(null);
   private nextKey = 1;
 
   protected readonly minDate = todayIso();
@@ -76,7 +84,39 @@ export class OrderCreateComponent implements OnInit {
       this.materials.set(materials.filter(m => m.active).sort((a, b) => a.materialNumber.localeCompare(b.materialNumber)));
       const preset = this.route.snapshot.queryParamMap.get('customerId');
       if (preset) this.selectCustomerId(preset);
+      const requestId = Number(this.route.snapshot.queryParamMap.get('requestId'));
+      if (requestId) this.loadDraft(requestId);
     });
+  }
+
+  /** Vom Auftragseingang geprüfte Angaben übernehmen (nach einem Neuladen der Seite: beste Vorschläge). */
+  private loadDraft(requestId: number): void {
+    const draft = this.requestsApi.draft();
+    if (draft?.requestId === requestId) {
+      this.applyDraft(draft);
+    } else {
+      this.requestsApi.get(requestId).subscribe(detail => {
+        if (detail.status.code === 'OPEN') this.applyDraft(draftFrom(detail));
+        else this.messages.error(`Auftragseingang ${detail.requestNumber} ist bereits ${detail.status.text.toLowerCase()}`);
+      });
+    }
+  }
+
+  private applyDraft(draft: OrderDraft): void {
+    this.fromRequest.set({ id: draft.requestId, number: draft.requestNumber });
+    this.customerReference = draft.customerReference ?? '';
+    if (draft.requestedDeliveryDate && draft.requestedDeliveryDate >= this.minDate) this.requestedDeliveryDate = draft.requestedDeliveryDate;
+    this.notes = draft.notes ?? '';
+    this.shippingAddress = draft.shippingAddress ?? '';
+    if (draft.items.length) {
+      this.items.set(draft.items.map(i => ({
+        key: this.nextKey++, productId: i.productId ? String(i.productId) : '', quantity: i.quantity, discountPercent: 0, hint: i.hint
+      })));
+    }
+    if (draft.customerId) {
+      this.selectCustomerId(String(draft.customerId));
+      this.step.set(2);
+    }
   }
 
   // ------------------------------------------------------------------
@@ -192,9 +232,11 @@ export class OrderCreateComponent implements OnInit {
 
   protected save(): void {
     this.busy.set(true);
-    this.ordersApi.create(this.request()).subscribe({
+    const source = this.fromRequest();
+    (source ? this.requestsApi.convert(source.id, this.request()) : this.ordersApi.create(this.request())).subscribe({
       next: order => {
         this.busy.set(false);
+        this.requestsApi.draft.set(null);
         this.messages.success(`Kundenauftrag ${order.orderNumber} wurde gesichert`
           + (order.creditStatus.code === 'BLOCKED' ? ' (Kreditsperre)' : ''));
         this.router.navigate(['/orders', order.id]);
@@ -204,7 +246,8 @@ export class OrderCreateComponent implements OnInit {
   }
 
   protected cancel(): void {
-    this.router.navigate(['/orders']);
+    const source = this.fromRequest();
+    this.router.navigate(source ? ['/order-requests', source.id] : ['/orders']);
   }
 
   private request(): OrderCreateRequest {
@@ -213,6 +256,7 @@ export class OrderCreateComponent implements OnInit {
       requestedDeliveryDate: this.requestedDeliveryDate || null,
       customerReference: this.customerReference || null,
       notes: this.notes || null,
+      shippingAddress: this.shippingAddress || null,
       items: this.validItems().map(i => ({
         productId: Number(i.productId),
         quantity: Number(i.quantity),

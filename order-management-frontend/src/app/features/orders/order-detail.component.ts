@@ -115,6 +115,9 @@ export class OrderDetailComponent {
 
   protected openDocument(node: DocumentFlowNode): void {
     switch (node.documentType) {
+      case 'SALES_ORDER_REQUEST':
+        this.router.navigate(['/order-requests', node.id]);
+        break;
       case 'DELIVERY':
         this.router.navigate(['/deliveries', node.id]);
         break;
@@ -132,6 +135,7 @@ export class OrderDetailComponent {
 
   protected flowIcon(node: DocumentFlowNode): string {
     return {
+      SALES_ORDER_REQUEST: 'inbox',
       SALES_ORDER: 'sales-order',
       DELIVERY: 'shipping-status',
       GOODS_ISSUE: 'journey-depart',

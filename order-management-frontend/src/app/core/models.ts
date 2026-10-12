@@ -266,7 +266,7 @@ export interface OrderSimulation {
 }
 
 export type DocumentType =
-  | 'SALES_ORDER' | 'DELIVERY' | 'GOODS_ISSUE' | 'GOODS_ISSUE_REVERSAL'
+  | 'SALES_ORDER_REQUEST' | 'SALES_ORDER' | 'DELIVERY' | 'GOODS_ISSUE' | 'GOODS_ISSUE_REVERSAL'
   | 'INVOICE' | 'CANCELLATION_INVOICE' | 'PAYMENT';
 
 export interface DocumentFlowNode {

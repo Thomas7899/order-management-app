@@ -18,6 +18,9 @@
         <om-tile title="Kundenaufträge" subtitle="Offen und in Bearbeitung" icon="sales-order" link="/orders"
           [query]="{ status: 'OPEN,IN_PROCESS' }" [value]="openOrders()" unit="Aufträge"
           [footer]="'Auftragsbestand ' + (s.openOrderValue | currency: 'EUR' : 'symbol' : '1.0-0')" state="Information" />
+        <om-tile title="Auftragseingang" subtitle="Bestellungen per E-Mail und PDF" icon="inbox" link="/order-requests"
+          [value]="openRequests()" unit="offen" [state]="(openRequests() ?? 0) > 0 ? 'Critical' : 'Positive'"
+          footer="KI liest aus, Vertrieb prüft" />
         @if (auth.hasAnyRole('SALES')) {
           <om-tile title="Kundenauftrag anlegen" subtitle="VA01" icon="add" link="/orders/new" footer="Mit Preis- und Verfügbarkeitsprüfung" />
         }
