@@ -1,0 +1,225 @@
+@if (request(); as r) {
+<ui5-dynamic-page class="om-page" hide-pin-button>
+  <ui5-dynamic-page-title slot="titleArea">
+    <ui5-title slot="heading" level="H3">Auftragseingang {{ r.requestNumber }}</ui5-title>
+    <ui5-title slot="snappedHeading" level="H5">Auftragseingang {{ r.requestNumber }} · {{ r.subject ?? r.sourceType.text }}</ui5-title>
+    <div slot="subheading" class="om-subtle">
+      {{ r.sourceType.text }} vom {{ r.receivedAt | date: 'dd.MM.yyyy HH:mm' }}
+      @if (r.sender) { · {{ r.sender }} }
+    </div>
+    <om-status [status]="r.status" />
+
+    <ui5-toolbar slot="actionsBar" design="Transparent">
+      @if (editable()) {
+        <ui5-toolbar-button text="Auftrag anlegen" design="Emphasized" icon="sales-order"
+          [disabled]="busy() || !customerId() || includedLines() === 0" (click)="takeOver()"></ui5-toolbar-button>
+        <ui5-toolbar-button text="Erneut auslesen" icon="ai" [disabled]="busy()" (click)="reextract()"></ui5-toolbar-button>
+        <ui5-toolbar-button text="Ablehnen" design="Transparent" icon="decline" [disabled]="busy()" (click)="rejectNote = ''; rejectOpen.set(true)"></ui5-toolbar-button>
+      }
+    </ui5-toolbar>
+  </ui5-dynamic-page-title>
+
+  <ui5-dynamic-page-header slot="headerArea">
+    <div class="om-header-facets">
+      <div class="om-facet">
+        <span class="om-facet-label">Zuordnung</span>
+        @if (r.confidence; as c) {
+          <ui5-tag [attr.design]="confidenceDesign[c]">{{ overallText[c] }}</ui5-tag>
+        } @else {
+          <span class="om-subtle">noch nicht ausgelesen</span>
+        }
+      </div>
+      <div class="om-facet">
+        <span class="om-facet-label">Ausgelesen</span>
+        @if (r.extractionSource === 'KI') {
+          <ui5-tag design="Information" hide-state-icon><ui5-icon slot="icon" name="ai"></ui5-icon>von KI</ui5-tag>
+        } @else if (r.extractionSource) {
+          <ui5-tag design="Neutral" hide-state-icon>mit Regeln (ohne KI)</ui5-tag>
+        }
+        <span class="om-subtle">{{ r.extractedAt | date: 'dd.MM.yyyy HH:mm' }}</span>
+      </div>
+      <div class="om-facet">
+        <span class="om-facet-label">Positionen</span>
+        <span class="om-facet-value kpi">{{ r.items.length }}</span>
+      </div>
+      @if (r.orderNumber) {
+        <div class="om-facet">
+          <span class="om-facet-label">Kundenauftrag</span>
+          <a class="om-facet-value" [routerLink]="['/orders', r.orderId]">{{ r.orderNumber }}</a>
+          <span class="om-subtle">{{ r.processedBy }} · {{ r.processedAt | date: 'dd.MM.yyyy HH:mm' }}</span>
+        </div>
+      }
+      @if (r.status.code === 'REJECTED') {
+        <div class="om-facet">
+          <span class="om-facet-label">Abgelehnt</span>
+          <span>{{ r.rejectionNote ?? 'ohne Begründung' }}</span>
+          <span class="om-subtle">{{ r.processedBy }} · {{ r.processedAt | date: 'dd.MM.yyyy HH:mm' }}</span>
+        </div>
+      }
+    </div>
+  </ui5-dynamic-page-header>
+
+  <div class="om-content">
+    @if (busy()) {
+      <ui5-busy-indicator active size="M" text="Bestellung wird ausgelesen …" style="width: 100%"></ui5-busy-indicator>
+    }
+    <div class="layout">
+      <!-- Vorschlag -->
+      <div>
+        @if (r.messages.length) {
+          <div class="messages">
+            @for (m of r.messages; track $index) {
+              <ui5-message-strip [attr.design]="messageDesign[m.type]" hide-close-button>{{ m.text }}</ui5-message-strip>
+            }
+          </div>
+        }
+
+        <div class="om-section">
+          <ui5-title level="H5" class="om-section-title">Auftraggeber</ui5-title>
+          <div class="party">
+            <div class="om-attributes">
+              <div class="om-attribute"><span class="label">Im Dokument</span>
+                <span class="value doc-value">
+                  {{ r.customer.extracted?.name ?? '–' }}
+                  @if (r.customer.extracted?.company) { · {{ r.customer.extracted?.company }} }
+                </span>
+              </div>
+              <div class="om-attribute"><span class="label">E-Mail / Ort</span>
+                <span class="value doc-value">{{ r.customer.extracted?.email ?? '–' }} · {{ r.customer.extracted?.city ?? '–' }}</span>
+              </div>
+              @if (r.customer.extracted?.customerNumber) {
+                <div class="om-attribute"><span class="label">Kundennummer</span>
+                  <span class="value doc-value">{{ r.customer.extracted?.customerNumber }}</span>
+                </div>
+              }
+            </div>
+            <div>
+              <ui5-label show-colon>Debitor</ui5-label>
+              <div class="match-row">
+                @if (customerOptions().length) {
+                  <ui5-select [disabled]="!editable()" [value]="customerId()" (change)="customerId.set($any($event).detail.selectedOption.value)">
+                    @for (c of customerOptions(); track c.customerId) {
+                      <ui5-option [value]="'' + c.customerId" [selected]="customerId() === '' + c.customerId">
+                        {{ c.name }} ({{ c.customerNumber }}){{ c.city ? ' · ' + c.city : '' }} – {{ c.score | percent }}
+                      </ui5-option>
+                    }
+                    @if (!r.customer.match) {
+                      <ui5-option value="" [selected]="!customerId()">Kein sicherer Treffer – bitte wählen</ui5-option>
+                    }
+                  </ui5-select>
+                } @else {
+                  <span class="om-subtle">Kein passender Debitor – im Assistenten auswählen</span>
+                }
+                <ui5-tag [attr.design]="confidenceDesign[customerConfidence()]">{{ confidenceText[customerConfidence()] }}</ui5-tag>
+              </div>
+              @if (r.customer.match; as m) {
+                <div class="reason">{{ m.reason }}</div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="om-section">
+          <ui5-title level="H5" class="om-section-title">Kopfdaten</ui5-title>
+          <div class="om-attributes">
+            <div class="om-attribute"><span class="label">Bestellnummer Kunde</span><span class="value">{{ r.customerReference ?? '–' }}</span></div>
+            <div class="om-attribute"><span class="label">Wunschliefertermin</span>
+              <span class="value">{{ r.requestedDeliveryDate ? (r.requestedDeliveryDate | date: 'EEEE, dd.MM.yyyy') : '–' }}</span></div>
+            @if (r.deliveryAddress) {
+              <div class="om-attribute"><span class="label">Lieferanschrift</span><span class="value">{{ r.deliveryAddress }}</span></div>
+            }
+            @if (r.notes) {
+              <div class="om-attribute"><span class="label">Hinweise</span><span class="value">{{ r.notes }}</span></div>
+            }
+          </div>
+        </div>
+
+        <div class="om-section">
+          <ui5-title level="H5" class="om-section-title">Positionen ({{ r.items.length }})</ui5-title>
+          <ui5-table overflow-mode="Popin" no-data-text="Keine Positionen erkannt">
+            <ui5-table-header-row slot="headerRow">
+              <ui5-table-header-cell min-width="3rem" width="3rem">Pos.</ui5-table-header-cell>
+              <ui5-table-header-cell min-width="11rem">Im Dokument</ui5-table-header-cell>
+              <ui5-table-header-cell min-width="16rem">Material</ui5-table-header-cell>
+              <ui5-table-header-cell min-width="8rem" popin-text="Menge">Menge</ui5-table-header-cell>
+              <ui5-table-header-cell min-width="7rem" popin-text="Zuordnung">Zuordnung</ui5-table-header-cell>
+            </ui5-table-header-row>
+            @for (i of r.items; track i.lineNumber) {
+              <ui5-table-row>
+                <ui5-table-cell>{{ i.lineNumber }}</ui5-table-cell>
+                <ui5-table-cell>
+                  <div class="om-cell-stack">
+                    <span class="doc-value">{{ i.extracted.description ?? '–' }}</span>
+                    <span class="om-subtle">
+                      @if (i.extracted.articleNumber) { Art.-Nr. {{ i.extracted.articleNumber }} · }
+                      {{ i.extracted.quantity ?? '?' }} {{ i.extracted.unit ?? '' }}
+                    </span>
+                  </div>
+                </ui5-table-cell>
+                <ui5-table-cell>
+                  <div class="om-cell-stack">
+                    <ui5-select [disabled]="!editable()" [value]="choiceOf(i.lineNumber)?.productId ?? ''" (change)="chooseMaterial(i.lineNumber, $any($event).detail.selectedOption.value)">
+                      @for (o of options(i); track o.productId) {
+                        <ui5-option [value]="'' + o.productId" [selected]="choiceOf(i.lineNumber)?.productId === '' + o.productId">
+                          {{ o.materialNumber }} · {{ o.name }} – {{ o.score | percent }}
+                        </ui5-option>
+                      }
+                      <ui5-option value="" [selected]="!choiceOf(i.lineNumber)?.productId">
+                        {{ i.match ? 'Position nicht übernehmen' : 'Kein sicherer Treffer – im Assistenten wählen' }}
+                      </ui5-option>
+                    </ui5-select>
+                    @if (optionOf(i, choiceOf(i.lineNumber)?.productId ?? ''); as o) {
+                      <span class="reason">{{ o.reason }} · Listenpreis {{ o.price | currency: 'EUR' }}</span>
+                    }
+                  </div>
+                </ui5-table-cell>
+                <ui5-table-cell>
+                  <ui5-step-input [value]="choiceOf(i.lineNumber)?.quantity ?? 1" min="1" max="9999" [disabled]="!editable()"
+                    (change)="chooseQuantity(i.lineNumber, $any($event.target).value)"></ui5-step-input>
+                </ui5-table-cell>
+                <ui5-table-cell>
+                  <ui5-tag [attr.design]="confidenceDesign[lineConfidence(i)]">{{ confidenceText[lineConfidence(i)] }}</ui5-tag>
+                </ui5-table-cell>
+              </ui5-table-row>
+            }
+          </ui5-table>
+        </div>
+      </div>
+
+      <!-- Original -->
+      <div class="om-section">
+        <div class="om-section-header">
+          <ui5-title level="H5">Original</ui5-title>
+          @if (pdfUrl()) {
+            <ui5-button design="Transparent" icon="document-text" (click)="showText.set(!showText())">
+              {{ showText() ? 'PDF anzeigen' : 'Gelesenen Text anzeigen' }}
+            </ui5-button>
+          }
+        </div>
+        @if (pdfUrl() && !showText()) {
+          <iframe class="pdf" [src]="pdfUrl()" [title]="r.fileName ?? 'Bestellung'"></iframe>
+        } @else {
+          @if (r.subject) {
+            <div class="om-subtle" style="margin-bottom: .5rem">Betreff: {{ r.subject }}</div>
+          }
+          <pre class="source">{{ r.sourceText }}</pre>
+        }
+      </div>
+    </div>
+  </div>
+</ui5-dynamic-page>
+
+<ui5-dialog header-text="Eingang ablehnen" [open]="rejectOpen()" (close)="rejectOpen.set(false)">
+  <div class="om-field">
+    <ui5-label show-colon>Begründung</ui5-label>
+    <ui5-textarea [(ngModel)]="rejectNote" rows="3" maxlength="500" placeholder="z. B. keine Bestellung, Dublette, Rückfrage beim Kunden"
+      style="width: min(30rem, 80vw)"></ui5-textarea>
+  </div>
+  <div slot="footer" class="om-dialog-footer">
+    <ui5-button design="Negative" (click)="reject()">Ablehnen</ui5-button>
+    <ui5-button design="Transparent" (click)="rejectOpen.set(false)">Abbrechen</ui5-button>
+  </div>
+</ui5-dialog>
+} @else {
+  <div class="om-loading"><ui5-busy-indicator active size="L" text="Bestellung wird geladen und ggf. ausgelesen …"></ui5-busy-indicator></div>
+}

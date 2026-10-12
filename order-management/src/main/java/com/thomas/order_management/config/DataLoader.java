@@ -111,6 +111,8 @@ public class DataLoader implements CommandLineRunner {
                 "DELETE FROM stock_movements",
                 "DELETE FROM warehouse_stocks",
                 "DELETE FROM warehouses",
+                "DELETE FROM sales_order_requests",
+                "DELETE FROM sales_order_request_files",
                 "DELETE FROM order_item_conditions",
                 "DELETE FROM order_items",
                 "DELETE FROM orders",

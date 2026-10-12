@@ -27,6 +27,9 @@ const SEMANTICS: Record<string, Semantic> = {
   POSTED: 'Positive',
   REVERSED: 'Negative',
   CLEARED: 'Positive',
+  // Auftragseingang
+  CONVERTED: 'Positive',
+  REJECTED: 'Negative',
   // Bestand
   OK: 'Positive',
   LOW: 'Critical',

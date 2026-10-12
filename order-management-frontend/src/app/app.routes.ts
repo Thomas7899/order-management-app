@@ -38,6 +38,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/orders/order-detail.component').then(m => m.OrderDetailComponent)
       },
       {
+        path: 'order-requests',
+        title: 'Auftragseingang',
+        loadComponent: () => import('./features/order-requests/order-request-list.component').then(m => m.OrderRequestListComponent)
+      },
+      {
+        path: 'order-requests/:id',
+        title: 'Auftragseingang',
+        loadComponent: () => import('./features/order-requests/order-request-detail.component').then(m => m.OrderRequestDetailComponent)
+      },
+      {
         path: 'customers',
         title: 'Debitoren',
         loadComponent: () => import('./features/customers/customer-list.component').then(m => m.CustomerListComponent)

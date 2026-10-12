@@ -72,6 +72,7 @@ public class SecurityConfig {
 
                 // Simulation ist eine reine Prüfung ohne Buchung
                 .requestMatchers(HttpMethod.POST, "/api/orders/simulate").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/order-requests/**").hasAnyRole(SALES, ADMIN)
                 .requestMatchers(HttpMethod.POST, "/api/orders/*/release-credit").hasAnyRole(BILLING, ADMIN)
                 .requestMatchers(HttpMethod.POST, "/api/orders/backlog/process").hasAnyRole(SALES, WAREHOUSE, ADMIN)
                 .requestMatchers(HttpMethod.POST, "/api/orders/**").hasAnyRole(SALES, ADMIN)

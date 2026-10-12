@@ -147,6 +147,13 @@
             <version>2.4.0</version>
         </dependency>
 
+        <!-- Text aus Bestellungen im PDF-Format lesen (berücksichtigt Positionen, z. B. Tabellenzellen) -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.7</version>
+        </dependency>
+
         <!-- Tests -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

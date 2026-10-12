@@ -31,6 +31,7 @@ Die Demo-Daten entstehen durch die Simulation eines kompletten Geschäftsjahres 
 ## ✨ Funktionen
 
 ### Vertrieb (SD)
+- **Auftragseingang** (angelehnt an SAP Sales Order Automation): Bestellung als E-Mail-Text, PDF oder .eml erfassen; die KI liest Auftraggeber, Positionen, Bestellnummer, Wunschtermin und Lieferhinweise aus, die Zuordnung zu Debitoren und Materialien wird mit Konfidenz berechnet, der Vertrieb prüft und übernimmt in den Anlage-Assistenten
 - **Kundenauftrag (Terminauftrag TA)** mit Positionen 10/20/30, Assistent zum Anlegen (vergleichbar VA01) und Änderungsbelegen
 - **Preisfindung** mit Konditionsarten: `PR00` Preis, `K007` Kundenrabatt, `ZMEN` Mengenstaffel (3 % ab 10, 5 % ab 25 Stück), `RA01` manueller Rabatt, `MWST` Ausgangssteuer, `VPRS` Verrechnungspreis (statistisch, für die Marge)
 - **Verfügbarkeitsprüfung (ATP)** auf Werksebene: Bestand − bestätigte Auftragsmengen − Lieferungen ohne Warenausgang
@@ -74,7 +75,7 @@ Kennwort für alle: **`demo1234`** – auf der Anmeldeseite genügt ein Klick au
 | Benutzer | Rolle | Darf ändern |
 |----------|-------|-------------|
 | `ADMIN` | Administrator | alles, inkl. Benutzerverwaltung |
-| `MREUTER` | Vertrieb | Kundenaufträge, Debitoren, Materialien, Antworten auf Bewertungen |
+| `MREUTER` | Vertrieb | Auftragseingang, Kundenaufträge, Debitoren, Materialien, Antworten auf Bewertungen |
 | `JMEIER` | Lager & Versand | Lieferungen, Warenausgang, Bestandsbuchungen, Materialien |
 | `PRICHTER`, `AKOCH` | Fakturierung & Debitorenbuchhaltung | Fakturen, Zahlungseingänge, Kreditfreigaben, Debitoren |
 | `SWEBER` | Controlling | KI-Analysen starten |
@@ -95,6 +96,8 @@ Grundsatz: **Erkennen und Rechnen macht nachvollziehbarer Code, das Sprachmodell
 | Semantische Suche | Embeddings (`text-embedding-3-small`) in pgvector, Kosinus-Ähnlichkeit mit Mindestwert |
 | Bedarfsprognose und Nachschub | berechnet (exponentielle Glättung, Melde-/Höchstbestand, Rückstand); das Sprachmodell fasst nur zusammen |
 | Qualitätshinweise in Materialstamm und Auftragserfassung | dieselben berechneten Auffälligkeiten der letzten 30 Tage, ohne Sprachmodell |
+| Auftragseingang: Bestellung auslesen | Sprachmodell mit strukturierter Ausgabe liest nur aus, was im Dokument steht (bekommt dazu den Materialkatalog, aber keine Debitorendaten); Nummern werden gegen den Originaltext geprüft; ohne Schlüssel feste Muster für Mengen, Nummern, Termine (Datum, Wochentag, Kalenderwoche) |
+| Auftragseingang: Zuordnung zu Stammdaten | berechnet: Debitoren- und Materialnummer, E-Mail-Adresse, unscharfer Namensvergleich (Umlaute, Tippfehler, Wortteile); ein Katalogvorschlag der KI zählt nur als zusätzliches Indiz; mehrdeutige oder schwache Treffer müssen bestätigt werden; Prüfung auf doppelte Bestellnummern |
 | Antwort auf Bewertungen | Sprachmodell schlägt einen Text vor (Sie-Form, keine Zusagen oder erfundenen Fakten), ohne Schlüssel eine Vorlage je kritisiertem Thema; gespeichert wird nur der vom Menschen freigegebene Text |
 
 Die Demo-Bewertungen stammen aus einem eingecheckten Textbaukasten mit warengruppenspezifischen Aussagen und eingebauten Mustern (Qualitätsvorfall, Lieferprobleme, Auf- und Abwärtstrends). Tests prüfen, dass die Auswertung genau diese Muster findet.
@@ -105,7 +108,7 @@ Die Demo-Bewertungen stammen aus einem eingecheckten Textbaukasten mit warengrup
 
 | Bereich | Technologie |
 |---------|-------------|
-| Backend | Java 25 (virtuelle Threads), Spring Boot 4.1 (Spring Framework 7, Jackson 3, Hibernate 7), Spring Data JPA, Spring Security 7 (OAuth2 Resource Server, JWT), Flyway, MapStruct, Lombok, OpenPDF |
+| Backend | Java 25 (virtuelle Threads), Spring Boot 4.1 (Spring Framework 7, Jackson 3, Hibernate 7), Spring Data JPA, Spring Security 7 (OAuth2 Resource Server, JWT), Flyway, MapStruct, Lombok, OpenPDF (Rechnungen), Apache PDFBox (Text aus Bestell-PDFs) |
 | KI | Spring AI 2.0 mit OpenAI-Java-SDK (Chat: `gpt-4o-mini`, Embeddings mit 1536 Dimensionen), pgvector |
 | Datenbank | PostgreSQL 16 mit pgvector |
 | Frontend | Angular 22 (Standalone, Signals), UI5 Web Components 2 (Fiori Horizon), ECharts |
@@ -175,13 +178,14 @@ order-management-frontend/  Angular 22 + UI5 Web Components
   src/app/core/             API-Services, Anmeldung, Interceptors, Modelle
   src/app/layout/           Shell: ShellBar, Seitennavigation, Meldungen
   src/app/features/         launchpad, orders, deliveries, billing, customers,
-                            materials, inventory, analytics, admin
+                            materials, inventory, analytics, admin, order-requests
   src/app/shared/           UI5-Registrierung, Status-Tags, Kacheln, Diagramm-Theme
 
 order-management/           Spring Boot
   controller/               REST-API (/api/orders, /deliveries, /invoices, /inventory, …)
   service/sales/            Preisfindung, ATP, Kreditprüfung, Auftrag, Lieferung,
                             Faktura, Belegfluss, Rechnungs-PDF
+  service/sales/intake/     Auftragseingang: Auslesen (KI/Regeln), Zuordnung, Beispielbestellungen
   service/                  Bestandsbuchungen, Nummernkreise, Änderungsbelege,
                             Reporting, Benutzer
   service/reviews/          Einordnung der Bewertungen (KI/Regeln), Trend-, Auffälligkeits- und Themenauswertung, Suche
@@ -193,10 +197,10 @@ order-management/           Spring Boot
 Der Order-to-Cash-Ablauf im Backend:
 
 ```
-Kundenauftrag (TA) ──► Auslieferung (LF) ──► Warenausgang (601) ──► Faktura (F2) ──► Zahlungseingang
-   │  Preisfindung          │  Lagerortfindung      │  Materialbeleg         │  Zahlungsbedingung
-   │  ATP-Prüfung           │  Kommissionierung     │  Bestandsabbau         │  Skonto
-   └  Kreditprüfung         └  Storno               └  Storno (602)          └  Storno (S1)
+Auftragseingang ──► Kundenauftrag (TA) ──► Auslieferung (LF) ──► Warenausgang (601) ──► Faktura (F2) ──► Zahlungseingang
+   │  E-Mail, PDF      │  Preisfindung          │  Lagerortfindung      │  Materialbeleg         │  Zahlungsbedingung
+   │  KI liest aus     │  ATP-Prüfung           │  Kommissionierung     │  Bestandsabbau         │  Skonto
+   └  Vertrieb prüft   └  Kreditprüfung         └  Storno               └  Storno (602)          └  Storno (S1)
 ```
 
 ---
