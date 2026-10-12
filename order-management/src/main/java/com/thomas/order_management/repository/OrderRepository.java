@@ -19,6 +19,8 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
     Optional<Order> findByOrderNumber(String orderNumber);
 
+    Optional<Order> findFirstByCustomerIdAndCustomerReferenceIgnoreCase(Long customerId, String customerReference);
+
     List<Order> findByCustomerIdOrderByOrderDateDesc(Long customerId);
 
     @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems WHERE o.customer.id = :customerId AND o.status IN :statuses")

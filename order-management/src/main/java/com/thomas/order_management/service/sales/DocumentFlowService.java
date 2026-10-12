@@ -10,6 +10,7 @@ import com.thomas.order_management.model.*;
 import com.thomas.order_management.repository.DeliveryRepository;
 import com.thomas.order_management.repository.InvoiceRepository;
 import com.thomas.order_management.repository.OrderRepository;
+import com.thomas.order_management.repository.SalesOrderRequestRepository;
 import com.thomas.order_management.repository.StockMovementRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,13 +25,16 @@ public class DocumentFlowService {
     private final DeliveryRepository deliveryRepository;
     private final InvoiceRepository invoiceRepository;
     private final StockMovementRepository movementRepository;
+    private final SalesOrderRequestRepository requestRepository;
 
     public DocumentFlowService(OrderRepository orderRepository, DeliveryRepository deliveryRepository,
-                               InvoiceRepository invoiceRepository, StockMovementRepository movementRepository) {
+                               InvoiceRepository invoiceRepository, StockMovementRepository movementRepository,
+                               SalesOrderRequestRepository requestRepository) {
         this.orderRepository = orderRepository;
         this.deliveryRepository = deliveryRepository;
         this.invoiceRepository = invoiceRepository;
         this.movementRepository = movementRepository;
+        this.requestRepository = requestRepository;
     }
 
     public DocumentFlowDto forOrder(Long orderId) {
@@ -69,7 +73,19 @@ public class DocumentFlowService {
                     .forEach(i -> addInvoiceNodes(nodes, i, delivery.getDeliveryNumber()));
         }
 
-        return new DocumentFlowDto(order.getOrderNumber(), nodes);
+        // Vorgänger: Auftragseingang, aus dem der Auftrag übernommen wurde (alle übrigen Belege rücken eine Ebene ein)
+        return requestRepository.findByOrderId(orderId)
+                .map(request -> {
+                    List<Node> withRequest = new ArrayList<>();
+                    withRequest.add(new Node(DocumentType.SALES_ORDER_REQUEST, "Auftragseingang " + request.getSourceType().getDescription(),
+                            request.getId(), request.getRequestNumber(), null, 0, request.getReceivedAt(),
+                            CodeText.of(request.getStatus().name(), request.getStatus().getDescription()), null));
+                    nodes.forEach(n -> withRequest.add(new Node(n.documentType(), n.documentTypeText(), n.id(), n.number(),
+                            n.parentNumber() == null ? request.getRequestNumber() : n.parentNumber(), n.level() + 1,
+                            n.date(), n.status(), n.amount())));
+                    return new DocumentFlowDto(order.getOrderNumber(), withRequest);
+                })
+                .orElseGet(() -> new DocumentFlowDto(order.getOrderNumber(), nodes));
     }
 
     private void addInvoiceNodes(List<Node> nodes, Invoice invoice, String parentNumber) {

@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.LinkedHashMap;
@@ -85,6 +86,11 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleNoResourceFound(NoResourceFoundException ex) {
         return problem(HttpStatus.NOT_FOUND, "Nicht gefunden",
                 "Der angeforderte Endpunkt wurde nicht gefunden: " + ex.getResourcePath());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ProblemDetail handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+        return problem(HttpStatus.CONTENT_TOO_LARGE, "Datei zu groß", "Die Datei ist größer als 2 MB.");
     }
 
     /** KI-Dienst nicht erreichbar oder Schlüssel ungültig: kein interner Fehler der Anwendung. */
