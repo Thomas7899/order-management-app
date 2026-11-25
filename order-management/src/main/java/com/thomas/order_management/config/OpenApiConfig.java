@@ -63,7 +63,7 @@ public class OpenApiConfig {
                                 .url("http://localhost:8080")
                                 .description("Local Development Server"),
                         new Server()
-                                .url("https://order-management-api.herokuapp.com")
+                                .url("https://thomas-order-backend.onrender.com")
                                 .description("Production Server")))
                 .tags(List.of(
                         new Tag().name("Orders").description("Bestellungsverwaltung - CRUD-Operationen für Bestellungen"),

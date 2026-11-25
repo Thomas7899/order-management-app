@@ -8,8 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  HEROKU_APP: thomas-order-backend
-  BACKEND_URL: https://thomas-order-backend-f8a0728f603a.herokuapp.com
+  BACKEND_URL: https://thomas-order-backend.onrender.com
   NETLIFY_SITE_ID: 61edabe6-b160-4b89-b337-f51983aa9d94
 
 jobs:
@@ -63,16 +62,34 @@ jobs:
       name: production
       url: ${{ env.BACKEND_URL }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0   # Heroku braucht die vollständige Historie
-
-      - name: Deploy nach Heroku
+      # Render baut das Image aus order-management/Dockerfile; Auto-Deploy ist dort ausgeschaltet
+      - name: Deploy auf Render
         env:
-          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
         run: |
-          test -n "$HEROKU_API_KEY" || { echo "::error::Secret HEROKU_API_KEY fehlt"; exit 1; }
-          git push "https://heroku:${HEROKU_API_KEY}@git.heroku.com/${HEROKU_APP}.git" HEAD:refs/heads/main
+          test -n "$RENDER_API_KEY" || { echo "::error::Secret RENDER_API_KEY fehlt"; exit 1; }
+          test -n "$RENDER_SERVICE_ID" || { echo "::error::Variable RENDER_SERVICE_ID fehlt"; exit 1; }
+          api="https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys"
+
+          deploy_id=$(curl -fsS -X POST "$api" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"commitId\": \"$GITHUB_SHA\"}" | jq -r '.id')
+          test -n "$deploy_id" && test "$deploy_id" != "null" || { echo "::error::Render hat keinen Deploy angelegt"; exit 1; }
+          echo "Render-Deploy $deploy_id für ${GITHUB_SHA::7} gestartet"
+
+          # Image-Build und Start dauern auf dem Free-Plan einige Minuten
+          for i in $(seq 1 120); do
+            status=$(curl -fsS "$api/$deploy_id" -H "Authorization: Bearer $RENDER_API_KEY" | jq -r '.status')
+            case "$status" in
+              live) echo "Deploy ist live"; exit 0 ;;
+              build_failed|update_failed|pre_deploy_failed|canceled|deactivated)
+                echo "::error::Render-Deploy endete mit Status $status"; exit 1 ;;
+            esac
+            sleep 15
+          done
+          echo "::error::Render-Deploy ist nach 30 Minuten nicht live"; exit 1
 
       - name: Health-Check
         run: |
