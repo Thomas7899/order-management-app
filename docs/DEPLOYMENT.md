@@ -10,9 +10,10 @@ Jeder Push bzw. Merge auf `main` wird automatisch deployt – aber nur, wenn vor
 
 Alle drei Dienste sind im kostenlosen Plan. Dabei gilt:
 
-- Das Backend schläft nach 15 Minuten ohne Anfragen ein. Der erste Aufruf danach weckt es auf und braucht ein bis zwei Minuten.
-- Die Datenbank schläft nach 5 Minuten ohne Verbindung ein und wacht beim nächsten Verbindungsaufbau in unter einer Sekunde wieder auf.
-- Neon erlaubt im Free-Plan 1 GB Speicher und 100 CU-Stunden Rechenzeit pro Monat.
+- Das Backend schläft nach 15 Minuten ohne Anfragen ein. Der erste Aufruf danach weckt es auf und braucht ein bis zwei Minuten. Damit das im Alltag nicht passiert, hält ein Ping es wach (siehe [Wachhalten](#wachhalten-keep-alive)).
+- Render erlaubt 750 Instanzstunden pro Monat und Workspace. Das reicht für genau einen dauerhaft laufenden Free-Dienst.
+- Die Datenbank schläft nach 5 Minuten ohne Abfrage ein und wacht beim nächsten Verbindungsaufbau in unter einer Sekunde wieder auf.
+- Neon erlaubt im Free-Plan 1 GB Speicher und 100 CU-Stunden Rechenzeit pro Monat. Eine dauerhaft wache Datenbank würde rund 186 CU-Stunden verbrauchen, sie muss also einschlafen können.
 
 ---
 
@@ -41,6 +42,27 @@ gh secret set RENDER_API_KEY       # fragt den Wert ab
 gh variable set RENDER_SERVICE_ID --body "srv-..."
 gh secret set NETLIFY_AUTH_TOKEN
 ```
+
+---
+
+## Wachhalten (Keep-alive)
+
+Der Workflow `.github/workflows/keep-alive.yml` ruft alle 5 Minuten `/actuator/health` auf. So bleibt das Backend wach, und Besucher müssen nicht auf den Neustart warten.
+
+Damit die Datenbank dabei nicht mit wach bleibt, gilt im Profil `cloud`:
+
+- `management.health.db.enabled=false` – der Health-Check fragt die Datenbank nicht ab. Auch Render ruft ihn laufend auf.
+- Der Verbindungspool hält keine Verbindung dauerhaft offen (`minimum-idle=0`, `idle-timeout` 2 Minuten) und schickt keine Keepalive-Abfragen (`keepalive-time=0`).
+
+Der erste Aufruf nach einer Pause baut deshalb eine neue Datenbankverbindung auf und dauert etwa eine Sekunde länger.
+
+Zu beachten:
+
+- GitHub startet geplante Workflows oft verspätet und lässt bei hoher Last einzelne Läufe aus. Das Backend kann also gelegentlich trotzdem einschlafen. Zuverlässiger ist ein externer Dienst (z. B. UptimeRobot), der dieselbe Adresse alle 5 Minuten aufruft.
+- In öffentlichen Repositorys schaltet GitHub geplante Workflows nach 60 Tagen ohne Aktivität im Repository ab. Dann unter Actions → Keep-alive wieder einschalten.
+- Ob die Datenbank wirklich einschläft, zeigt die Neon-Konsole unter Monitoring (Compute-Zeiten).
+
+Das Frontend ruft beim Öffnen sofort `/actuator/health` auf. Dauert die Antwort länger als 4 Sekunden, zeigt es den Hinweis „Der Server wird gerade gestartet“, bis das Backend antwortet.
 
 ---
 

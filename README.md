@@ -24,7 +24,7 @@
 | **Backend / API** | https://thomas-order-backend.onrender.com |
 | **API-Dokumentation** | https://thomas-order-backend.onrender.com/swagger-ui.html |
 
-Das Backend läuft auf einer kostenlosen Render-Instanz und schläft nach 15 Minuten ohne Anfragen ein. Der erste Aufruf danach braucht ein bis zwei Minuten.
+Das Backend läuft auf einer kostenlosen Render-Instanz, die ohne Anfragen nach 15 Minuten einschläft. Ein geplanter Workflow hält sie wach. Startet sie doch einmal neu (nach einem Deploy oder wenn der Ping ausbleibt), braucht der erste Aufruf ein bis zwei Minuten; die Anwendung zeigt solange einen Hinweis.
 
 Die Demo-Daten entstehen durch die Simulation eines kompletten Geschäftsjahres über die echten Fachservices: rund 500 Kundenaufträge mit Lieferungen, Warenausgängen, Fakturen, Zahlungseingängen, Stornos, Kreditsperren und Nachschub.
 
