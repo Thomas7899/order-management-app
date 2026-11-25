@@ -21,8 +21,10 @@
 | | URL |
 |---|---|
 | **Frontend** | https://order-management-front.netlify.app |
-| **Backend / API** | https://thomas-order-backend-f8a0728f603a.herokuapp.com |
-| **API-Dokumentation** | https://thomas-order-backend-f8a0728f603a.herokuapp.com/swagger-ui.html |
+| **Backend / API** | https://thomas-order-backend.onrender.com |
+| **API-Dokumentation** | https://thomas-order-backend.onrender.com/swagger-ui.html |
+
+Das Backend läuft auf einer kostenlosen Render-Instanz und schläft nach 15 Minuten ohne Anfragen ein. Der erste Aufruf danach braucht ein bis zwei Minuten.
 
 Die Demo-Daten entstehen durch die Simulation eines kompletten Geschäftsjahres über die echten Fachservices: rund 500 Kundenaufträge mit Lieferungen, Warenausgängen, Fakturen, Zahlungseingängen, Stornos, Kreditsperren und Nachschub.
 
@@ -113,7 +115,7 @@ Die Demo-Bewertungen stammen aus einem eingecheckten Textbaukasten mit warengrup
 | Datenbank | PostgreSQL 16 mit pgvector |
 | Frontend | Angular 22 (Standalone, Signals), UI5 Web Components 2 (Fiori Horizon), ECharts |
 | Tests | JUnit 5, Spring Boot Test (Backend); Karma/Jasmine (Frontend) |
-| Betrieb | Heroku (Backend), Netlify (Frontend), GitHub Actions (CI und Deploy) |
+| Betrieb | Render (Backend), Neon (PostgreSQL), Netlify (Frontend), GitHub Actions (CI und Deploy) |
 
 ---
 
@@ -218,7 +220,7 @@ Die CI (`.github/workflows/ci.yml`) führt beide Testläufe und den Produktions-
 
 ## 📦 Deployment
 
-Jeder Merge auf `main` wird nach grünen Tests automatisch deployt: Backend auf Heroku, Frontend auf Netlify. Details und der Weg von Hand in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Jeder Merge auf `main` wird nach grünen Tests automatisch deployt: Backend auf Render, Frontend auf Netlify. Details und der Weg von Hand in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ---
 

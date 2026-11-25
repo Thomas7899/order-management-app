@@ -5,8 +5,8 @@ This project uses a **modern, decoupled architecture** with separate deployments
 
 ## 🎯 Deployed Services
 
-### 🚀 Backend API (Spring Boot + Heroku)
-- **URL**: `https://your-backend-app.herokuapp.com`
+### 🚀 Backend API (Spring Boot + Render)
+- **URL**: `https://thomas-order-backend.onrender.com`
 - **Technology**: Spring Boot 3.5.6, PostgreSQL, Advanced SQL
 - **Features**: RESTful API, Database Analytics, Performance Optimization
 
@@ -19,14 +19,15 @@ This project uses a **modern, decoupled architecture** with separate deployments
 
 ## 🔧 Deployment Configuration
 
-### Backend (Heroku)
+### Backend (Render + Neon)
 ```bash
-# Deploy backend only using git subtree
-git subtree push --prefix=order-management heroku main
+# Render builds order-management/Dockerfile (see render.yaml); GitHub Actions triggers the deploy
 
 # Environment variables
-SPRING_PROFILES_ACTIVE=heroku
-DATABASE_URL=postgres://... (auto-configured)
+SPRING_PROFILES_ACTIVE=cloud
+DATABASE_URL=jdbc:postgresql://<neon-host>/neondb?sslmode=require
+DATABASE_USERNAME=...
+DATABASE_PASSWORD=...
 ```
 
 ### Frontend (Netlify)
@@ -42,7 +43,7 @@ Publish directory: order-management-frontend/dist/order-management-frontend
 ## 🔄 Continuous Integration/Deployment
 
 ### GitHub Actions Pipelines:
-1. **Backend CI/CD** → Heroku deployment on push to `main`
+1. **Backend CI/CD** → Render deployment on push to `main`
 2. **Frontend CI/CD** → Netlify deployment on frontend changes
 3. **Automated Testing** → Unit tests and integration tests
 
@@ -50,7 +51,8 @@ Publish directory: order-management-frontend/dist/order-management-frontend
 - `.github/workflows/deploy-backend.yml`
 - `.github/workflows/deploy-frontend.yml`
 - `netlify.toml` - Frontend build configuration
-- `Procfile` - Heroku process definition
+- `render.yaml` - Render service definition
+- `order-management/Dockerfile` - Backend container image
 
 ---
 
@@ -64,14 +66,14 @@ Backend allows requests from:
 
 ### Environment-specific API URLs:
 - **Development**: `http://localhost:8080/api`
-- **Production**: `https://your-backend-app.herokuapp.com/api`
+- **Production**: `https://thomas-order-backend.onrender.com/api`
 
 ---
 
 ## 📊 Advanced Features Demonstrated
 
 ### Backend (Spring Boot):
-- ✅ **Multi-Profile Configuration** (dev/prod/heroku)
+- ✅ **Multi-Profile Configuration** (dev/prod/cloud)
 - ✅ **PostgreSQL with Advanced SQL** (Window Functions, CTEs)
 - ✅ **Analytics Endpoints** (Business Intelligence)
 - ✅ **Performance Optimization** (Indexing, Query Tuning)
@@ -105,7 +107,7 @@ This architecture demonstrates:
 
 ### 💼 **Job Market Relevance:**
 - **Full-Stack Expertise**: End-to-end application development
-- **Cloud Native**: Heroku, Netlify, containerization-ready
+- **Cloud Native**: Render (Docker), Neon (PostgreSQL), Netlify
 - **Database Proficiency**: Advanced SQL, performance tuning
 - **Modern Frontend**: Angular 18, TypeScript, responsive design
 
@@ -126,8 +128,8 @@ npm start
 
 ### Production Deployment:
 ```bash
-# Backend to Heroku
-git subtree push --prefix=order-management heroku main
+# Backend to Render
+# Automatic deployment via GitHub Actions after green tests on main
 
 # Frontend to Netlify
 # Automatic deployment via GitHub integration

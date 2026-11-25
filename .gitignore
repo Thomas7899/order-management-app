@@ -78,3 +78,5 @@ order-management-frontend/yarn.lock
 docs
 # Local Netlify folder
 .netlify
+.neon
+node_modules/

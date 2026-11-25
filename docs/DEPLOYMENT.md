@@ -4,8 +4,15 @@ Jeder Push bzw. Merge auf `main` wird automatisch deployt – aber nur, wenn vor
 
 | Teil | Plattform | Name |
 |------|-----------|------|
-| Backend | Heroku | App `thomas-order-backend` mit Heroku Postgres (`essential-0`) |
+| Backend | Render (Free, Docker) | Web Service `thomas-order-backend`, Region Frankfurt |
+| Datenbank | Neon (Free) | PostgreSQL mit pgvector, Region AWS eu-central-1 (Frankfurt) |
 | Frontend | Netlify | Site `order-management-front` |
+
+Alle drei Dienste sind im kostenlosen Plan. Dabei gilt:
+
+- Das Backend schläft nach 15 Minuten ohne Anfragen ein. Der erste Aufruf danach weckt es auf und braucht ein bis zwei Minuten.
+- Die Datenbank schläft nach 5 Minuten ohne Verbindung ein und wacht beim nächsten Verbindungsaufbau in unter einer Sekunde wieder auf.
+- Neon erlaubt im Free-Plan 1 GB Speicher und 100 CU-Stunden Rechenzeit pro Monat.
 
 ---
 
@@ -14,81 +21,96 @@ Jeder Push bzw. Merge auf `main` wird automatisch deployt – aber nur, wenn vor
 Der Workflow `.github/workflows/ci.yml` läuft bei jedem Push auf `main`:
 
 1. `backend` und `frontend`: Tests und Produktions-Build
-2. `deploy-backend`: `git push` des Commits nach Heroku, danach Health-Check auf `/actuator/health`
+2. `deploy-backend`: startet über die Render-API einen Deploy genau dieses Commits, wartet, bis er live ist, und prüft danach `/actuator/health`
 3. `deploy-frontend`: Produktions-Build und `netlify deploy --prod`
 
 Erneut deployen ohne neuen Commit: GitHub → Actions → CI → „Run workflow“ auf `main`.
 
-Benötigte Repository-Secrets (GitHub → Settings → Secrets and variables → Actions):
+Benötigte Einstellungen im Repository (GitHub → Settings → Secrets and variables → Actions):
 
-| Secret | Inhalt |
-|--------|--------|
-| `HEROKU_API_KEY` | eigener Heroku-Token für den Deploy: `heroku authorizations:create --description "GitHub Actions Deploy"` |
-| `NETLIFY_AUTH_TOKEN` | Netlify Personal Access Token (User settings → Applications → Personal access tokens) |
+| Art | Name | Inhalt |
+|-----|------|--------|
+| Secret | `RENDER_API_KEY` | Render API Key (Account Settings → API Keys) |
+| Variable | `RENDER_SERVICE_ID` | ID des Web Service, beginnt mit `srv-` (steht in der Dashboard-URL des Service) |
+| Secret | `NETLIFY_AUTH_TOKEN` | Netlify Personal Access Token (User settings → Applications → Personal access tokens) |
 
 Setzen per CLI, ohne dass der Token im Terminal-Verlauf landet:
 
 ```bash
-gh secret set NETLIFY_AUTH_TOKEN   # fragt den Wert ab
+gh secret set RENDER_API_KEY       # fragt den Wert ab
+gh variable set RENDER_SERVICE_ID --body "srv-..."
+gh secret set NETLIFY_AUTH_TOKEN
 ```
-
-Die folgenden Abschnitte beschreiben die Konfiguration und den Deploy von Hand (Voraussetzung: `heroku` und `netlify` CLI angemeldet).
 
 ---
 
-## Backend (Heroku)
+## Einrichtung
+
+Einmalig nötig, wenn Backend oder Datenbank neu angelegt werden.
+
+### 1. Datenbank (Neon)
+
+1. Auf [neon.com](https://neon.com) ein Projekt anlegen: PostgreSQL 16 oder neuer, Region **AWS Europe Central 1 (Frankfurt)**.
+2. Unter „Connect“ die Verbindungsdaten der Datenbank `neondb` ablesen. Die Adresse **ohne** `-pooler` im Hostnamen verwenden, denn Flyway und Hibernate brauchen eine direkte Verbindung.
+3. Daraus die JDBC-Adresse bilden:
+
+   ```
+   jdbc:postgresql://ep-xxxx.eu-central-1.aws.neon.tech/neondb?sslmode=require
+   ```
+
+Das Schema legt Flyway beim ersten Start selbst an, einschließlich der pgvector-Erweiterung (`V1__baseline_schema.sql`).
+
+### 2. Backend (Render)
+
+1. Auf [render.com](https://render.com) → New → **Blueprint** → dieses Repository wählen. Render liest `render.yaml` und legt den Web Service `thomas-order-backend` an.
+2. Die abgefragten Werte eintragen: `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD` (aus Neon) und `OPENAI_API_KEY`.
+3. Die Service-URL prüfen. Ist der Name schon vergeben, hängt Render ein Suffix an. Dann die URL in `order-management-frontend/src/environments/environment.prod.ts`, in `BACKEND_URL` in `.github/workflows/ci.yml`, in `OpenApiConfig` und in der README anpassen.
+4. `RENDER_API_KEY` und `RENDER_SERVICE_ID` in GitHub hinterlegen (siehe oben).
+
+Render baut das Image aus `order-management/Dockerfile`. Auto-Deploy ist ausgeschaltet, damit nur getestete Commits live gehen.
 
 ### Konfiguration
 
-| Config Var | Wert |
-|------------|------|
-| `SPRING_PROFILES_ACTIVE` | `heroku` |
-| `PROJECT_PATH` | `order-management` (Monorepo: Unterordner mit dem Maven-Projekt) |
-| `MAVEN_CUSTOM_GOALS` | `clean install` |
-| `DATABASE_URL` | wird vom Postgres-Add-on gesetzt |
-| `JWT_SECRET` | Signaturschlüssel für Anmeldungen, mindestens 32 Zeichen |
+| Umgebungsvariable | Wert |
+|-------------------|------|
+| `SPRING_PROFILES_ACTIVE` | `cloud` (aus `render.yaml`) |
+| `DATABASE_URL` | JDBC-Adresse von Neon mit `sslmode=require` |
+| `DATABASE_USERNAME` / `DATABASE_PASSWORD` | Zugangsdaten von Neon |
+| `JWT_SECRET` | Signaturschlüssel für Anmeldungen, erzeugt Render beim Anlegen (mindestens 32 Zeichen) |
 | `OPENAI_API_KEY` | für die KI-Funktionen (ohne Schlüssel startet die App trotzdem) |
-| `CORS_ALLOWED_ORIGINS` | optional; Standard im Profil `heroku` ist die Netlify-Domain inklusive Deploy-Previews |
+| `CORS_ALLOWED_ORIGINS` | optional; Standard im Profil `cloud` ist die Netlify-Domain inklusive Deploy-Previews |
 | `APP_DEV_RESET_ON_START` | `false` – Daten bleiben bei Neustarts erhalten |
 | `APP_DEV_GENERATE_EMBEDDINGS` | optional `true`, damit die semantische Suche nach einem Neuaufbau der Demo-Daten sofort funktioniert |
 
-Die Java-Version für Heroku steht in `system.properties` (`java.runtime.version=25`). Das `Procfile` startet die JVM mit `-XX:+UseCompactObjectHeaders`, das spart auf dem 512-MB-Dyno Heap.
-
 `JWT_SECRET` muss gesetzt sein. Ohne ihn erzeugt das Backend bei jedem Start einen zufälligen Schlüssel, und alle Anmeldungen werden nach einem Neustart ungültig.
 
-```bash
-heroku config:set -a thomas-order-backend JWT_SECRET="$(openssl rand -base64 48)"
-```
+Das Dockerfile begrenzt den Heap auf 60 % des Speichers (rund 300 MB der 512 MB) und startet die JVM mit `-XX:+UseCompactObjectHeaders`.
 
-### Von Hand veröffentlichen
+### Demo-Daten
 
-```bash
-git remote add heroku https://git.heroku.com/thomas-order-backend.git   # einmalig
-git push heroku main
-heroku logs -a thomas-order-backend --tail
-```
+Ist die Datenbank leer, simuliert das Backend nach dem Start ein Geschäftsjahr als Demo-Daten. Die App ist währenddessen schon erreichbar und füllt sich nach und nach. Fertig ist sie, wenn im Log `Demo data loaded in … s` erscheint.
 
-Ist die Datenbank leer, simuliert das Backend nach dem Start ein Geschäftsjahr als Demo-Daten. Das dauert einige Minuten. Die App ist währenddessen schon erreichbar und füllt sich nach und nach. Fertig ist sie, wenn im Log `Demo data loaded in … s` erscheint.
-
-### Umstieg auf Flyway (am 11.10.2026 erledigt)
-
-Bis Release v31 hat Hibernate das Schema erzeugt (`ddl-auto`). Seitdem verwaltet Flyway das Schema (`db/migration`). Beim ersten Deploy wurde die Datenbank deshalb einmal geleert; das Backup davor ist `b001` (`heroku pg:backups -a thomas-order-backend`). Für eine neue App wären die Schritte:
+Auf der Free-Instanz mit 0,1 CPU dauert das sehr lange. Schneller geht es, wenn das Backend die Daten einmal lokal in die Neon-Datenbank schreibt:
 
 ```bash
-heroku maintenance:on -a thomas-order-backend
-heroku pg:reset DATABASE -a thomas-order-backend --confirm thomas-order-backend
-git push heroku main
-heroku maintenance:off -a thomas-order-backend
+cd order-management
+SPRING_PROFILES_ACTIVE=cloud \
+DATABASE_URL="jdbc:postgresql://ep-xxxx.eu-central-1.aws.neon.tech/neondb?sslmode=require" \
+DATABASE_USERNAME="..." DATABASE_PASSWORD="..." \
+OPENAI_API_KEY="..." \
+./mvnw spring-boot:run
 ```
 
-Die pgvector-Erweiterung legt die erste Migration selbst an. Danach laufen Schemaänderungen nur noch über neue Flyway-Migrationen (`V2__…sql`), ohne Reset.
+Sobald `Demo data loaded` im Log steht, den lokalen Prozess beenden. Das Backend auf Render findet die Daten dann beim nächsten Start vor.
 
 ### Prüfen
 
 ```bash
-curl https://thomas-order-backend-f8a0728f603a.herokuapp.com/actuator/health
-curl https://thomas-order-backend-f8a0728f603a.herokuapp.com/api/auth/demo-users
+curl https://thomas-order-backend.onrender.com/actuator/health
+curl https://thomas-order-backend.onrender.com/api/auth/demo-users
 ```
+
+Logs: Render-Dashboard → `thomas-order-backend` → Logs.
 
 ---
 

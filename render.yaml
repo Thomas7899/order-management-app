@@ -1,0 +1,29 @@
+# Render Blueprint für das Backend (Dashboard → New → Blueprint → dieses Repository).
+# Die Datenbank liegt bei Neon (PostgreSQL mit pgvector), das Frontend bei Netlify.
+services:
+  - type: web
+    name: thomas-order-backend
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./order-management/Dockerfile
+    dockerContext: ./order-management
+    healthCheckPath: /actuator/health
+    # Deploys startet GitHub Actions nach grünen Tests (siehe .github/workflows/ci.yml)
+    autoDeployTrigger: "off"
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: cloud
+      # JDBC-Adresse von Neon, z. B. jdbc:postgresql://ep-xyz.eu-central-1.aws.neon.tech/neondb?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USERNAME
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: APP_DEV_RESET_ON_START
+        value: "false"
